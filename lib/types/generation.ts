@@ -9,7 +9,7 @@ import type { ActionType } from './action';
 import type { MediaGenerationRequest } from '@/lib/media/types';
 import type { WidgetConfig, TeacherAction, WidgetType } from './widgets';
 
-export type ExperiencePreset = 'historical-vlogger' | 'governed-co-thinking';
+export type ExperiencePreset = 'historical-vlogger';
 
 // ==================== PDF Image Types ====================
 

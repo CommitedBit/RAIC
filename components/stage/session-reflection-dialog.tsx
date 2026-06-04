@@ -20,8 +20,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { GOVERNED_CO_THINKING_PRESET } from '@/lib/generation/experience-presets';
-import type { ExperiencePreset } from '@/lib/types/generation';
 
 const DEFAULT_CONFIDENCE_SCORE = '3';
 const DEFAULT_REVISIT_INTENT = 'continue';
@@ -30,7 +28,6 @@ interface SessionReflectionDialogProps {
   classroomId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  experiencePreset?: ExperiencePreset | null;
   onSaved?: (input: {
     reflection?: {
       summary?: string;
@@ -48,10 +45,8 @@ export function SessionReflectionDialog({
   classroomId,
   open,
   onOpenChange,
-  experiencePreset,
   onSaved,
 }: SessionReflectionDialogProps) {
-  const isGovernedCoThinking = experiencePreset === GOVERNED_CO_THINKING_PRESET;
   const [summary, setSummary] = useState('');
   const [challengingAreas, setChallengingAreas] = useState('');
   const [confidenceScore, setConfidenceScore] = useState(DEFAULT_CONFIDENCE_SCORE);
@@ -193,34 +188,13 @@ export function SessionReflectionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>
-            {isGovernedCoThinking ? 'Governed Co-Thinking Reflection' : 'Session Reflection'}
-          </DialogTitle>
+          <DialogTitle>Session Reflection</DialogTitle>
           <DialogDescription>
-            {isGovernedCoThinking
-              ? 'Capture teacher-only agency practice notes for the next session without student-level measurement.'
-              : 'Capture what worked, what was difficult, and how the next classroom should adapt.'}
+            Capture what worked, what was difficult, and how the next classroom should adapt.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
-          {isGovernedCoThinking ? (
-            <div
-              data-testid="governed-co-thinking-reflection-template"
-              className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-100"
-            >
-              <p className="font-medium">Agency practice prompts</p>
-              <ul className="mt-2 list-disc space-y-1 pl-4">
-                <li>What intention, steering, or help-seeking did learners practice?</li>
-                <li>Where did they verify, reject, or mark uncertainty in AI-supported work?</li>
-                <li>
-                  How did they transform output into their own authorship, voice, or reasoning?
-                </li>
-                <li>What no-AI transfer task should the next classroom revisit?</li>
-              </ul>
-            </div>
-          ) : null}
-
           {latestReflection || latestContext ? (
             <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
               <p className="font-medium text-foreground">Last saved context</p>
@@ -246,11 +220,7 @@ export function SessionReflectionDialog({
             <Textarea
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder={
-                isGovernedCoThinking
-                  ? 'Summarize class-level agency evidence: intention, verification, authorship, responsibility, or transfer.'
-                  : 'What should the next session remember about this classroom?'
-              }
+              placeholder="What should the next session remember about this classroom?"
               rows={5}
               disabled={loadingSnapshot || submitting}
             />
@@ -261,11 +231,7 @@ export function SessionReflectionDialog({
             <Input
               value={challengingAreas}
               onChange={(event) => setChallengingAreas(event.target.value)}
-              placeholder={
-                isGovernedCoThinking
-                  ? 'Comma-separated agency habits to revisit'
-                  : 'Comma-separated topics or weak spots'
-              }
+              placeholder="Comma-separated topics or weak spots"
               disabled={loadingSnapshot || submitting}
             />
           </label>

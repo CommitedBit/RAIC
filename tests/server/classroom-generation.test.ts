@@ -380,56 +380,6 @@ describe('generateClassroom', () => {
     expect(searchWithTavilyMock).not.toHaveBeenCalled();
   });
 
-  it('allows governed co-thinking generation without PDF or web source context', async () => {
-    const { generateClassroom } = await import('@/lib/server/classroom-generation');
-
-    const result = await generateClassroom(
-      {
-        requirement: 'Teach students how to govern AI-supported writing',
-        experiencePreset: 'governed-co-thinking',
-      },
-      {
-        baseUrl: 'http://localhost:3000',
-        organizationId: 'org-1',
-        userId: 'teacher-1',
-      },
-    );
-
-    expect(result.stage.sourceContext).toMatchObject({
-      pdfAttached: false,
-      tavilyEnabled: false,
-      sourceMode: 'none',
-      experiencePreset: 'governed-co-thinking',
-    });
-    expect(generateSceneOutlinesFromRequirementsMock).toHaveBeenCalled();
-    expect(searchWithTavilyMock).not.toHaveBeenCalled();
-  });
-
-  it('strips governed co-thinking when classroom generation is game-arcade mode', async () => {
-    const { generateClassroom } = await import('@/lib/server/classroom-generation');
-
-    const result = await generateClassroom(
-      {
-        requirement: 'Create an agency practice game',
-        creationMode: 'game-arcade',
-        gameTemplateId: 'puzzle-lab',
-        experiencePreset: 'governed-co-thinking',
-      },
-      {
-        baseUrl: 'http://localhost:3000',
-        organizationId: 'org-1',
-        userId: 'teacher-1',
-      },
-    );
-
-    expect(result.stage.sourceContext).toMatchObject({
-      creationMode: 'game-arcade',
-      gameTemplateId: 'puzzle-lab',
-    });
-    expect(result.stage.sourceContext?.experiencePreset).toBeUndefined();
-    expect(generateSceneOutlinesFromRequirementsMock).toHaveBeenCalled();
-  });
-
   it('allows historical-vlogger generation with web source context only', async () => {
     const { generateClassroom } = await import('@/lib/server/classroom-generation');
 

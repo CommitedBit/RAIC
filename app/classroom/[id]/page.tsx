@@ -959,7 +959,6 @@ export default function ClassroomDetailPage() {
                 classroomId={classroomId}
                 open={reflectionOpen}
                 onOpenChange={setReflectionOpen}
-                experiencePreset={stage?.sourceContext?.experiencePreset ?? null}
                 onSaved={handleReflectionSaved}
               />
               <ClassroomShareDialog

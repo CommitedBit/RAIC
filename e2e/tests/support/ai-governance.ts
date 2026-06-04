@@ -17,7 +17,7 @@ import type {
   UserProviderOverrideRecord,
   UserRecord,
 } from '../../../lib/db/schema';
-import type { SharedSimulation, Stage } from '../../../lib/types/stage';
+import type { SharedSimulation } from '../../../lib/types/stage';
 
 export const APP_BASE_URL = 'http://localhost:3002';
 
@@ -372,7 +372,6 @@ export async function writeClassroomData(params: {
   stageName: string;
   sceneTitles: string[];
   sharedSimulation?: SharedSimulation | null;
-  sourceContext?: Stage['sourceContext'];
 }) {
   const createdAtIso = nowIso();
   const createdAtMs = Date.now();
@@ -385,7 +384,6 @@ export async function writeClassroomData(params: {
     language: 'en-US',
     style: 'professional',
     sharedSimulation: params.sharedSimulation ?? undefined,
-    sourceContext: params.sourceContext,
   };
   const scenes = params.sceneTitles.map((title, index) => ({
     id: `${params.classroomId}-scene-${index + 1}`,
