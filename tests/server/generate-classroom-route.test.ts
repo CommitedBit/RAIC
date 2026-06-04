@@ -239,6 +239,64 @@ describe('POST /api/generate-classroom', () => {
     );
   });
 
+  it('accepts and forwards governed co-thinking requests without source context', async () => {
+    const { POST } = await import('@/app/api/generate-classroom/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate-classroom', {
+        method: 'POST',
+        body: JSON.stringify({
+          requirement: 'Teach students how to govern AI-supported writing',
+          experiencePreset: 'governed-co-thinking',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(createClassroomGenerationJobMock).toHaveBeenCalledWith(
+      'job-123456',
+      expect.objectContaining({
+        requirement: 'Teach students how to govern AI-supported writing',
+        experiencePreset: 'governed-co-thinking',
+      }),
+      expect.any(Object),
+    );
+    expect(runClassroomGenerationJobMock).toHaveBeenCalledWith(
+      'job-123456',
+      expect.objectContaining({
+        requirement: 'Teach students how to govern AI-supported writing',
+        experiencePreset: 'governed-co-thinking',
+      }),
+      'http://localhost:3000',
+      expect.any(Object),
+    );
+  });
+
+  it('strips course presets from game-arcade generation requests', async () => {
+    const { POST } = await import('@/app/api/generate-classroom/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate-classroom', {
+        method: 'POST',
+        body: JSON.stringify({
+          requirement: 'Create an agency practice game',
+          creationMode: 'game-arcade',
+          gameTemplateId: 'puzzle-lab',
+          experiencePreset: 'governed-co-thinking',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    const forwardedBody = createClassroomGenerationJobMock.mock.calls[0]?.[1];
+    expect(forwardedBody).toEqual(
+      expect.objectContaining({
+        requirement: 'Create an agency practice game',
+        creationMode: 'game-arcade',
+        gameTemplateId: 'puzzle-lab',
+      }),
+    );
+    expect(forwardedBody).not.toHaveProperty('experiencePreset');
+  });
+
   it('accepts and forwards PDF-only historical-vlogger requests', async () => {
     const { POST } = await import('@/app/api/generate-classroom/route');
     const response = await POST(

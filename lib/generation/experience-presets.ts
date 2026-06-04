@@ -1,6 +1,7 @@
 import type { ExperiencePreset } from '@/lib/types/generation';
 
 export const HISTORICAL_VLOGGER_PRESET: ExperiencePreset = 'historical-vlogger';
+export const GOVERNED_CO_THINKING_PRESET: ExperiencePreset = 'governed-co-thinking';
 
 export type ExperiencePresetSourceRequirement = 'none' | 'source-context';
 
@@ -26,6 +27,19 @@ Required treatment:
 - Prefer normal slide, quiz, and optional interactive scenes. Use fact-check callouts, source labels, discussion prompts, and source-literacy quiz questions instead of a custom renderer.
 - When creating quizzes, include at least one source-literacy question when the scene scope allows it.`;
 
+const GOVERNED_CO_THINKING_PROMPT_CONTEXT = `## Governed Co-Thinking Practice Mode
+
+Design this as a classroom practice scaffold for Human Agency Literacy in AI-mediated learning. Present the framework as a pre-empirical practice scaffold, not as an empirically validated intervention or measurement system.
+
+Required treatment:
+- Make human agency visible throughout the lesson: intention, steering, verification/calibration, taste, authorship, cultural grounding, responsibility, and transfer.
+- Include a Governed Co-Thinking cycle using normal scene types: baseline intention, governed prompt framing, AI dialogue journal, verification checkpoint, taste comparison, transformation/authorship, cultural meaning and hidden-curriculum check, disclosure/responsibility statement, no-AI transfer task, and reflection.
+- Teach the six metacognitive governor functions as classroom habits: intentional framing, steering/help-seeking, verification/calibration, transformation/authorship, responsibility/disclosure, and reflection/transfer.
+- Include at least one agency-oriented check-for-understanding, quiz, or reflection prompt that asks what the learner can now do without AI support.
+- Use concise, memorable Alignment Prosody language when useful, but do not over-poeticize the lesson or make unsupported research claims.
+- Do not score students with AUI, AUI-E, AGD, FSAI, or any named research index. Avoid named student portfolios or research-pilot framing.
+- Keep evidence teacher-facing and privacy-conscious: focus on class-level practice notes, not student-level measurement.`;
+
 export const EXPERIENCE_PRESET_DEFINITIONS: Record<ExperiencePreset, ExperiencePresetDefinition> = {
   [HISTORICAL_VLOGGER_PRESET]: {
     id: HISTORICAL_VLOGGER_PRESET,
@@ -37,6 +51,15 @@ export const EXPERIENCE_PRESET_DEFINITIONS: Record<ExperiencePreset, ExperienceP
     sourceUnavailableMessage:
       'History Vlog needs usable source context. Enable working web search or upload a PDF/source document before generating.',
     promptContext: HISTORICAL_VLOGGER_PROMPT_CONTEXT,
+  },
+  [GOVERNED_CO_THINKING_PRESET]: {
+    id: GOVERNED_CO_THINKING_PRESET,
+    labelKey: 'toolbar.governedCoThinkingPreset',
+    hintKey: 'toolbar.governedCoThinkingPresetHint',
+    sourceRequirement: 'none',
+    sourceRequiredMessage: '',
+    sourceUnavailableMessage: '',
+    promptContext: GOVERNED_CO_THINKING_PROMPT_CONTEXT,
   },
 };
 

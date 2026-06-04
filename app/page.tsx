@@ -78,6 +78,7 @@ import { WEB_SEARCH_PROVIDERS } from '@/lib/web-search/constants';
 import {
   experiencePresetRequiresSource,
   getExperiencePresetDefinition,
+  GOVERNED_CO_THINKING_PRESET,
   HISTORICAL_VLOGGER_PRESET,
 } from '@/lib/generation/experience-presets';
 import type {
@@ -163,6 +164,9 @@ const GAME_TEMPLATE_ICONS: Record<GameTemplateId, typeof Gamepad2> = {
 };
 
 const HISTORY_VLOG_PRESET_DEFINITION = getExperiencePresetDefinition(HISTORICAL_VLOGGER_PRESET);
+const GOVERNED_CO_THINKING_PRESET_DEFINITION = getExperiencePresetDefinition(
+  GOVERNED_CO_THINKING_PRESET,
+);
 
 function parseServerTimestamp(value: string) {
   const timestamp = Date.parse(value);
@@ -1250,33 +1254,68 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
                 </div>
 
                 {form.creationMode === 'course' ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        data-testid="experience-preset-history-vlog"
-                        aria-pressed={form.experiencePreset === HISTORICAL_VLOGGER_PRESET}
-                        onClick={() => updateExperiencePreset(HISTORICAL_VLOGGER_PRESET)}
-                        className={cn(
-                          'inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-[10px] font-semibold transition-colors',
-                          form.experiencePreset === HISTORICAL_VLOGGER_PRESET
-                            ? 'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-700 dark:bg-sky-950/45 dark:text-sky-200'
-                            : 'border-border/60 bg-background/70 text-muted-foreground hover:text-foreground',
-                        )}
-                      >
-                        <Landmark className="size-3" />
-                        {t(HISTORY_VLOG_PRESET_DEFINITION?.labelKey ?? 'toolbar.historyVlogPreset')}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={8}>
-                      <div className="max-w-64 text-xs">
-                        {t(
-                          HISTORY_VLOG_PRESET_DEFINITION?.hintKey ??
-                            'toolbar.historyVlogPresetHint',
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          data-testid="experience-preset-history-vlog"
+                          aria-pressed={form.experiencePreset === HISTORICAL_VLOGGER_PRESET}
+                          onClick={() => updateExperiencePreset(HISTORICAL_VLOGGER_PRESET)}
+                          className={cn(
+                            'inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-[10px] font-semibold transition-colors',
+                            form.experiencePreset === HISTORICAL_VLOGGER_PRESET
+                              ? 'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-700 dark:bg-sky-950/45 dark:text-sky-200'
+                              : 'border-border/60 bg-background/70 text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          <Landmark className="size-3" />
+                          {t(
+                            HISTORY_VLOG_PRESET_DEFINITION?.labelKey ?? 'toolbar.historyVlogPreset',
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        <div className="max-w-64 text-xs">
+                          {t(
+                            HISTORY_VLOG_PRESET_DEFINITION?.hintKey ??
+                              'toolbar.historyVlogPresetHint',
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          data-testid="experience-preset-governed-co-thinking"
+                          aria-pressed={form.experiencePreset === GOVERNED_CO_THINKING_PRESET}
+                          onClick={() => updateExperiencePreset(GOVERNED_CO_THINKING_PRESET)}
+                          className={cn(
+                            'inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-[10px] font-semibold transition-colors',
+                            form.experiencePreset === GOVERNED_CO_THINKING_PRESET
+                              ? 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/45 dark:text-emerald-200'
+                              : 'border-border/60 bg-background/70 text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          <Brain className="size-3" />
+                          {t(
+                            GOVERNED_CO_THINKING_PRESET_DEFINITION?.labelKey ??
+                              'toolbar.governedCoThinkingPreset',
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        <div className="max-w-72 text-xs">
+                          {t(
+                            GOVERNED_CO_THINKING_PRESET_DEFINITION?.hintKey ??
+                              'toolbar.governedCoThinkingPresetHint',
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
                 ) : null}
 
                 {form.creationMode === 'game-arcade' ? (

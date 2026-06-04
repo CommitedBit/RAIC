@@ -72,6 +72,8 @@
     "interactiveModeHint": "操作できるウィジェット中心の教室を生成します",
     "historyVlogPreset": "History Vlog",
     "historyVlogPresetHint": "タイムトラベラーVlogger形式で、出典に基づくファクトチェックを含めます。ウェブ検索またはPDFが必要です。",
+    "governedCoThinkingPreset": "Governed Co-Thinking",
+    "governedCoThinkingPresetHint": "意図、検証、著者性、責任、転移を確認しながら人間の主体性を練習するモードです。",
     "courseMode": "コース",
     "gameMode": "ゲーム",
     "gameTemplateLabel": "ゲームテンプレート",

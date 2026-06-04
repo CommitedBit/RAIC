@@ -72,6 +72,8 @@
     "interactiveModeHint": "生成更多可操作的互动组件课堂",
     "historyVlogPreset": "历史 Vlog",
     "historyVlogPresetHint": "以时间旅行者 Vlogger 的形式呈现，并加入基于来源的事实核查。需要网络搜索或 PDF。",
+    "governedCoThinkingPreset": "受治理共思",
+    "governedCoThinkingPresetHint": "围绕意图、核验、作者性、责任与迁移设置人类主体性练习节点。",
     "courseMode": "课程",
     "gameMode": "游戏",
     "gameTemplateLabel": "街机模板",

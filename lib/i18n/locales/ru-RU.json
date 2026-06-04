@@ -72,6 +72,8 @@
     "interactiveModeHint": "Создавать интерактивные занятия с виджетами",
     "historyVlogPreset": "History Vlog",
     "historyVlogPresetHint": "Формат влогера-путешественника во времени с фактчекингом по источникам. Требуется веб-поиск или PDF.",
+    "governedCoThinkingPreset": "Governed Co-Thinking",
+    "governedCoThinkingPresetHint": "Практика человеческой агентности с проверками намерения, верификации, авторства, ответственности и переноса.",
     "courseMode": "Курс",
     "gameMode": "Игра",
     "gameTemplateLabel": "Шаблон игры",

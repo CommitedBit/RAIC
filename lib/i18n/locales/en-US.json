@@ -72,6 +72,8 @@
     "interactiveModeHint": "Generate hands-on widget-based classrooms",
     "historyVlogPreset": "History Vlog",
     "historyVlogPresetHint": "Time-traveler vlogger format with source-backed fact checks. Requires web search or a PDF.",
+    "governedCoThinkingPreset": "Governed Co-Thinking",
+    "governedCoThinkingPresetHint": "Human agency practice mode with intention, verification, authorship, responsibility, and transfer checkpoints.",
     "courseMode": "Course",
     "gameMode": "Game",
     "gameTemplateLabel": "Arcade template",
