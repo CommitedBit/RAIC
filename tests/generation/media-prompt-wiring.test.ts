@@ -6,6 +6,7 @@ import {
   buildExperiencePresetPromptContext,
   getAvailableExperiencePresetDefinitions,
   getExperiencePresetDefinition,
+  GOVERNED_CO_THINKING_PRESET,
   HISTORICAL_VLOGGER_PRESET,
 } from '@/lib/generation/experience-presets';
 import {
@@ -132,8 +133,37 @@ describe('media prompt wiring', () => {
     expect(presetPrompt?.user).toContain('source-literacy question');
   });
 
+  it('injects governed co-thinking context only when the preset is selected', () => {
+    const baseVariables = {
+      requirement: 'Teach students how to use AI while preserving agency',
+      language: 'en-US',
+      pdfContent: 'None',
+      availableImages: 'No images available',
+      userProfile: '',
+      hasSourceImages: false,
+      imageEnabled: false,
+      videoEnabled: false,
+      mediaEnabled: false,
+      researchContext: 'None',
+      teacherContext: '',
+      adaptivePrompt: '',
+    };
+    const regularPrompt = buildPrompt(PROMPT_IDS.REQUIREMENTS_TO_OUTLINES, baseVariables);
+    const presetPrompt = buildPrompt(PROMPT_IDS.REQUIREMENTS_TO_OUTLINES, {
+      ...baseVariables,
+      experiencePresetContext: buildExperiencePresetPromptContext(GOVERNED_CO_THINKING_PRESET),
+    });
+
+    expect(regularPrompt?.user).not.toContain('Governed Co-Thinking Practice Mode');
+    expect(presetPrompt?.user).toContain('Governed Co-Thinking Practice Mode');
+    expect(presetPrompt?.user).toContain('baseline intention');
+    expect(presetPrompt?.user).toContain('no-AI transfer task');
+    expect(presetPrompt?.user).toContain('Do not score students with AUI');
+  });
+
   it('exposes reusable metadata for the historical-vlogger preset', () => {
     const definition = getExperiencePresetDefinition(HISTORICAL_VLOGGER_PRESET);
+    const governedDefinition = getExperiencePresetDefinition(GOVERNED_CO_THINKING_PRESET);
 
     expect(definition).toMatchObject({
       id: HISTORICAL_VLOGGER_PRESET,
@@ -142,6 +172,13 @@ describe('media prompt wiring', () => {
       sourceRequirement: 'source-context',
     });
     expect(getAvailableExperiencePresetDefinitions()).toContain(definition);
+    expect(governedDefinition).toMatchObject({
+      id: GOVERNED_CO_THINKING_PRESET,
+      labelKey: 'toolbar.governedCoThinkingPreset',
+      hintKey: 'toolbar.governedCoThinkingPresetHint',
+      sourceRequirement: 'none',
+    });
+    expect(getAvailableExperiencePresetDefinitions()).toContain(governedDefinition);
   });
 
   it('processes simple conditional blocks before variable interpolation', () => {

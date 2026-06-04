@@ -140,14 +140,19 @@ test.describe('Home → Generation', () => {
 
     await expect(home.courseModeButton).toHaveAttribute('aria-pressed', 'true');
     await expect(home.historyVlogPresetButton).toBeVisible();
+    await expect(home.governedCoThinkingPresetButton).toBeVisible();
     await home.historyVlogPresetButton.click();
     await expect(home.historyVlogPresetButton).toHaveAttribute('aria-pressed', 'true');
+    await home.governedCoThinkingPresetButton.click();
+    await expect(home.governedCoThinkingPresetButton).toHaveAttribute('aria-pressed', 'true');
+    await expect(home.historyVlogPresetButton).toHaveAttribute('aria-pressed', 'false');
     await expect(home.gameTemplateSelector).toBeHidden();
     await expect(home.deepInteractiveSwitch).toHaveAttribute('aria-checked', 'false');
 
     await home.gameModeButton.click();
     await expect(home.gameModeButton).toHaveAttribute('aria-pressed', 'true');
     await expect(home.historyVlogPresetButton).toBeHidden();
+    await expect(home.governedCoThinkingPresetButton).toBeHidden();
     await expect(home.gameTemplateSelector).toBeVisible();
     await expect(home.deepInteractiveSwitch).toHaveAttribute('aria-checked', 'true');
     await expect(home.deepInteractiveState).toHaveText('On');
@@ -174,6 +179,8 @@ test.describe('Home → Generation', () => {
     await expect(home.courseModeButton).toHaveAttribute('aria-pressed', 'true');
     await expect(home.historyVlogPresetButton).toBeVisible();
     await expect(home.historyVlogPresetButton).toHaveAttribute('aria-pressed', 'false');
+    await expect(home.governedCoThinkingPresetButton).toBeVisible();
+    await expect(home.governedCoThinkingPresetButton).toHaveAttribute('aria-pressed', 'false');
     await expect(home.gameTemplateSelector).toBeHidden();
     await expect(home.deepInteractiveSwitch).toHaveAttribute('aria-checked', 'false');
 
@@ -186,6 +193,43 @@ test.describe('Home → Generation', () => {
     expect(courseSession.requirements.gameTemplateId).toBeUndefined();
     expect(courseSession.requirements.gameCreativeBrief).toBeUndefined();
     expect(courseSession.requirements.interactiveMode).toBeUndefined();
+  });
+
+  test('Governed Co-Thinking preset stores without source context and toggles off', async ({
+    page,
+  }) => {
+    await page.route('**/api/generate/scene-outlines-stream', (route) => {
+      route.fulfill({
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Generation intentionally stopped by e2e governed preset test',
+        }),
+      });
+    });
+
+    const home = new HomePage(page);
+    await home.goto();
+    await expect(home.governedCoThinkingPresetButton).toBeVisible();
+    await home.governedCoThinkingPresetButton.click();
+    await expect(home.governedCoThinkingPresetButton).toHaveAttribute('aria-pressed', 'true');
+    await expect(home.historyVlogPresetButton).toHaveAttribute('aria-pressed', 'false');
+
+    await home.governedCoThinkingPresetButton.click();
+    await expect(home.governedCoThinkingPresetButton).toHaveAttribute('aria-pressed', 'false');
+
+    await home.governedCoThinkingPresetButton.click();
+    await home.fillRequirement('Teach students how to govern AI-supported writing');
+    await clearCapturedGenerationSession(page);
+    await home.submit();
+    await page.waitForURL(/\/generation-preview/);
+
+    const session = await readCapturedGenerationSession(page);
+    expect(session.requirements).toMatchObject({
+      experiencePreset: 'governed-co-thinking',
+      language: 'en-US',
+    });
+    expect(session.requirements.webSearch).toBeUndefined();
   });
 
   test('History Vlog preset requires source context and stores the preset', async ({ page }) => {
