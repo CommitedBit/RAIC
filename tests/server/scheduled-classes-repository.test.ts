@@ -109,6 +109,14 @@ describe('scheduled class repository', () => {
       expect.stringContaining('starts_at <= $5'),
       expect.any(Array),
     );
+    expect(runPostgresQuery).toHaveBeenCalledWith(
+      expect.stringContaining('updated_at = $2::timestamptz'),
+      expect.any(Array),
+    );
+    expect(runPostgresQuery).toHaveBeenCalledWith(
+      expect.stringContaining('starts_at <= $5::timestamptz'),
+      expect.any(Array),
+    );
   });
 
   it('finalizes Discord reminders with a claim-matching Postgres update', async () => {
@@ -158,6 +166,10 @@ describe('scheduled class repository', () => {
       expect.stringContaining("discord_sync - 'reminderClaimedAt' - 'syncWarning'"),
       expect.any(Array),
     );
+    expect(runPostgresQuery).toHaveBeenCalledWith(
+      expect.stringContaining('updated_at = $3::timestamptz'),
+      expect.any(Array),
+    );
   });
 
   it('releases Discord reminder claims with a claim-matching Postgres update', async () => {
@@ -203,6 +215,10 @@ describe('scheduled class repository', () => {
     );
     expect(runPostgresQuery).toHaveBeenCalledWith(
       expect.stringContaining("discord_sync->>'reminderClaimedAt' = $2"),
+      expect.any(Array),
+    );
+    expect(runPostgresQuery).toHaveBeenCalledWith(
+      expect.stringContaining('updated_at = $4::timestamptz'),
       expect.any(Array),
     );
   });

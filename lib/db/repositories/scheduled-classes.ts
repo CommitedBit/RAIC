@@ -188,10 +188,10 @@ export async function claimDiscordScheduledClassReminderRecord(input: {
            to_jsonb($2::text),
            true
          ),
-         updated_at = $2
+         updated_at = $2::timestamptz
      WHERE id = $1
-       AND starts_at >= $4
-       AND starts_at <= $5
+       AND starts_at >= $4::timestamptz
+       AND starts_at <= $5::timestamptz
        AND discord_sync IS NOT NULL
        AND discord_sync->>'enabled' = 'true'
        AND NULLIF(discord_sync->>'channelId', '') IS NOT NULL
@@ -228,7 +228,7 @@ export async function finalizeDiscordScheduledClassReminderRecord(input: {
            to_jsonb($4::text),
            true
          ),
-         updated_at = $3
+         updated_at = $3::timestamptz
      WHERE id = $1
        AND discord_sync->>'reminderClaimedAt' = $2
        AND (discord_sync->>'reminderSentAt') IS NULL
@@ -254,7 +254,7 @@ export async function releaseDiscordScheduledClassReminderClaimRecord(input: {
            to_jsonb($3::text),
            true
          ),
-         updated_at = $4
+         updated_at = $4::timestamptz
      WHERE id = $1
        AND discord_sync->>'reminderClaimedAt' = $2
        AND (discord_sync->>'reminderSentAt') IS NULL
