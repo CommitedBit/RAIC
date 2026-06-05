@@ -5,6 +5,7 @@ profiles:
       scene:
         - openai:gpt-4o
         - openai:gpt-4o-mini
+        - openai:nvidia/nemotron-3-super-120b-a12b:free
       image:
         - seedream:doubao-seedream-5-0-260128
         - seedream:doubao-seedream-4-5-251128
