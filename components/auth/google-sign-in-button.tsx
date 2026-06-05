@@ -95,6 +95,9 @@ export function GoogleSignInButton({ redirectTo = '/studio' }: GoogleSignInButto
     accountsApi.initialize({
       client_id: clientId,
       nonce,
+      ux_mode: 'popup',
+      use_fedcm_for_button: false,
+      use_fedcm_for_prompt: false,
       callback: async (response: { credential?: string }) => {
         if (!response.credential) {
           setError('Google did not return a credential');
