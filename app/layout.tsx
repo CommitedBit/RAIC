@@ -40,9 +40,9 @@ export default function RootLayout({
             <ServerProvidersInit />
             <AccessCodeGuard>{children}</AccessCodeGuard>
             <Toaster position="top-center" />
-            <Analytics />
           </I18nProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
