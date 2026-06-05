@@ -10,6 +10,22 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function preserveLocalMultiplayerInviteMetadata(
+  multiplayerGame: ScheduledClassEvent['multiplayerGame'],
+  existing: ScheduledClassEvent,
+  classroomId: string | undefined,
+): ScheduledClassEvent['multiplayerGame'] {
+  if (!multiplayerGame || !existing.multiplayerGame || classroomId !== existing.classroomId) {
+    return multiplayerGame;
+  }
+
+  return {
+    ...multiplayerGame,
+    joinTokenId: multiplayerGame.joinTokenId ?? existing.multiplayerGame.joinTokenId,
+    inviteUrl: multiplayerGame.inviteUrl ?? existing.multiplayerGame.inviteUrl,
+  };
+}
+
 export async function listLocalScheduledClassEvents(): Promise<ScheduledClassEvent[]> {
   const events = await db.scheduledClassEvents.toArray();
   return sortScheduledClassEvents(events);
@@ -48,12 +64,20 @@ export async function updateLocalScheduledClassEvent(
     throw new Error(normalized.error);
   }
 
+  const eventInput = normalized.value;
+  const multiplayerGame = preserveLocalMultiplayerInviteMetadata(
+    eventInput.multiplayerGame,
+    existing,
+    eventInput.classroomId,
+  );
+
   const event: ScheduledClassEvent = {
     ...existing,
-    title: normalized.value.title,
-    startsAt: normalized.value.startsAt,
-    durationMinutes: normalized.value.durationMinutes,
-    classroomId: normalized.value.classroomId,
+    title: eventInput.title,
+    startsAt: eventInput.startsAt,
+    durationMinutes: eventInput.durationMinutes,
+    classroomId: eventInput.classroomId,
+    multiplayerGame,
     updatedAt: nowIso(),
   };
   await db.scheduledClassEvents.put(event);
