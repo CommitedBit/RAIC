@@ -2,7 +2,7 @@
 
 Date: 2026-06-05
 Target release: `v0.7.0`
-Evidence status: release closeout in progress. Clean-main gates, production deployment, and automated production smoke evidence are recorded; credentialed live Discord smoke and the `v0.7.0` tag remain pending.
+Evidence status: release closeout in progress. Clean-main gates, production deployment, automated production smoke evidence, and the Discord reminder-cron timestamp hotfix are recorded; final live reminder-send sign-off and the `v0.7.0` tag remain pending.
 
 ## Scope
 
@@ -18,6 +18,8 @@ Evidence status: release closeout in progress. Clean-main gates, production depl
 - Backend PR: `#53`, merged into `main` as `de2fdf20a99388748e60804a50a586900375706a`.
 - Teacher UI PR: `#54`, branch `codex/v0.7.0-discord-scheduled-classes-ui`, merged into `main` as `e06abed752ce0e22cd62a593115ba335f6897826`.
 - Release closeout deployment: `8faaad63e12665ab5ad3aac9c5b98b97e7c844b3`, which includes PR #54 plus the subsequent Vercel Analytics hardening from PR #59.
+- Google sign-in hotfix PR: `#61`, merged into `main` as `364b5e59da07f63552893b00609b3928fa91145d`.
+- Discord reminder timestamp hotfix PR: `#62`, merged into `main` as `843f1189649eeb0416dca0469d9db3dddd4c766d`.
 - Notable branch commits:
   - `303e30d` `feat: add discord schedule teacher UI`
   - `aade99c` `test: add discord beta smoke gate`
@@ -301,22 +303,23 @@ Manual Discord beta checks printed by the smoke gate:
 
 - Secret-safe Vercel env metadata and production `/api/health` now show Discord beta env ready in production, with `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, and `CRON_SECRET` configured.
 - Preview env now has Discord, cron, Google OAuth, OpenAI, and branch-scoped Governed Co-Thinking model settings, but Postgres/Neon env remains production-only. Do not point protected previews at production Postgres without an explicit release decision.
-- Live credentialed Discord smoke still requires a maintainer teacher session cookie, a disposable Discord test server, bot install permissions, a saved channel id, a future teacher-owned scheduled class linked to a classroom, and an operator-local smoke cron secret. Record only pass/fail/blocker state and sanitized ids, never credentials.
-- Final `v0.7.0` closeout still requires credentialed live Discord smoke or an explicit manual sign-off decision, then the `v0.7.0` tag.
+- Live credentialed Discord smoke has verified sign-in, Discord install/connection, saved `#general` channel, and scheduled-event sync to Discord. The remaining release-signoff item is a final future-event reminder-send proof, or an explicit manual decision to accept the post-hotfix cron-health evidence in place of that proof.
+- Final `v0.7.0` closeout still requires that reminder-send sign-off decision, then the `v0.7.0` tag.
 
 ## Closeout Evidence
 
 Current production deployment:
 
-- Commit: `8faaad63e12665ab5ad3aac9c5b98b97e7c844b3`
-- Deployment id: `dpl_6WEnjrA1kzFcojtn7Nf1KBK5nJvM`
+- Commit: `843f1189649eeb0416dca0469d9db3dddd4c766d`
+- Deployment id: `dpl_5EdswdM8E7hCKtPQvBVFdKHvMWbE`
+- Deployment URL: `https://raic-djubi5kkl-vangorestudios-6959s-projects.vercel.app`
 - Production aliases: `https://open-raic.com`, `https://raic.vercel.app`, `https://raic-vangorestudios-6959s-projects.vercel.app`, and `https://raic-git-main-vangorestudios-6959s-projects.vercel.app`
 - Production health: auth, Discord, encryption, and Postgres storage are ready; MiroFish remains intentionally not configured for this release.
 - Server providers: OpenAI exposes `gpt-4o-mini` through `https://openrouter.ai/api/v1`.
 
 GitHub clean-main gates:
 
-- `main` CI run `26998089920` completed successfully on `8faaad63e12665ab5ad3aac9c5b98b97e7c844b3`.
+- `main` CI run `27032187550` completed successfully on `843f1189649eeb0416dca0469d9db3dddd4c766d`.
 - Jobs passed: Lint/Typecheck/Unit, MiroFish Contract Gate, E2E Tests, and Ops Drift.
 
 Production smoke output, run against `https://open-raic.com/` after the production deployment was aliased:
@@ -332,3 +335,13 @@ Production smoke output, run against `https://open-raic.com/` after the producti
   - Result: 4 automated passed, 0 failed, 2 blocked, 7 manual checks listed.
   - Automated guards confirmed teacher auth is required for Discord connection and sync routes, and cron auth is required for reminders.
   - Remaining blockers require a signed-in maintainer teacher session and operator-local cron/smoke identifiers.
+
+Manual production Discord smoke update, 2026-06-05:
+
+- Production Discord is configured for the signed-in teacher flow. A temporary scheduled class, `Open-RAIC Discord Beta Smoke`, was created in Studio, linked to a classroom, synced to Discord, and Studio showed `Discord synced`.
+- The Discord scheduled event was manually verified at `https://discord.com/events/1512486041502879944/1512491202895675536`; the event page loaded correctly. The operator later started the event, which confirmed the Discord event was startable but did not satisfy the reminder-send gate because reminder eligibility is based on the RAIC scheduled start window.
+- A second temporary scheduled class, `Open-RAIC Discord Reminder Smoke 2`, was created for `Fri Jun 5 10:00 AM`, linked to the onboarding classroom, and synced to Discord at `https://discord.com/events/1512486041502879944/1512503095404396808`.
+- The 09:55 AKDT production reminder cron for `Open-RAIC Discord Reminder Smoke 2` returned `500` with Postgres error `column "updated_at" is of type timestamp with time zone but expression is of type text`. PR `#62` fixed the reminder claim/finalize/release SQL by casting timestamp parameters to `timestamptz`.
+- PR `#62` passed GitHub checks and was merged to `main` as `843f1189649eeb0416dca0469d9db3dddd4c766d`; production deployed it as `dpl_5EdswdM8E7hCKtPQvBVFdKHvMWbE`.
+- After the hotfix deployment, Vercel production logs showed `/api/cron/discord-scheduled-class-reminders` returning `200` at 10:20:35 AKDT and 10:25:35 AKDT on `raic-djubi5kkl-vangorestudios-6959s-projects.vercel.app`, with no production `500` entries in the checked window.
+- A final live reminder-send proof still needs a future synced scheduled class inside the reminder window, or an explicit release decision to accept the post-hotfix cron-health evidence as sufficient for `v0.7.0`.
