@@ -20,6 +20,7 @@ Evidence status: release closeout in progress. Clean-main gates, production depl
 - Release closeout deployment: `8faaad63e12665ab5ad3aac9c5b98b97e7c844b3`, which includes PR #54 plus the subsequent Vercel Analytics hardening from PR #59.
 - Google sign-in hotfix PR: `#61`, merged into `main` as `364b5e59da07f63552893b00609b3928fa91145d`.
 - Discord reminder timestamp hotfix PR: `#62`, merged into `main` as `843f1189649eeb0416dca0469d9db3dddd4c766d`.
+- Release evidence update PR: `#63`, merged into `main` as `0fdda33b925def2ee839f8f70a74643eec392683`.
 - Notable branch commits:
   - `303e30d` `feat: add discord schedule teacher UI`
   - `aade99c` `test: add discord beta smoke gate`
@@ -308,11 +309,12 @@ Manual Discord beta checks printed by the smoke gate:
 
 ## Closeout Evidence
 
-Current production deployment:
+Production deployment evidence:
 
-- Commit: `843f1189649eeb0416dca0469d9db3dddd4c766d`
-- Deployment id: `dpl_5EdswdM8E7hCKtPQvBVFdKHvMWbE`
-- Deployment URL: `https://raic-djubi5kkl-vangorestudios-6959s-projects.vercel.app`
+- Reminder hotfix commit: `843f1189649eeb0416dca0469d9db3dddd4c766d`
+- Reminder hotfix deployment id: `dpl_5EdswdM8E7hCKtPQvBVFdKHvMWbE`
+- Reminder hotfix deployment URL: `https://raic-djubi5kkl-vangorestudios-6959s-projects.vercel.app`
+- Post-evidence docs-only production deployment: `0fdda33b925def2ee839f8f70a74643eec392683` at `https://raic-61mtaqcqq-vangorestudios-6959s-projects.vercel.app`
 - Production aliases: `https://open-raic.com`, `https://raic.vercel.app`, `https://raic-vangorestudios-6959s-projects.vercel.app`, and `https://raic-git-main-vangorestudios-6959s-projects.vercel.app`
 - Production health: auth, Discord, encryption, and Postgres storage are ready; MiroFish remains intentionally not configured for this release.
 - Server providers: OpenAI exposes `gpt-4o-mini` through `https://openrouter.ai/api/v1`.
