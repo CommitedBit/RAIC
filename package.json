@@ -53,6 +53,7 @@
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@types/js-yaml": "^4.0.9",
     "@types/sanitize-html": "^2.16.1",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.3.3",
     "@xyflow/react": "^12.10.0",
     "ai": "^6.0.42",
