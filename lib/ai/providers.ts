@@ -1153,7 +1153,10 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     defaultBaseUrl: 'https://tokenhub.tencentmaas.com/v1',
     alternateBaseUrls: [
       { label: 'China', url: 'https://tokenhub.tencentmaas.com/v1' },
-      { label: 'International', url: 'https://tokenhub-intl.tencentmaas.com/v1' },
+      {
+        label: 'International',
+        url: 'https://tokenhub-intl.tencentmaas.com/v1',
+      },
     ],
     requiresApiKey: true,
     icon: '/logos/tencent-hunyuan.svg',
@@ -1520,10 +1523,14 @@ function annotateLegacyThinkingCapability(
         : ({
             control: 'effort',
             requestAdapter: 'anthropic',
-            defaultMode: thinking.defaultEnabled === false ? 'disabled' : 'enabled',
+            defaultMode:
+              thinking.defaultEnabled === false ? 'disabled' : 'enabled',
             effortValues: ['none', 'low', 'medium', 'high', 'xhigh', 'max'],
-            defaultEffort: thinking.defaultEnabled === false ? 'none' : 'medium',
-            anthropicThinking: { type: modelId.includes('4-6') ? 'adaptive' : 'enabled' },
+            defaultEffort:
+              thinking.defaultEnabled === false ? 'none' : 'medium',
+            anthropicThinking: {
+              type: modelId.includes('4-6') ? 'adaptive' : 'enabled',
+            },
           } satisfies Partial<ThinkingCapability>),
     );
     return;
@@ -1555,7 +1562,9 @@ function annotateLegacyThinkingCapability(
     return;
   }
 
-  const adapterByProvider: Partial<Record<ProviderId, ThinkingCapability['requestAdapter']>> = {
+  const adapterByProvider: Partial<
+    Record<ProviderId, ThinkingCapability['requestAdapter']>
+  > = {
     kimi: 'kimi',
     glm: 'glm',
     xiaomi: 'xiaomi',
@@ -1570,13 +1579,27 @@ function annotateLegacyThinkingCapability(
     return;
   }
 
-  if (providerId === 'qwen' || providerId === 'siliconflow' || providerId === 'lemonade') {
+  if (
+    providerId === 'qwen' ||
+    providerId === 'siliconflow' ||
+    providerId === 'lemonade'
+  ) {
     Object.assign(thinking, {
       control: 'toggle-budget',
       requestAdapter:
-        providerId === 'lemonade' ? 'lemonade' : providerId === 'qwen' ? 'qwen' : 'siliconflow',
+        providerId === 'lemonade'
+          ? 'lemonade'
+          : providerId === 'qwen'
+            ? 'qwen'
+            : 'siliconflow',
       defaultMode: thinking.defaultEnabled === false ? 'disabled' : 'enabled',
-      budgetRange: { min: 0, max: 8192, step: 256, disableValue: 0, allowDynamic: true },
+      budgetRange: {
+        min: 0,
+        max: 8192,
+        step: 256,
+        disableValue: 0,
+        allowDynamic: true,
+      },
       defaultBudgetTokens: providerId === 'lemonade' ? undefined : -1,
     } satisfies Partial<ThinkingCapability>);
     return;
@@ -1613,7 +1636,8 @@ function annotateLegacyThinkingCapability(
 for (const provider of Object.values(PROVIDERS)) {
   for (const model of provider.models) {
     const thinking = model.capabilities?.thinking;
-    if (thinking) annotateLegacyThinkingCapability(provider.id, model.id, thinking);
+    if (thinking)
+      annotateLegacyThinkingCapability(provider.id, model.id, thinking);
   }
 }
 
@@ -1667,13 +1691,16 @@ export interface ModelWithInfo {
  * Called from the custom fetch wrapper inside getModel().
  */
 function getCatalogThinkingCapability(providerId: ProviderId, modelId: string) {
-  return getProviderConfig(providerId)?.models.find((model) => model.id === modelId)?.capabilities
-    ?.thinking;
+  return getProviderConfig(providerId)?.models.find(
+    (model) => model.id === modelId,
+  )?.capabilities?.thinking;
 }
 
 function getCompatThinkingAdapter(providerId: ProviderId, modelId: string) {
   const capability = getCatalogThinkingCapability(providerId, modelId);
-  const fallbackAdapters: Partial<Record<BuiltInProviderId, ThinkingRequestAdapter>> = {
+  const fallbackAdapters: Partial<
+    Record<BuiltInProviderId, ThinkingRequestAdapter>
+  > = {
     kimi: 'kimi',
     deepseek: 'deepseek',
     glm: 'glm',
@@ -1685,7 +1712,9 @@ function getCompatThinkingAdapter(providerId: ProviderId, modelId: string) {
     xiaomi: 'xiaomi',
     lemonade: 'lemonade',
   };
-  const adapter = capability?.requestAdapter || fallbackAdapters[providerId as BuiltInProviderId];
+  const adapter =
+    capability?.requestAdapter ||
+    fallbackAdapters[providerId as BuiltInProviderId];
 
   return { adapter, capability };
 }
@@ -1703,7 +1732,9 @@ function getCompatThinkingBodyParams(
   if (!adapter || capability?.control === 'none') return undefined;
 
   const mode = getThinkingMode(config);
-  const budget = capability ? pickThinkingBudget(capability, config) : config.budgetTokens;
+  const budget = capability
+    ? pickThinkingBudget(capability, config)
+    : config.budgetTokens;
 
   switch (adapter) {
     case 'kimi':
@@ -1720,7 +1751,10 @@ function getCompatThinkingBodyParams(
       if (mode === 'enabled' || config.effort) {
         return {
           thinking: { type: 'enabled' },
-          reasoning_effort: config.effort === 'max' || config.effort === 'xhigh' ? 'max' : 'high',
+          reasoning_effort:
+            config.effort === 'max' || config.effort === 'xhigh'
+              ? 'max'
+              : 'high',
         };
       }
       return undefined;
@@ -1766,7 +1800,11 @@ function getCompatThinkingBodyParams(
       let reasoningEffort: 'no_think' | 'low' | 'high' | undefined;
       if (mode === 'disabled' || config.effort === 'none') {
         reasoningEffort = 'no_think';
-      } else if (config.effort === 'high' || config.effort === 'max' || config.effort === 'xhigh') {
+      } else if (
+        config.effort === 'high' ||
+        config.effort === 'max' ||
+        config.effort === 'xhigh'
+      ) {
         reasoningEffort = 'high';
       } else if (
         config.effort === 'low' ||
@@ -1806,7 +1844,10 @@ const GROK_MODEL_ALIASES: Record<string, string> = {
   'grok-4-0709': 'grok-4',
 };
 
-function normalizeProviderModelId(providerId: ProviderId, modelId: string): string {
+function normalizeProviderModelId(
+  providerId: ProviderId,
+  modelId: string,
+): string {
   if (providerId === 'grok') {
     return GROK_MODEL_ALIASES[modelId] ?? modelId;
   }
@@ -1851,7 +1892,9 @@ export function getModel(config: ModelConfig): ModelWithInfo {
     if (provider) {
       providerType = provider.type;
     } else {
-      throw new Error(`Unknown provider: ${config.providerId}. Please provide providerType.`);
+      throw new Error(
+        `Unknown provider: ${config.providerId}. Please provide providerType.`,
+      );
     }
   }
 
@@ -1871,7 +1914,10 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       config.baseUrl || provider?.defaultBaseUrl || undefined,
     ) || undefined,
   );
-  const normalizedModelId = normalizeProviderModelId(config.providerId, config.modelId);
+  const normalizedModelId = normalizeProviderModelId(
+    config.providerId,
+    config.modelId,
+  );
 
   let model: LanguageModel;
 
@@ -1888,14 +1934,22 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       // callLLM / streamLLM at call time.
       if (config.providerId !== 'openai') {
         const providerId = config.providerId;
-        openaiOptions.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
+        openaiOptions.fetch = async (
+          url: RequestInfo | URL,
+          init?: RequestInit,
+        ) => {
           // Read thinking config from globalThis (set by thinking-context.ts)
-          const thinkingCtx = (globalThis as Record<string, unknown>).__thinkingContext as
-            | { getStore?: () => unknown }
+          const thinkingCtx = (globalThis as Record<string, unknown>)
+            .__thinkingContext as { getStore?: () => unknown } | undefined;
+          const thinking = thinkingCtx?.getStore?.() as
+            | ThinkingConfig
             | undefined;
-          const thinking = thinkingCtx?.getStore?.() as ThinkingConfig | undefined;
           if (thinking && init?.body && typeof init.body === 'string') {
-            const extra = getCompatThinkingBodyParams(providerId, normalizedModelId, thinking);
+            const extra = getCompatThinkingBodyParams(
+              providerId,
+              normalizedModelId,
+              thinking,
+            );
             if (extra) {
               try {
                 const body = JSON.parse(init.body);
@@ -1950,7 +2004,8 @@ export function getModel(config: ModelConfig): ModelWithInfo {
   }
 
   // Look up model info from the provider registry
-  const modelInfo = provider?.models.find((m) => m.id === normalizedModelId) || null;
+  const modelInfo =
+    provider?.models.find((m) => m.id === normalizedModelId) || null;
 
   return { model, modelInfo };
 }
@@ -1995,14 +2050,19 @@ export function getAllModels(): {
 /**
  * Get provider by ID
  */
-export function getProvider(providerId: ProviderId): ProviderConfig | undefined {
+export function getProvider(
+  providerId: ProviderId,
+): ProviderConfig | undefined {
   return PROVIDERS[providerId];
 }
 
 /**
  * Get model info
  */
-export function getModelInfo(providerId: ProviderId, modelId: string): ModelInfo | undefined {
+export function getModelInfo(
+  providerId: ProviderId,
+  modelId: string,
+): ModelInfo | undefined {
   const provider = PROVIDERS[providerId];
   const normalizedModelId = normalizeProviderModelId(providerId, modelId);
   return provider?.models.find((m) => m.id === normalizedModelId);
