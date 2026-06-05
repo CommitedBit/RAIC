@@ -31,8 +31,12 @@ describe('OpenAI built-in catalog', () => {
   });
 
   it('includes current metadata for the newly added OpenAI models', () => {
-    const gpt55 = PROVIDERS.openai.models.find((model) => model.id === 'gpt-5.5');
-    const gpt41 = PROVIDERS.openai.models.find((model) => model.id === 'gpt-4.1');
+    const gpt55 = PROVIDERS.openai.models.find(
+      (model) => model.id === 'gpt-5.5',
+    );
+    const gpt41 = PROVIDERS.openai.models.find(
+      (model) => model.id === 'gpt-4.1',
+    );
 
     expect(gpt55).toMatchObject({
       contextWindow: 1000000,
@@ -75,5 +79,4 @@ describe('OpenAI built-in catalog', () => {
       },
     });
   });
-
 });
