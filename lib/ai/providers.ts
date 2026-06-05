@@ -23,10 +23,10 @@
  * - https://www.volcengine.com/docs/82379/1330310
  */
 
-import { createOpenAI } from "@ai-sdk/openai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import type { LanguageModel } from "ai";
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import type { LanguageModel } from 'ai';
 import type {
   ProviderId,
   ProviderConfig,
@@ -36,45 +36,45 @@ import type {
   BuiltInProviderId,
   ThinkingCapability,
   ThinkingRequestAdapter,
-} from "@/lib/types/provider";
-import { createLogger } from "@/lib/logger";
-import { normalizeBuiltInOpenAICompatibleBaseUrl } from "@/lib/utils/url";
-import { getThinkingMode, pickThinkingBudget } from "./thinking-config";
+} from '@/lib/types/provider';
+import { createLogger } from '@/lib/logger';
+import { normalizeBuiltInOpenAICompatibleBaseUrl } from '@/lib/utils/url';
+import { getThinkingMode, pickThinkingBudget } from './thinking-config';
 // NOTE: Do NOT import thinking-context.ts here — it uses node:async_hooks
 // which is server-only, and this file is also used on the client via
 // settings.ts. The thinking context is read from globalThis instead
 // (set by thinking-context.ts at module load time on the server).
 
-const log = createLogger("AIProviders");
+const log = createLogger('AIProviders');
 
 // Re-export types for backward compatibility
 export type { ProviderId, ProviderConfig, ModelInfo, ModelConfig };
 
 /** Provider IDs whose logos are monochrome-dark and need `dark:invert` in dark mode */
 export const MONO_LOGO_PROVIDERS: ReadonlySet<string> = new Set([
-  "openai",
-  "openrouter",
-  "ollama",
-  "lmstudio",
+  'openai',
+  'openrouter',
+  'ollama',
+  'lmstudio',
 ]);
 
-export const MODEL_REGISTRY_CHECKED_AT = "2026-06-05";
+export const MODEL_REGISTRY_CHECKED_AT = '2026-06-05';
 
 /**
  * Provider registry
  */
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   openai: {
-    id: "openai",
-    name: "OpenAI",
-    type: "openai",
-    defaultBaseUrl: "https://api.openai.com/v1",
+    id: 'openai',
+    name: 'OpenAI',
+    type: 'openai',
+    defaultBaseUrl: 'https://api.openai.com/v1',
     requiresApiKey: true,
-    icon: "/logos/openai.svg",
+    icon: '/logos/openai.svg',
     models: [
       {
-        id: "gpt-5.5",
-        name: "GPT-5.5",
+        id: 'gpt-5.5',
+        name: 'GPT-5.5',
         contextWindow: 1000000,
         outputWindow: 128000,
         capabilities: {
@@ -89,8 +89,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-5.4",
-        name: "GPT-5.4",
+        id: 'gpt-5.4',
+        name: 'GPT-5.4',
         contextWindow: 1000000,
         outputWindow: 128000,
         capabilities: {
@@ -105,8 +105,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-5.4-mini",
-        name: "GPT-5.4 mini",
+        id: 'gpt-5.4-mini',
+        name: 'GPT-5.4 mini',
         contextWindow: 400000,
         outputWindow: 128000,
         capabilities: {
@@ -121,8 +121,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-5.4-nano",
-        name: "GPT-5.4 nano",
+        id: 'gpt-5.4-nano',
+        name: 'GPT-5.4 nano',
         contextWindow: 400000,
         outputWindow: 128000,
         capabilities: {
@@ -137,8 +137,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-5.2",
-        name: "GPT-5.2",
+        id: 'gpt-5.2',
+        name: 'GPT-5.2',
         contextWindow: 400000,
         outputWindow: 128000,
         capabilities: {
@@ -153,8 +153,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-5.1",
-        name: "GPT-5.1",
+        id: 'gpt-5.1',
+        name: 'GPT-5.1',
         contextWindow: 400000,
         outputWindow: 128000,
         capabilities: {
@@ -169,8 +169,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-5",
-        name: "GPT-5",
+        id: 'gpt-5',
+        name: 'GPT-5',
         contextWindow: 400000,
         outputWindow: 128000,
         capabilities: {
@@ -185,8 +185,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-5-mini",
-        name: "GPT-5 mini",
+        id: 'gpt-5-mini',
+        name: 'GPT-5 mini',
         contextWindow: 128000,
         outputWindow: 4096,
         capabilities: {
@@ -201,8 +201,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-5-nano",
-        name: "GPT-5 nano",
+        id: 'gpt-5-nano',
+        name: 'GPT-5 nano',
         contextWindow: 128000,
         outputWindow: 4096,
         capabilities: {
@@ -217,29 +217,29 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-4.1",
-        name: "GPT-4.1",
+        id: 'gpt-4.1',
+        name: 'GPT-4.1',
         contextWindow: 1047576,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "gpt-4.1-mini",
-        name: "GPT-4.1 mini",
+        id: 'gpt-4.1-mini',
+        name: 'GPT-4.1 mini',
         contextWindow: 1047576,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "gpt-4.1-nano",
-        name: "GPT-4.1 nano",
+        id: 'gpt-4.1-nano',
+        name: 'GPT-4.1 nano',
         contextWindow: 1047576,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "o4-mini",
-        name: "o4-mini",
+        id: 'o4-mini',
+        name: 'o4-mini',
         contextWindow: 200000,
         outputWindow: 100000,
         capabilities: {
@@ -254,8 +254,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "o3",
-        name: "o3",
+        id: 'o3',
+        name: 'o3',
         contextWindow: 200000,
         outputWindow: 100000,
         capabilities: {
@@ -270,8 +270,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "o3-mini",
-        name: "o3-mini",
+        id: 'o3-mini',
+        name: 'o3-mini',
         contextWindow: 200000,
         outputWindow: 100000,
         capabilities: {
@@ -286,8 +286,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "o1",
-        name: "o1",
+        id: 'o1',
+        name: 'o1',
         contextWindow: 200000,
         outputWindow: 100000,
         capabilities: {
@@ -302,29 +302,29 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-4o",
-        name: "GPT-4o",
+        id: 'gpt-4o',
+        name: 'GPT-4o',
         contextWindow: 128000,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "gpt-4o-mini",
-        name: "GPT-4o mini",
+        id: 'gpt-4o-mini',
+        name: 'GPT-4o mini',
         contextWindow: 128000,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "nvidia/nemotron-3-super-120b-a12b:free",
-        name: "NVIDIA Nemotron 3 Super (OpenRouter free)",
+        id: 'nvidia/nemotron-3-super-120b-a12b:free',
+        name: 'NVIDIA Nemotron 3 Super (OpenRouter free)',
         contextWindow: 1000000,
         outputWindow: 16384,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "gpt-4-turbo",
-        name: "GPT-4 Turbo",
+        id: 'gpt-4-turbo',
+        name: 'GPT-4 Turbo',
         contextWindow: 128000,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: true },
@@ -333,16 +333,16 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   anthropic: {
-    id: "anthropic",
-    name: "Claude",
-    type: "anthropic",
+    id: 'anthropic',
+    name: 'Claude',
+    type: 'anthropic',
     requiresApiKey: true,
-    defaultBaseUrl: "https://api.anthropic.com/v1",
-    icon: "/logos/claude.svg",
+    defaultBaseUrl: 'https://api.anthropic.com/v1',
+    icon: '/logos/claude.svg',
     models: [
       {
-        id: "claude-opus-4-7",
-        name: "Claude Opus 4.7",
+        id: 'claude-opus-4-7',
+        name: 'Claude Opus 4.7',
         contextWindow: 1000000,
         outputWindow: 128000,
         capabilities: {
@@ -357,8 +357,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "claude-opus-4-6",
-        name: "Claude Opus 4.6",
+        id: 'claude-opus-4-6',
+        name: 'Claude Opus 4.6',
         contextWindow: 200000,
         outputWindow: 128000,
         capabilities: {
@@ -373,8 +373,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "claude-sonnet-4-6",
-        name: "Claude Sonnet 4.6",
+        id: 'claude-sonnet-4-6',
+        name: 'Claude Sonnet 4.6',
         contextWindow: 200000,
         outputWindow: 128000,
         capabilities: {
@@ -389,8 +389,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "claude-sonnet-4-5",
-        name: "Claude Sonnet 4.5",
+        id: 'claude-sonnet-4-5',
+        name: 'Claude Sonnet 4.5',
         contextWindow: 200000,
         outputWindow: 64000,
         capabilities: {
@@ -405,8 +405,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "claude-haiku-4-5",
-        name: "Claude Haiku 4.5",
+        id: 'claude-haiku-4-5',
+        name: 'Claude Haiku 4.5',
         contextWindow: 200000,
         outputWindow: 64000,
         capabilities: {
@@ -424,16 +424,16 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   google: {
-    id: "google",
-    name: "Gemini",
-    type: "google",
+    id: 'google',
+    name: 'Gemini',
+    type: 'google',
     requiresApiKey: true,
-    defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
-    icon: "/logos/gemini.svg",
+    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    icon: '/logos/gemini.svg',
     models: [
       {
-        id: "gemini-3.1-flash-lite",
-        name: "Gemini 3.1 Flash Lite",
+        id: 'gemini-3.1-flash-lite',
+        name: 'Gemini 3.1 Flash Lite',
         contextWindow: 1048576,
         outputWindow: 65536,
         capabilities: {
@@ -448,8 +448,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gemini-3.1-pro-preview",
-        name: "Gemini 3.1 Pro Preview",
+        id: 'gemini-3.1-pro-preview',
+        name: 'Gemini 3.1 Pro Preview',
         contextWindow: 1048576,
         outputWindow: 65536,
         capabilities: {
@@ -464,8 +464,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gemini-3-flash-preview",
-        name: "Gemini 3 Flash Preview",
+        id: 'gemini-3-flash-preview',
+        name: 'Gemini 3 Flash Preview',
         contextWindow: 1048576,
         outputWindow: 65536,
         capabilities: {
@@ -480,8 +480,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gemini-2.5-flash",
-        name: "Gemini 2.5 Flash",
+        id: 'gemini-2.5-flash',
+        name: 'Gemini 2.5 Flash',
         contextWindow: 1048576,
         outputWindow: 65536,
         capabilities: {
@@ -496,8 +496,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gemini-2.5-flash-lite",
-        name: "Gemini 2.5 Flash Lite",
+        id: 'gemini-2.5-flash-lite',
+        name: 'Gemini 2.5 Flash Lite',
         contextWindow: 1048576,
         outputWindow: 65536,
         capabilities: {
@@ -512,8 +512,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gemini-2.5-pro",
-        name: "Gemini 2.5 Pro",
+        id: 'gemini-2.5-pro',
+        name: 'Gemini 2.5 Pro',
         contextWindow: 1048576,
         outputWindow: 65536,
         capabilities: {
@@ -531,16 +531,16 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   glm: {
-    id: "glm",
-    name: "GLM",
-    type: "openai",
-    defaultBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    id: 'glm',
+    name: 'GLM',
+    type: 'openai',
+    defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     requiresApiKey: true,
-    icon: "/logos/glm.svg",
+    icon: '/logos/glm.svg',
     models: [
       {
-        id: "glm-5.1",
-        name: "GLM-5.1",
+        id: 'glm-5.1',
+        name: 'GLM-5.1',
         contextWindow: 198000,
         outputWindow: 128000,
         capabilities: {
@@ -556,81 +556,81 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
       },
       // GLM-5 Series - Latest flagship model
       {
-        id: "glm-5",
-        name: "GLM-5",
+        id: 'glm-5',
+        name: 'GLM-5',
         contextWindow: 200000,
         outputWindow: 128000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       // GLM-4.7 Series
       {
-        id: "glm-4.7",
-        name: "GLM-4.7",
+        id: 'glm-4.7',
+        name: 'GLM-4.7',
         contextWindow: 200000,
         outputWindow: 128000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "glm-4.7-flashx",
-        name: "GLM-4.7-FlashX",
+        id: 'glm-4.7-flashx',
+        name: 'GLM-4.7-FlashX',
         contextWindow: 200000,
         outputWindow: 128000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "glm-4.7-flash",
-        name: "GLM-4.7-Flash",
+        id: 'glm-4.7-flash',
+        name: 'GLM-4.7-Flash',
         contextWindow: 200000,
         outputWindow: 128000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       // GLM-4.6 Series - Advanced coding & reasoning
       {
-        id: "glm-4.6",
-        name: "GLM-4.6",
+        id: 'glm-4.6',
+        name: 'GLM-4.6',
         contextWindow: 200000,
         outputWindow: 128000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "glm-4.6v",
-        name: "GLM-4.6V",
+        id: 'glm-4.6v',
+        name: 'GLM-4.6V',
         contextWindow: 128000,
         outputWindow: 32000,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "glm-4.6v-flash",
-        name: "GLM-4.6V-Flash",
+        id: 'glm-4.6v-flash',
+        name: 'GLM-4.6V-Flash',
         contextWindow: 128000,
         outputWindow: 32000,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       // GLM-4.5 Series - Cost-effective models
       {
-        id: "glm-4.5-air",
-        name: "GLM-4.5-Air",
+        id: 'glm-4.5-air',
+        name: 'GLM-4.5-Air',
         contextWindow: 128000,
         outputWindow: 96000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "glm-4.5-airx",
-        name: "GLM-4.5-AirX",
+        id: 'glm-4.5-airx',
+        name: 'GLM-4.5-AirX',
         contextWindow: 128000,
         outputWindow: 96000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "glm-4.5-flash",
-        name: "GLM-4.5-Flash",
+        id: 'glm-4.5-flash',
+        name: 'GLM-4.5-Flash',
         contextWindow: 128000,
         outputWindow: 96000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "glm-4-long",
-        name: "GLM-4-Long",
+        id: 'glm-4-long',
+        name: 'GLM-4-Long',
         contextWindow: 1000000,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: false },
@@ -639,16 +639,16 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   qwen: {
-    id: "qwen",
-    name: "Qwen",
-    type: "openai",
-    defaultBaseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    id: 'qwen',
+    name: 'Qwen',
+    type: 'openai',
+    defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     requiresApiKey: true,
-    icon: "/logos/qwen.svg",
+    icon: '/logos/qwen.svg',
     models: [
       {
-        id: "qwen3.6-max-preview",
-        name: "Qwen3.6 Max Preview",
+        id: 'qwen3.6-max-preview',
+        name: 'Qwen3.6 Max Preview',
         contextWindow: 262144,
         outputWindow: 65536,
         capabilities: {
@@ -663,8 +663,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "qwen3.6-plus",
-        name: "Qwen3.6 Plus",
+        id: 'qwen3.6-plus',
+        name: 'Qwen3.6 Plus',
         contextWindow: 1000000,
         outputWindow: 65536,
         capabilities: {
@@ -679,8 +679,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "qwen3.6-flash",
-        name: "Qwen3.6 Flash",
+        id: 'qwen3.6-flash',
+        name: 'Qwen3.6 Flash',
         contextWindow: 1000000,
         outputWindow: 65536,
         capabilities: {
@@ -695,29 +695,29 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "qwen3.5-flash",
-        name: "Qwen3.5 Flash",
+        id: 'qwen3.5-flash',
+        name: 'Qwen3.5 Flash',
         contextWindow: 1000000,
         outputWindow: 65536,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "qwen3.5-plus",
-        name: "Qwen3.5 Plus",
+        id: 'qwen3.5-plus',
+        name: 'Qwen3.5 Plus',
         contextWindow: 1000000,
         outputWindow: 65536,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "qwen3-max",
-        name: "Qwen3 Max",
+        id: 'qwen3-max',
+        name: 'Qwen3 Max',
         contextWindow: 262144,
         outputWindow: 65536,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "qwen3-vl-plus",
-        name: "Qwen3 VL Plus",
+        id: 'qwen3-vl-plus',
+        name: 'Qwen3 VL Plus',
         contextWindow: 262144,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
@@ -726,16 +726,16 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   deepseek: {
-    id: "deepseek",
-    name: "DeepSeek",
-    type: "openai",
-    defaultBaseUrl: "https://api.deepseek.com/v1",
+    id: 'deepseek',
+    name: 'DeepSeek',
+    type: 'openai',
+    defaultBaseUrl: 'https://api.deepseek.com/v1',
     requiresApiKey: true,
-    icon: "/logos/deepseek.svg",
+    icon: '/logos/deepseek.svg',
     models: [
       {
-        id: "deepseek-v4-pro",
-        name: "DeepSeek V4 Pro",
+        id: 'deepseek-v4-pro',
+        name: 'DeepSeek V4 Pro',
         contextWindow: 1000000,
         outputWindow: 384000,
         capabilities: {
@@ -750,8 +750,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "deepseek-v4-flash",
-        name: "DeepSeek V4 Flash",
+        id: 'deepseek-v4-flash',
+        name: 'DeepSeek V4 Flash',
         contextWindow: 1000000,
         outputWindow: 384000,
         capabilities: {
@@ -766,8 +766,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "deepseek-chat",
-        name: "DeepSeek-Chat",
+        id: 'deepseek-chat',
+        name: 'DeepSeek-Chat',
         contextWindow: 128000,
         outputWindow: 4096,
         capabilities: {
@@ -782,8 +782,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "deepseek-reasoner",
-        name: "DeepSeek-Reasoner",
+        id: 'deepseek-reasoner',
+        name: 'DeepSeek-Reasoner',
         contextWindow: 128000,
         outputWindow: 32000,
         capabilities: {
@@ -801,16 +801,16 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   kimi: {
-    id: "kimi",
-    name: "Kimi",
-    type: "openai",
-    defaultBaseUrl: "https://api.moonshot.cn/v1",
+    id: 'kimi',
+    name: 'Kimi',
+    type: 'openai',
+    defaultBaseUrl: 'https://api.moonshot.cn/v1',
     requiresApiKey: true,
-    icon: "/logos/kimi.png",
+    icon: '/logos/kimi.png',
     models: [
       {
-        id: "kimi-k2.6",
-        name: "Kimi K2.6",
+        id: 'kimi-k2.6',
+        name: 'Kimi K2.6',
         contextWindow: 256000,
         outputWindow: 96000,
         capabilities: {
@@ -826,8 +826,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
       },
       // K2.5 Series (2026) - 1T MoE, 32B active parameters
       {
-        id: "kimi-k2.5",
-        name: "Kimi K2.5",
+        id: 'kimi-k2.5',
+        name: 'Kimi K2.5',
         contextWindow: 256000,
         outputWindow: 8192,
         capabilities: {
@@ -842,15 +842,15 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "kimi-k2-0905-preview",
-        name: "Kimi K2 0905 Preview",
+        id: 'kimi-k2-0905-preview',
+        name: 'Kimi K2 0905 Preview',
         contextWindow: 256000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "kimi-k2-thinking",
-        name: "Kimi K2 Thinking",
+        id: 'kimi-k2-thinking',
+        name: 'Kimi K2 Thinking',
         contextWindow: 256000,
         outputWindow: 8192,
         capabilities: {
@@ -865,29 +865,29 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "kimi-k2-turbo-preview",
-        name: "Kimi K2 Turbo Preview",
+        id: 'kimi-k2-turbo-preview',
+        name: 'Kimi K2 Turbo Preview',
         contextWindow: 256000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "moonshot-v1-128k",
-        name: "Moonshot V1 128K",
+        id: 'moonshot-v1-128k',
+        name: 'Moonshot V1 128K',
         contextWindow: 128000,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "moonshot-v1-32k",
-        name: "Moonshot V1 32K",
+        id: 'moonshot-v1-32k',
+        name: 'Moonshot V1 32K',
         contextWindow: 32000,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "moonshot-v1-8k",
-        name: "Moonshot V1 8K",
+        id: 'moonshot-v1-8k',
+        name: 'Moonshot V1 8K',
         contextWindow: 8000,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: false },
@@ -896,58 +896,58 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   minimax: {
-    id: "minimax",
-    name: "MiniMax",
-    type: "anthropic",
-    defaultBaseUrl: "https://api.minimaxi.com/anthropic/v1",
+    id: 'minimax',
+    name: 'MiniMax',
+    type: 'anthropic',
+    defaultBaseUrl: 'https://api.minimaxi.com/anthropic/v1',
     requiresApiKey: true,
-    icon: "/logos/minimax.svg",
+    icon: '/logos/minimax.svg',
     models: [
       {
-        id: "MiniMax-M2",
-        name: "MiniMax M2",
+        id: 'MiniMax-M2',
+        name: 'MiniMax M2',
         contextWindow: 204800,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "MiniMax-M2.1",
-        name: "MiniMax M2.1",
+        id: 'MiniMax-M2.1',
+        name: 'MiniMax M2.1',
         contextWindow: 204800,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "MiniMax-M2.1-highspeed",
-        name: "MiniMax M2.1 Highspeed",
+        id: 'MiniMax-M2.1-highspeed',
+        name: 'MiniMax M2.1 Highspeed',
         contextWindow: 204800,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "MiniMax-M2.5",
-        name: "MiniMax M2.5",
+        id: 'MiniMax-M2.5',
+        name: 'MiniMax M2.5',
         contextWindow: 204800,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "MiniMax-M2.5-highspeed",
-        name: "MiniMax M2.5 Highspeed",
+        id: 'MiniMax-M2.5-highspeed',
+        name: 'MiniMax M2.5 Highspeed',
         contextWindow: 204800,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "MiniMax-M2.7",
-        name: "MiniMax M2.7",
+        id: 'MiniMax-M2.7',
+        name: 'MiniMax M2.7',
         contextWindow: 204800,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "MiniMax-M2.7-highspeed",
-        name: "MiniMax M2.7 Highspeed",
+        id: 'MiniMax-M2.7-highspeed',
+        name: 'MiniMax M2.7 Highspeed',
         contextWindow: 204800,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
@@ -956,98 +956,98 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   siliconflow: {
-    id: "siliconflow",
-    name: "硅基流动",
-    type: "openai",
-    defaultBaseUrl: "https://api.siliconflow.cn/v1",
+    id: 'siliconflow',
+    name: '硅基流动',
+    type: 'openai',
+    defaultBaseUrl: 'https://api.siliconflow.cn/v1',
     requiresApiKey: true,
-    icon: "/logos/siliconflow.svg",
+    icon: '/logos/siliconflow.svg',
     models: [
       // DeepSeek Series
       {
-        id: "deepseek-ai/DeepSeek-V3.2",
-        name: "DeepSeek-V3.2",
+        id: 'deepseek-ai/DeepSeek-V3.2',
+        name: 'DeepSeek-V3.2',
         contextWindow: 128000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "deepseek-ai/DeepSeek-V3",
-        name: "DeepSeek-V3",
+        id: 'deepseek-ai/DeepSeek-V3',
+        name: 'DeepSeek-V3',
         contextWindow: 128000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "deepseek-ai/DeepSeek-R1",
-        name: "DeepSeek-R1",
+        id: 'deepseek-ai/DeepSeek-R1',
+        name: 'DeepSeek-R1',
         contextWindow: 128000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-        name: "DeepSeek-R1-Distill-Qwen-7B",
+        id: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+        name: 'DeepSeek-R1-Distill-Qwen-7B',
         contextWindow: 128000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       // Qwen Series
       {
-        id: "Qwen/Qwen2.5-72B-Instruct",
-        name: "Qwen2.5-72B-Instruct",
+        id: 'Qwen/Qwen2.5-72B-Instruct',
+        name: 'Qwen2.5-72B-Instruct',
         contextWindow: 128000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "Qwen/Qwen2.5-Coder-7B-Instruct",
-        name: "Qwen2.5-Coder-7B-Instruct",
+        id: 'Qwen/Qwen2.5-Coder-7B-Instruct',
+        name: 'Qwen2.5-Coder-7B-Instruct',
         contextWindow: 128000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "Qwen/Qwen2.5-7B-Instruct",
-        name: "Qwen2.5-7B-Instruct",
+        id: 'Qwen/Qwen2.5-7B-Instruct',
+        name: 'Qwen2.5-7B-Instruct',
         contextWindow: 128000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "Qwen/Qwen3-VL-32B-Instruct",
-        name: "Qwen3-VL-32B-Instruct",
+        id: 'Qwen/Qwen3-VL-32B-Instruct',
+        name: 'Qwen3-VL-32B-Instruct',
         contextWindow: 256000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       // MiniMax Series
       {
-        id: "MiniMaxAI/MiniMax-M2",
-        name: "MiniMax-M2",
+        id: 'MiniMaxAI/MiniMax-M2',
+        name: 'MiniMax-M2',
         contextWindow: 204800,
         outputWindow: 131072,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       // Kimi Series
       {
-        id: "Pro/moonshotai/Kimi-K2.5",
-        name: "Kimi-K2.5",
+        id: 'Pro/moonshotai/Kimi-K2.5',
+        name: 'Kimi-K2.5',
         contextWindow: 256000,
         outputWindow: 96000,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       // GLM Series
       {
-        id: "THUDM/GLM-Z1-Rumination-32B-0414",
-        name: "GLM-Z1-Rumination-32B",
+        id: 'THUDM/GLM-Z1-Rumination-32B-0414',
+        name: 'GLM-Z1-Rumination-32B',
         contextWindow: 32000,
         outputWindow: 16384,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "THUDM/GLM-4.1V-9B-Thinking",
-        name: "GLM-4.1V-9B-Thinking",
+        id: 'THUDM/GLM-4.1V-9B-Thinking',
+        name: 'GLM-4.1V-9B-Thinking',
         contextWindow: 64000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: true },
@@ -1056,37 +1056,37 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   doubao: {
-    id: "doubao",
-    name: "豆包",
-    type: "openai",
-    defaultBaseUrl: "https://ark.cn-beijing.volces.com/api/v3",
+    id: 'doubao',
+    name: '豆包',
+    type: 'openai',
+    defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
     requiresApiKey: true,
-    icon: "/logos/doubao.svg",
+    icon: '/logos/doubao.svg',
     models: [
       {
-        id: "doubao-seed-2-0-pro-260215",
-        name: "Doubao Seed 2.0 Pro",
+        id: 'doubao-seed-2-0-pro-260215',
+        name: 'Doubao Seed 2.0 Pro',
         contextWindow: 128000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "doubao-seed-2-0-lite-260215",
-        name: "Doubao Seed 2.0 Lite",
+        id: 'doubao-seed-2-0-lite-260215',
+        name: 'Doubao Seed 2.0 Lite',
         contextWindow: 128000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "doubao-seed-2-0-mini-260215",
-        name: "Doubao Seed 2.0 Mini",
+        id: 'doubao-seed-2-0-mini-260215',
+        name: 'Doubao Seed 2.0 Mini',
         contextWindow: 128000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "doubao-seed-1-8-251228",
-        name: "Doubao Seed 1.8",
+        id: 'doubao-seed-1-8-251228',
+        name: 'Doubao Seed 1.8',
         contextWindow: 128000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
@@ -1095,16 +1095,16 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   openrouter: {
-    id: "openrouter",
-    name: "OpenRouter",
-    type: "openai",
-    defaultBaseUrl: "https://openrouter.ai/api/v1",
+    id: 'openrouter',
+    name: 'OpenRouter',
+    type: 'openai',
+    defaultBaseUrl: 'https://openrouter.ai/api/v1',
     requiresApiKey: true,
-    icon: "/logos/openrouter.svg",
+    icon: '/logos/openrouter.svg',
     models: [
       {
-        id: "openai/gpt-5.1",
-        name: "OpenAI GPT-5.1",
+        id: 'openai/gpt-5.1',
+        name: 'OpenAI GPT-5.1',
         contextWindow: 400000,
         outputWindow: 128000,
         capabilities: {
@@ -1112,10 +1112,10 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
           tools: true,
           vision: true,
           thinking: {
-            control: "effort",
-            requestAdapter: "openrouter",
-            effortValues: ["none", "minimal", "low", "medium", "high"],
-            defaultEffort: "medium",
+            control: 'effort',
+            requestAdapter: 'openrouter',
+            effortValues: ['none', 'minimal', 'low', 'medium', 'high'],
+            defaultEffort: 'medium',
             toggleable: true,
             budgetAdjustable: true,
             defaultEnabled: false,
@@ -1123,22 +1123,22 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "anthropic/claude-sonnet-4.5",
-        name: "Claude Sonnet 4.5",
+        id: 'anthropic/claude-sonnet-4.5',
+        name: 'Claude Sonnet 4.5',
         contextWindow: 200000,
         outputWindow: 64000,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "google/gemini-3-pro-preview",
-        name: "Gemini 3 Pro Preview",
+        id: 'google/gemini-3-pro-preview',
+        name: 'Gemini 3 Pro Preview',
         contextWindow: 1000000,
         outputWindow: 65536,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "deepseek/deepseek-v4-flash",
-        name: "DeepSeek V4 Flash",
+        id: 'deepseek/deepseek-v4-flash',
+        name: 'DeepSeek V4 Flash',
         contextWindow: 128000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: false },
@@ -1146,24 +1146,24 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     ],
   },
 
-  "tencent-hunyuan": {
-    id: "tencent-hunyuan",
-    name: "Tencent Hunyuan",
-    type: "openai",
-    defaultBaseUrl: "https://tokenhub.tencentmaas.com/v1",
+  'tencent-hunyuan': {
+    id: 'tencent-hunyuan',
+    name: 'Tencent Hunyuan',
+    type: 'openai',
+    defaultBaseUrl: 'https://tokenhub.tencentmaas.com/v1',
     alternateBaseUrls: [
-      { label: "China", url: "https://tokenhub.tencentmaas.com/v1" },
+      { label: 'China', url: 'https://tokenhub.tencentmaas.com/v1' },
       {
-        label: "International",
-        url: "https://tokenhub-intl.tencentmaas.com/v1",
+        label: 'International',
+        url: 'https://tokenhub-intl.tencentmaas.com/v1',
       },
     ],
     requiresApiKey: true,
-    icon: "/logos/tencent-hunyuan.svg",
+    icon: '/logos/tencent-hunyuan.svg',
     models: [
       {
-        id: "hy3-preview",
-        name: "Tencent Hy3 Preview",
+        id: 'hy3-preview',
+        name: 'Tencent Hy3 Preview',
         contextWindow: 256000,
         outputWindow: 32768,
         capabilities: {
@@ -1171,10 +1171,10 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
           tools: true,
           vision: true,
           thinking: {
-            control: "effort",
-            requestAdapter: "hunyuan",
-            effortValues: ["low", "medium", "high"],
-            defaultEffort: "medium",
+            control: 'effort',
+            requestAdapter: 'hunyuan',
+            effortValues: ['low', 'medium', 'high'],
+            defaultEffort: 'medium',
             toggleable: true,
             budgetAdjustable: false,
             defaultEnabled: true,
@@ -1185,16 +1185,16 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   xiaomi: {
-    id: "xiaomi",
-    name: "Xiaomi MiMo",
-    type: "openai",
-    defaultBaseUrl: "https://api.xiaomimimo.com/v1",
+    id: 'xiaomi',
+    name: 'Xiaomi MiMo',
+    type: 'openai',
+    defaultBaseUrl: 'https://api.xiaomimimo.com/v1',
     requiresApiKey: true,
-    icon: "/logos/xiaomi.svg",
+    icon: '/logos/xiaomi.svg',
     models: [
       {
-        id: "mimo-v2.5-pro",
-        name: "MiMo v2.5 Pro",
+        id: 'mimo-v2.5-pro',
+        name: 'MiMo v2.5 Pro',
         contextWindow: 128000,
         outputWindow: 32768,
         capabilities: {
@@ -1202,8 +1202,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
           tools: true,
           vision: false,
           thinking: {
-            control: "toggle",
-            requestAdapter: "xiaomi",
+            control: 'toggle',
+            requestAdapter: 'xiaomi',
             toggleable: true,
             budgetAdjustable: false,
             defaultEnabled: true,
@@ -1211,8 +1211,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "mimo-v2.5",
-        name: "MiMo v2.5",
+        id: 'mimo-v2.5',
+        name: 'MiMo v2.5',
         contextWindow: 128000,
         outputWindow: 32768,
         capabilities: {
@@ -1220,8 +1220,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
           tools: true,
           vision: false,
           thinking: {
-            control: "toggle",
-            requestAdapter: "xiaomi",
+            control: 'toggle',
+            requestAdapter: 'xiaomi',
             toggleable: true,
             budgetAdjustable: false,
             defaultEnabled: true,
@@ -1232,17 +1232,17 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   lemonade: {
-    id: "lemonade",
-    name: "Lemonade",
-    type: "openai",
-    defaultBaseUrl: "http://127.0.0.1:8000/v1",
+    id: 'lemonade',
+    name: 'Lemonade',
+    type: 'openai',
+    defaultBaseUrl: 'http://127.0.0.1:8000/v1',
     requiresApiKey: false,
     supportsOptionalApiKey: true,
-    icon: "/logos/lemonade.svg",
+    icon: '/logos/lemonade.svg',
     models: [
       {
-        id: "Qwen3.5-4B-GGUF",
-        name: "Qwen3.5 4B GGUF",
+        id: 'Qwen3.5-4B-GGUF',
+        name: 'Qwen3.5 4B GGUF',
         contextWindow: 32768,
         outputWindow: 8192,
         capabilities: {
@@ -1250,8 +1250,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
           tools: true,
           vision: false,
           thinking: {
-            control: "toggle-budget",
-            requestAdapter: "lemonade",
+            control: 'toggle-budget',
+            requestAdapter: 'lemonade',
             budgetRange: { min: 0, max: 8192, step: 256, disableValue: 0 },
             defaultBudgetTokens: 1024,
             toggleable: true,
@@ -1261,8 +1261,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "gpt-oss-20b",
-        name: "GPT-OSS 20B",
+        id: 'gpt-oss-20b',
+        name: 'GPT-OSS 20B',
         contextWindow: 131072,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: false },
@@ -1271,23 +1271,23 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   grok: {
-    id: "grok",
-    name: "Grok",
-    type: "openai",
-    defaultBaseUrl: "https://api.x.ai/v1",
+    id: 'grok',
+    name: 'Grok',
+    type: 'openai',
+    defaultBaseUrl: 'https://api.x.ai/v1',
     requiresApiKey: true,
-    icon: "/logos/grok.svg",
+    icon: '/logos/grok.svg',
     models: [
       {
-        id: "grok-4.3",
-        name: "Grok 4.3",
+        id: 'grok-4.3',
+        name: 'Grok 4.3',
         contextWindow: 256000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "grok-4.20-0309-reasoning",
-        name: "Grok 4.20 Reasoning",
+        id: 'grok-4.20-0309-reasoning',
+        name: 'Grok 4.20 Reasoning',
         contextWindow: 2000000,
         outputWindow: 131072,
         capabilities: {
@@ -1302,15 +1302,15 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "grok-4.20-0309-non-reasoning",
-        name: "Grok 4.20",
+        id: 'grok-4.20-0309-non-reasoning',
+        name: 'Grok 4.20',
         contextWindow: 2000000,
         outputWindow: 131072,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "grok-4.20-reasoning",
-        name: "Grok 4.20 Reasoning",
+        id: 'grok-4.20-reasoning',
+        name: 'Grok 4.20 Reasoning',
         contextWindow: 2000000,
         outputWindow: 131072,
         capabilities: {
@@ -1325,22 +1325,22 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "grok-4.20-beta-latest-non-reasoning",
-        name: "Grok 4.20",
+        id: 'grok-4.20-beta-latest-non-reasoning',
+        name: 'Grok 4.20',
         contextWindow: 2000000,
         outputWindow: 131072,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "grok-code-fast-1",
-        name: "Grok Code Fast",
+        id: 'grok-code-fast-1',
+        name: 'Grok Code Fast',
         contextWindow: 256000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "grok-4-fast-reasoning",
-        name: "Grok 4 Fast Reasoning",
+        id: 'grok-4-fast-reasoning',
+        name: 'Grok 4 Fast Reasoning',
         contextWindow: 2000000,
         outputWindow: 131072,
         capabilities: {
@@ -1355,15 +1355,15 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "grok-4-fast-non-reasoning",
-        name: "Grok 4 Fast",
+        id: 'grok-4-fast-non-reasoning',
+        name: 'Grok 4 Fast',
         contextWindow: 2000000,
         outputWindow: 131072,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "grok-4-1-fast-reasoning",
-        name: "Grok 4.1 Fast Reasoning",
+        id: 'grok-4-1-fast-reasoning',
+        name: 'Grok 4.1 Fast Reasoning',
         contextWindow: 2000000,
         outputWindow: 131072,
         capabilities: {
@@ -1378,29 +1378,29 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         },
       },
       {
-        id: "grok-4-1-fast-non-reasoning",
-        name: "Grok 4.1 Fast",
+        id: 'grok-4-1-fast-non-reasoning',
+        name: 'Grok 4.1 Fast',
         contextWindow: 2000000,
         outputWindow: 131072,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "grok-4",
-        name: "Grok 4",
+        id: 'grok-4',
+        name: 'Grok 4',
         contextWindow: 256000,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "grok-3",
-        name: "Grok 3",
+        id: 'grok-3',
+        name: 'Grok 3',
         contextWindow: 131072,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "grok-3-mini",
-        name: "Grok 3 Mini",
+        id: 'grok-3-mini',
+        name: 'Grok 3 Mini',
         contextWindow: 131072,
         outputWindow: 32768,
         capabilities: { streaming: true, tools: true, vision: false },
@@ -1409,65 +1409,65 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   ollama: {
-    id: "ollama",
-    name: "Ollama",
-    type: "openai",
-    defaultBaseUrl: "http://localhost:11434/v1",
+    id: 'ollama',
+    name: 'Ollama',
+    type: 'openai',
+    defaultBaseUrl: 'http://localhost:11434/v1',
     requiresApiKey: false,
-    icon: "/logos/ollama.svg",
+    icon: '/logos/ollama.svg',
     models: [
       {
-        id: "llama3.3",
-        name: "Llama 3.3 70B",
+        id: 'llama3.3',
+        name: 'Llama 3.3 70B',
         contextWindow: 131072,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "llama3.2",
-        name: "Llama 3.2 3B",
+        id: 'llama3.2',
+        name: 'Llama 3.2 3B',
         contextWindow: 131072,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "qwen2.5",
-        name: "Qwen 2.5 7B",
+        id: 'qwen2.5',
+        name: 'Qwen 2.5 7B',
         contextWindow: 131072,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "qwen2.5:32b",
-        name: "Qwen 2.5 32B",
+        id: 'qwen2.5:32b',
+        name: 'Qwen 2.5 32B',
         contextWindow: 131072,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: "mistral",
-        name: "Mistral 7B",
+        id: 'mistral',
+        name: 'Mistral 7B',
         contextWindow: 32768,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: false, vision: false },
       },
       {
-        id: "gemma3",
-        name: "Gemma 3 12B",
+        id: 'gemma3',
+        name: 'Gemma 3 12B',
         contextWindow: 131072,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: true },
       },
       {
-        id: "deepseek-r1",
-        name: "DeepSeek R1",
+        id: 'deepseek-r1',
+        name: 'DeepSeek R1',
         contextWindow: 131072,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: false, vision: false },
       },
       {
-        id: "phi4",
-        name: "Phi-4 14B",
+        id: 'phi4',
+        name: 'Phi-4 14B',
         contextWindow: 16384,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: false, vision: false },
@@ -1476,13 +1476,13 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
 
   lmstudio: {
-    id: "lmstudio",
-    name: "LM Studio",
-    type: "openai",
-    defaultBaseUrl: "http://127.0.0.1:1234/v1",
+    id: 'lmstudio',
+    name: 'LM Studio',
+    type: 'openai',
+    defaultBaseUrl: 'http://127.0.0.1:1234/v1',
     requiresApiKey: false,
     supportsOptionalApiKey: true,
-    icon: "/logos/lmstudio.svg",
+    icon: '/logos/lmstudio.svg',
     models: [],
   },
 };
@@ -1494,67 +1494,65 @@ function annotateLegacyThinkingCapability(
 ): void {
   if (thinking.control) return;
 
-  if (providerId === "openai") {
+  if (providerId === 'openai') {
     const gpt55 = /^gpt-5\.5(?:-|$)/.test(modelId);
     Object.assign(thinking, {
-      control: "effort",
-      requestAdapter: "openai",
-      defaultMode: gpt55 ? "enabled" : "disabled",
+      control: 'effort',
+      requestAdapter: 'openai',
+      defaultMode: gpt55 ? 'enabled' : 'disabled',
       effortValues: gpt55
-        ? ["low", "medium", "high", "xhigh"]
-        : ["none", "minimal", "low", "medium", "high"],
-      defaultEffort: gpt55 ? "medium" : "none",
+        ? ['low', 'medium', 'high', 'xhigh']
+        : ['none', 'minimal', 'low', 'medium', 'high'],
+      defaultEffort: gpt55 ? 'medium' : 'none',
     } satisfies Partial<ThinkingCapability>);
     return;
   }
 
-  if (providerId === "anthropic") {
-    const budgetOnly = modelId === "claude-haiku-4-5";
+  if (providerId === 'anthropic') {
+    const budgetOnly = modelId === 'claude-haiku-4-5';
     Object.assign(
       thinking,
       budgetOnly
         ? ({
-            control: "toggle-budget",
-            requestAdapter: "anthropic",
-            defaultMode: "disabled",
+            control: 'toggle-budget',
+            requestAdapter: 'anthropic',
+            defaultMode: 'disabled',
             budgetRange: { min: 1024, max: 64000, step: 1024 },
             defaultBudgetTokens: 1024,
           } satisfies Partial<ThinkingCapability>)
         : ({
-            control: "effort",
-            requestAdapter: "anthropic",
-            defaultMode:
-              thinking.defaultEnabled === false ? "disabled" : "enabled",
-            effortValues: ["none", "low", "medium", "high", "xhigh", "max"],
-            defaultEffort:
-              thinking.defaultEnabled === false ? "none" : "medium",
+            control: 'effort',
+            requestAdapter: 'anthropic',
+            defaultMode: thinking.defaultEnabled === false ? 'disabled' : 'enabled',
+            effortValues: ['none', 'low', 'medium', 'high', 'xhigh', 'max'],
+            defaultEffort: thinking.defaultEnabled === false ? 'none' : 'medium',
             anthropicThinking: {
-              type: modelId.includes("4-6") ? "adaptive" : "enabled",
+              type: modelId.includes('4-6') ? 'adaptive' : 'enabled',
             },
           } satisfies Partial<ThinkingCapability>),
     );
     return;
   }
 
-  if (providerId === "google") {
-    if (modelId.startsWith("gemini-3")) {
+  if (providerId === 'google') {
+    if (modelId.startsWith('gemini-3')) {
       Object.assign(thinking, {
-        control: "level",
-        requestAdapter: "google",
-        levelValues: ["minimal", "low", "medium", "high"],
-        defaultLevel: modelId.includes("flash") ? "low" : "high",
+        control: 'level',
+        requestAdapter: 'google',
+        levelValues: ['minimal', 'low', 'medium', 'high'],
+        defaultLevel: modelId.includes('flash') ? 'low' : 'high',
       } satisfies Partial<ThinkingCapability>);
     } else {
       Object.assign(thinking, {
-        control: "toggle-budget",
-        requestAdapter: "google",
-        defaultMode: "enabled",
+        control: 'toggle-budget',
+        requestAdapter: 'google',
+        defaultMode: 'enabled',
         budgetRange: {
-          min: modelId === "gemini-2.5-pro" ? 128 : 0,
+          min: modelId === 'gemini-2.5-pro' ? 128 : 0,
           max: 24576,
           step: 128,
           allowDynamic: true,
-          disableValue: modelId === "gemini-2.5-pro" ? 128 : 0,
+          disableValue: modelId === 'gemini-2.5-pro' ? 128 : 0,
         },
         defaultBudgetTokens: -1,
       } satisfies Partial<ThinkingCapability>);
@@ -1562,37 +1560,27 @@ function annotateLegacyThinkingCapability(
     return;
   }
 
-  const adapterByProvider: Partial<
-    Record<ProviderId, ThinkingCapability["requestAdapter"]>
-  > = {
-    kimi: "kimi",
-    glm: "glm",
-    xiaomi: "xiaomi",
+  const adapterByProvider: Partial<Record<ProviderId, ThinkingCapability['requestAdapter']>> = {
+    kimi: 'kimi',
+    glm: 'glm',
+    xiaomi: 'xiaomi',
   };
   const toggleAdapter = adapterByProvider[providerId];
   if (toggleAdapter) {
     Object.assign(thinking, {
-      control: "toggle",
+      control: 'toggle',
       requestAdapter: toggleAdapter,
-      defaultMode: thinking.defaultEnabled === false ? "disabled" : "enabled",
+      defaultMode: thinking.defaultEnabled === false ? 'disabled' : 'enabled',
     } satisfies Partial<ThinkingCapability>);
     return;
   }
 
-  if (
-    providerId === "qwen" ||
-    providerId === "siliconflow" ||
-    providerId === "lemonade"
-  ) {
+  if (providerId === 'qwen' || providerId === 'siliconflow' || providerId === 'lemonade') {
     Object.assign(thinking, {
-      control: "toggle-budget",
+      control: 'toggle-budget',
       requestAdapter:
-        providerId === "lemonade"
-          ? "lemonade"
-          : providerId === "qwen"
-            ? "qwen"
-            : "siliconflow",
-      defaultMode: thinking.defaultEnabled === false ? "disabled" : "enabled",
+        providerId === 'lemonade' ? 'lemonade' : providerId === 'qwen' ? 'qwen' : 'siliconflow',
+      defaultMode: thinking.defaultEnabled === false ? 'disabled' : 'enabled',
       budgetRange: {
         min: 0,
         max: 8192,
@@ -1600,44 +1588,43 @@ function annotateLegacyThinkingCapability(
         disableValue: 0,
         allowDynamic: true,
       },
-      defaultBudgetTokens: providerId === "lemonade" ? undefined : -1,
+      defaultBudgetTokens: providerId === 'lemonade' ? undefined : -1,
     } satisfies Partial<ThinkingCapability>);
     return;
   }
 
-  if (providerId === "deepseek") {
+  if (providerId === 'deepseek') {
     Object.assign(thinking, {
-      control: "effort",
-      requestAdapter: "deepseek",
-      defaultMode: "enabled",
-      effortValues: ["none", "high", "max"],
-      defaultEffort: "high",
+      control: 'effort',
+      requestAdapter: 'deepseek',
+      defaultMode: 'enabled',
+      effortValues: ['none', 'high', 'max'],
+      defaultEffort: 'high',
     } satisfies Partial<ThinkingCapability>);
     return;
   }
 
-  if (providerId === "doubao") {
+  if (providerId === 'doubao') {
     Object.assign(thinking, {
-      control: "effort",
-      requestAdapter: "doubao",
-      defaultMode: thinking.defaultEnabled === false ? "disabled" : "enabled",
-      effortValues: ["minimal", "low", "medium", "high"],
-      defaultEffort: "medium",
+      control: 'effort',
+      requestAdapter: 'doubao',
+      defaultMode: thinking.defaultEnabled === false ? 'disabled' : 'enabled',
+      effortValues: ['minimal', 'low', 'medium', 'high'],
+      defaultEffort: 'medium',
     } satisfies Partial<ThinkingCapability>);
     return;
   }
 
   Object.assign(thinking, {
-    control: "none",
-    requestAdapter: "none",
+    control: 'none',
+    requestAdapter: 'none',
   } satisfies Partial<ThinkingCapability>);
 }
 
 for (const provider of Object.values(PROVIDERS)) {
   for (const model of provider.models) {
     const thinking = model.capabilities?.thinking;
-    if (thinking)
-      annotateLegacyThinkingCapability(provider.id, model.id, thinking);
+    if (thinking) annotateLegacyThinkingCapability(provider.id, model.id, thinking);
   }
 }
 
@@ -1651,9 +1638,9 @@ function getProviderConfig(providerId: ProviderId): ProviderConfig | null {
   }
 
   // Check unified providersConfig in localStorage (browser only)
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     try {
-      const storedConfig = localStorage.getItem("providersConfig");
+      const storedConfig = localStorage.getItem('providersConfig');
       if (storedConfig) {
         const config = JSON.parse(storedConfig);
         const providerSettings = config[providerId];
@@ -1671,7 +1658,7 @@ function getProviderConfig(providerId: ProviderId): ProviderConfig | null {
         }
       }
     } catch (e) {
-      log.error("Failed to load provider config:", e);
+      log.error('Failed to load provider config:', e);
     }
   }
 
@@ -1691,30 +1678,25 @@ export interface ModelWithInfo {
  * Called from the custom fetch wrapper inside getModel().
  */
 function getCatalogThinkingCapability(providerId: ProviderId, modelId: string) {
-  return getProviderConfig(providerId)?.models.find(
-    (model) => model.id === modelId,
-  )?.capabilities?.thinking;
+  return getProviderConfig(providerId)?.models.find((model) => model.id === modelId)?.capabilities
+    ?.thinking;
 }
 
 function getCompatThinkingAdapter(providerId: ProviderId, modelId: string) {
   const capability = getCatalogThinkingCapability(providerId, modelId);
-  const fallbackAdapters: Partial<
-    Record<BuiltInProviderId, ThinkingRequestAdapter>
-  > = {
-    kimi: "kimi",
-    deepseek: "deepseek",
-    glm: "glm",
-    qwen: "qwen",
-    siliconflow: "siliconflow",
-    doubao: "doubao",
-    openrouter: "openrouter",
-    "tencent-hunyuan": "hunyuan",
-    xiaomi: "xiaomi",
-    lemonade: "lemonade",
+  const fallbackAdapters: Partial<Record<BuiltInProviderId, ThinkingRequestAdapter>> = {
+    kimi: 'kimi',
+    deepseek: 'deepseek',
+    glm: 'glm',
+    qwen: 'qwen',
+    siliconflow: 'siliconflow',
+    doubao: 'doubao',
+    openrouter: 'openrouter',
+    'tencent-hunyuan': 'hunyuan',
+    xiaomi: 'xiaomi',
+    lemonade: 'lemonade',
   };
-  const adapter =
-    capability?.requestAdapter ||
-    fallbackAdapters[providerId as BuiltInProviderId];
+  const adapter = capability?.requestAdapter || fallbackAdapters[providerId as BuiltInProviderId];
 
   return { adapter, capability };
 }
@@ -1729,103 +1711,94 @@ function getCompatThinkingBodyParams(
   config: ThinkingConfig,
 ): Record<string, unknown> | undefined {
   const { adapter, capability } = getCompatThinkingAdapter(providerId, modelId);
-  if (!adapter || capability?.control === "none") return undefined;
+  if (!adapter || capability?.control === 'none') return undefined;
 
   const mode = getThinkingMode(config);
-  const budget = capability
-    ? pickThinkingBudget(capability, config)
-    : config.budgetTokens;
+  const budget = capability ? pickThinkingBudget(capability, config) : config.budgetTokens;
 
   switch (adapter) {
-    case "kimi":
-    case "glm":
-    case "xiaomi":
-      if (mode === "disabled") return { thinking: { type: "disabled" } };
-      if (mode === "enabled") return { thinking: { type: "enabled" } };
+    case 'kimi':
+    case 'glm':
+    case 'xiaomi':
+      if (mode === 'disabled') return { thinking: { type: 'disabled' } };
+      if (mode === 'enabled') return { thinking: { type: 'enabled' } };
       return undefined;
 
-    case "deepseek": {
-      if (mode === "disabled" || config.effort === "none") {
-        return { thinking: { type: "disabled" } };
+    case 'deepseek': {
+      if (mode === 'disabled' || config.effort === 'none') {
+        return { thinking: { type: 'disabled' } };
       }
-      if (mode === "enabled" || config.effort) {
+      if (mode === 'enabled' || config.effort) {
         return {
-          thinking: { type: "enabled" },
-          reasoning_effort:
-            config.effort === "max" || config.effort === "xhigh"
-              ? "max"
-              : "high",
+          thinking: { type: 'enabled' },
+          reasoning_effort: config.effort === 'max' || config.effort === 'xhigh' ? 'max' : 'high',
         };
       }
       return undefined;
     }
 
-    case "qwen": {
-      if (mode === "disabled") return { enable_thinking: false };
+    case 'qwen': {
+      if (mode === 'disabled') return { enable_thinking: false };
       const body: Record<string, unknown> = {};
-      if (mode === "enabled") body.enable_thinking = true;
+      if (mode === 'enabled') body.enable_thinking = true;
       if (budget !== undefined) body.thinking_budget = budget;
       return Object.keys(body).length > 0 ? body : undefined;
     }
 
-    case "siliconflow": {
+    case 'siliconflow': {
       const body: Record<string, unknown> = {};
-      if (mode === "disabled") body.enable_thinking = false;
-      if (mode === "enabled") body.enable_thinking = true;
+      if (mode === 'disabled') body.enable_thinking = false;
+      if (mode === 'enabled') body.enable_thinking = true;
       if (budget !== undefined) body.thinking_budget = budget;
       return Object.keys(body).length > 0 ? body : undefined;
     }
 
-    case "doubao": {
+    case 'doubao': {
       if (config.effort) return { reasoning_effort: config.effort };
-      if (mode === "auto") return { thinking: { type: "auto" } };
-      if (mode === "disabled") return { thinking: { type: "disabled" } };
-      if (mode === "enabled") return { thinking: { type: "enabled" } };
+      if (mode === 'auto') return { thinking: { type: 'auto' } };
+      if (mode === 'disabled') return { thinking: { type: 'disabled' } };
+      if (mode === 'enabled') return { thinking: { type: 'enabled' } };
       return undefined;
     }
 
-    case "openrouter": {
+    case 'openrouter': {
       const reasoning: Record<string, unknown> = {};
-      if (mode === "disabled") reasoning.enabled = false;
-      if (mode === "enabled") reasoning.enabled = true;
+      if (mode === 'disabled') reasoning.enabled = false;
+      if (mode === 'enabled') reasoning.enabled = true;
       if (config.effort) reasoning.effort = config.effort;
       if (budget !== undefined) reasoning.max_tokens = budget;
-      if (typeof config.excludeReasoningOutput === "boolean") {
+      if (typeof config.excludeReasoningOutput === 'boolean') {
         reasoning.exclude = config.excludeReasoningOutput;
       }
       return Object.keys(reasoning).length > 0 ? { reasoning } : undefined;
     }
 
-    case "hunyuan": {
-      let reasoningEffort: "no_think" | "low" | "high" | undefined;
-      if (mode === "disabled" || config.effort === "none") {
-        reasoningEffort = "no_think";
+    case 'hunyuan': {
+      let reasoningEffort: 'no_think' | 'low' | 'high' | undefined;
+      if (mode === 'disabled' || config.effort === 'none') {
+        reasoningEffort = 'no_think';
+      } else if (config.effort === 'high' || config.effort === 'max' || config.effort === 'xhigh') {
+        reasoningEffort = 'high';
       } else if (
-        config.effort === "high" ||
-        config.effort === "max" ||
-        config.effort === "xhigh"
+        config.effort === 'low' ||
+        config.effort === 'medium' ||
+        config.effort === 'minimal'
       ) {
-        reasoningEffort = "high";
-      } else if (
-        config.effort === "low" ||
-        config.effort === "medium" ||
-        config.effort === "minimal"
-      ) {
-        reasoningEffort = "low";
-      } else if (mode === "enabled") {
-        reasoningEffort = capability?.defaultEffort === "high" ? "high" : "low";
+        reasoningEffort = 'low';
+      } else if (mode === 'enabled') {
+        reasoningEffort = capability?.defaultEffort === 'high' ? 'high' : 'low';
       }
       return reasoningEffort
         ? { chat_template_kwargs: { reasoning_effort: reasoningEffort } }
         : undefined;
     }
 
-    case "lemonade": {
+    case 'lemonade': {
       if (!mode && budget === undefined) return undefined;
       const chatTemplateKwargs: Record<string, unknown> = {
-        enable_thinking: mode === "enabled",
+        enable_thinking: mode === 'enabled',
       };
-      if (mode === "enabled" && budget !== undefined) {
+      if (mode === 'enabled' && budget !== undefined) {
         chatTemplateKwargs.thinking_budget = budget;
       }
       return { chat_template_kwargs: chatTemplateKwargs };
@@ -1837,18 +1810,15 @@ function getCompatThinkingBodyParams(
 }
 
 const GROK_MODEL_ALIASES: Record<string, string> = {
-  "grok-4.20-reasoning": "grok-4.20-0309-reasoning",
-  "grok-4.20-beta-0309-reasoning": "grok-4.20-0309-reasoning",
-  "grok-4.20-beta-latest-non-reasoning": "grok-4.20-0309-non-reasoning",
-  "grok-4.20-beta-0309-non-reasoning": "grok-4.20-0309-non-reasoning",
-  "grok-4-0709": "grok-4",
+  'grok-4.20-reasoning': 'grok-4.20-0309-reasoning',
+  'grok-4.20-beta-0309-reasoning': 'grok-4.20-0309-reasoning',
+  'grok-4.20-beta-latest-non-reasoning': 'grok-4.20-0309-non-reasoning',
+  'grok-4.20-beta-0309-non-reasoning': 'grok-4.20-0309-non-reasoning',
+  'grok-4-0709': 'grok-4',
 };
 
-function normalizeProviderModelId(
-  providerId: ProviderId,
-  modelId: string,
-): string {
-  if (providerId === "grok") {
+function normalizeProviderModelId(providerId: ProviderId, modelId: string): string {
+  if (providerId === 'grok') {
     return GROK_MODEL_ALIASES[modelId] ?? modelId;
   }
 
@@ -1859,15 +1829,15 @@ function normalizeMiniMaxAnthropicBaseUrl(
   providerId: ProviderId,
   baseUrl?: string,
 ): string | undefined {
-  if (providerId !== "minimax" || !baseUrl) {
+  if (providerId !== 'minimax' || !baseUrl) {
     return baseUrl;
   }
 
-  const trimmed = baseUrl.replace(/\/$/, "");
-  if (trimmed.endsWith("/anthropic/v1")) {
+  const trimmed = baseUrl.replace(/\/$/, '');
+  if (trimmed.endsWith('/anthropic/v1')) {
     return trimmed;
   }
-  if (trimmed.endsWith("/anthropic")) {
+  if (trimmed.endsWith('/anthropic')) {
     return `${trimmed}/v1`;
   }
   return `${trimmed}/anthropic/v1`;
@@ -1892,9 +1862,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
     if (provider) {
       providerType = provider.type;
     } else {
-      throw new Error(
-        `Unknown provider: ${config.providerId}. Please provide providerType.`,
-      );
+      throw new Error(`Unknown provider: ${config.providerId}. Please provide providerType.`);
     }
   }
 
@@ -1904,7 +1872,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
   }
 
   // Use provided API key, or empty string for providers that don't require one
-  const effectiveApiKey = config.apiKey || "";
+  const effectiveApiKey = config.apiKey || '';
 
   // Resolve base URL: explicit > provider default > SDK default
   const effectiveBaseUrl = normalizeMiniMaxAnthropicBaseUrl(
@@ -1914,15 +1882,12 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       config.baseUrl || provider?.defaultBaseUrl || undefined,
     ) || undefined,
   );
-  const normalizedModelId = normalizeProviderModelId(
-    config.providerId,
-    config.modelId,
-  );
+  const normalizedModelId = normalizeProviderModelId(config.providerId, config.modelId);
 
   let model: LanguageModel;
 
   switch (providerType) {
-    case "openai": {
+    case 'openai': {
       const openaiOptions: Parameters<typeof createOpenAI>[0] = {
         apiKey: effectiveApiKey,
         baseURL: effectiveBaseUrl,
@@ -1932,24 +1897,16 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       // wrapper that injects vendor-specific thinking params into the HTTP
       // body. The thinking config is read from AsyncLocalStorage, set by
       // callLLM / streamLLM at call time.
-      if (config.providerId !== "openai") {
+      if (config.providerId !== 'openai') {
         const providerId = config.providerId;
-        openaiOptions.fetch = async (
-          url: RequestInfo | URL,
-          init?: RequestInit,
-        ) => {
+        openaiOptions.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
           // Read thinking config from globalThis (set by thinking-context.ts)
-          const thinkingCtx = (globalThis as Record<string, unknown>)
-            .__thinkingContext as { getStore?: () => unknown } | undefined;
-          const thinking = thinkingCtx?.getStore?.() as
-            | ThinkingConfig
+          const thinkingCtx = (globalThis as Record<string, unknown>).__thinkingContext as
+            | { getStore?: () => unknown }
             | undefined;
-          if (thinking && init?.body && typeof init.body === "string") {
-            const extra = getCompatThinkingBodyParams(
-              providerId,
-              normalizedModelId,
-              thinking,
-            );
+          const thinking = thinkingCtx?.getStore?.() as ThinkingConfig | undefined;
+          if (thinking && init?.body && typeof init.body === 'string') {
+            const extra = getCompatThinkingBodyParams(providerId, normalizedModelId, thinking);
             if (extra) {
               try {
                 const body = JSON.parse(init.body);
@@ -1969,7 +1926,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       break;
     }
 
-    case "anthropic": {
+    case 'anthropic': {
       const anthropic = createAnthropic({
         apiKey: effectiveApiKey,
         baseURL: effectiveBaseUrl,
@@ -1978,7 +1935,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       break;
     }
 
-    case "google": {
+    case 'google': {
       const googleOptions: Parameters<typeof createGoogleGenerativeAI>[0] = {
         apiKey: effectiveApiKey,
         baseURL: effectiveBaseUrl,
@@ -1986,7 +1943,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       if (config.proxy) {
         // Dynamic require to avoid bundling undici on the client side
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { ProxyAgent, fetch: undiciFetch } = require("undici");
+        const { ProxyAgent, fetch: undiciFetch } = require('undici');
         const agent = new ProxyAgent(config.proxy);
         googleOptions.fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
           undiciFetch(input as string, {
@@ -2004,8 +1961,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
   }
 
   // Look up model info from the provider registry
-  const modelInfo =
-    provider?.models.find((m) => m.id === normalizedModelId) || null;
+  const modelInfo = provider?.models.find((m) => m.id === normalizedModelId) || null;
 
   return { model, modelInfo };
 }
@@ -2018,7 +1974,7 @@ export function parseModelString(modelString: string): {
   modelId: string;
 } {
   // Split only on the first colon to handle model IDs that contain colons
-  const colonIndex = modelString.indexOf(":");
+  const colonIndex = modelString.indexOf(':');
 
   if (colonIndex > 0) {
     return {
@@ -2029,7 +1985,7 @@ export function parseModelString(modelString: string): {
 
   // Default to OpenAI for backward compatibility
   return {
-    providerId: "openai",
+    providerId: 'openai',
     modelId: modelString,
   };
 }
@@ -2050,19 +2006,14 @@ export function getAllModels(): {
 /**
  * Get provider by ID
  */
-export function getProvider(
-  providerId: ProviderId,
-): ProviderConfig | undefined {
+export function getProvider(providerId: ProviderId): ProviderConfig | undefined {
   return PROVIDERS[providerId];
 }
 
 /**
  * Get model info
  */
-export function getModelInfo(
-  providerId: ProviderId,
-  modelId: string,
-): ModelInfo | undefined {
+export function getModelInfo(providerId: ProviderId, modelId: string): ModelInfo | undefined {
   const provider = PROVIDERS[providerId];
   const normalizedModelId = normalizeProviderModelId(providerId, modelId);
   return provider?.models.find((m) => m.id === normalizedModelId);
