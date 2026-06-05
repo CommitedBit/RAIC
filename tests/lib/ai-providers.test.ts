@@ -5,7 +5,7 @@ describe('OpenAI built-in catalog', () => {
   it('surfaces the current curated OpenAI LLM list in the expected order', () => {
     const modelIds = PROVIDERS.openai.models.map((model) => model.id);
 
-    expect(MODEL_REGISTRY_CHECKED_AT).toBe('2026-05-10');
+    expect(MODEL_REGISTRY_CHECKED_AT).toBe('2026-06-05');
     expect(modelIds).toEqual([
       'gpt-5.5',
       'gpt-5.4',
@@ -25,6 +25,7 @@ describe('OpenAI built-in catalog', () => {
       'o1',
       'gpt-4o',
       'gpt-4o-mini',
+      'nvidia/nemotron-3-super-120b-a12b:free',
       'gpt-4-turbo',
     ]);
   });
@@ -58,4 +59,21 @@ describe('OpenAI built-in catalog', () => {
       },
     });
   });
+  it('includes metadata for the OpenRouter Nemotron scene fallback', () => {
+    const nemotron = PROVIDERS.openai.models.find(
+      (model) => model.id === 'nvidia/nemotron-3-super-120b-a12b:free',
+    );
+
+    expect(nemotron).toMatchObject({
+      name: 'NVIDIA Nemotron 3 Super (OpenRouter free)',
+      contextWindow: 1000000,
+      outputWindow: 16384,
+      capabilities: {
+        streaming: true,
+        tools: true,
+        vision: false,
+      },
+    });
+  });
+
 });
