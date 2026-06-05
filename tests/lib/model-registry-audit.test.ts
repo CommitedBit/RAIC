@@ -10,9 +10,9 @@ function ids(models: Array<{ id: string }>): string[] {
   return models.map((model) => model.id);
 }
 
-describe('model registry audit 2026-05-10', () => {
+describe('model registry audit dates', () => {
   it('records the audited registry date', () => {
-    expect(MODEL_REGISTRY_CHECKED_AT).toBe('2026-05-10');
+    expect(MODEL_REGISTRY_CHECKED_AT).toBe('2026-06-05');
     expect(AUDIO_MODEL_REGISTRY_CHECKED_AT).toBe('2026-05-10');
     expect(IMAGE_MODEL_REGISTRY_CHECKED_AT).toBe('2026-05-10');
     expect(VIDEO_MODEL_REGISTRY_CHECKED_AT).toBe('2026-05-10');
