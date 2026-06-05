@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
+import { Analytics } from '@vercel/analytics/next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import './globals.css';
@@ -39,6 +40,7 @@ export default function RootLayout({
             <ServerProvidersInit />
             <AccessCodeGuard>{children}</AccessCodeGuard>
             <Toaster position="top-center" />
+            <Analytics />
           </I18nProvider>
         </ThemeProvider>
       </body>
