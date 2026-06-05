@@ -4,10 +4,17 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const scriptMockState = vi.hoisted(() => ({
+  onLoad: null as null | (() => void),
+}));
+
 vi.mock('next/script', async () => {
   const React = await import('react');
   return {
-    default: () => React.createElement(React.Fragment),
+    default: ({ onLoad }: { onLoad?: () => void }) => {
+      scriptMockState.onLoad = onLoad ?? null;
+      return React.createElement(React.Fragment);
+    },
   };
 });
 
@@ -53,6 +60,7 @@ describe('GoogleSignInButton', () => {
     ).IS_REACT_ACT_ENVIRONMENT = true;
     vi.unstubAllGlobals();
     vi.stubGlobal('fetch', vi.fn());
+    scriptMockState.onLoad = null;
     delete process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   });
 
@@ -109,5 +117,49 @@ describe('GoogleSignInButton', () => {
 
     expect(container.textContent).toContain('Failed to prepare Google sign-in');
     expect(container.textContent).toContain('exact authorized origins');
+  });
+
+  it('initializes Google sign-in with the popup callback flow', async () => {
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'google-client-id';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ nonce: 'nonce-123' })),
+    );
+
+    const initialize = vi.fn();
+    const renderButton = vi.fn();
+    Object.assign(window, {
+      google: {
+        accounts: {
+          id: {
+            initialize,
+            renderButton,
+          },
+        },
+      },
+    });
+
+    const { container } = await mountButton();
+
+    await act(async () => {
+      scriptMockState.onLoad?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(initialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        client_id: 'google-client-id',
+        nonce: 'nonce-123',
+        ux_mode: 'popup',
+        use_fedcm_for_button: false,
+        use_fedcm_for_prompt: false,
+      }),
+    );
+    expect(renderButton).toHaveBeenCalledWith(
+      expect.any(HTMLDivElement),
+      expect.objectContaining({ text: 'signin_with' }),
+    );
+    expect(container.textContent).toContain('Google sign-in is limited');
   });
 });
