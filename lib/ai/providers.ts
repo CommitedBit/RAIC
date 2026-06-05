@@ -58,7 +58,7 @@ export const MONO_LOGO_PROVIDERS: ReadonlySet<string> = new Set([
   'lmstudio',
 ]);
 
-export const MODEL_REGISTRY_CHECKED_AT = '2026-05-10';
+export const MODEL_REGISTRY_CHECKED_AT = '2026-06-05';
 
 /**
  * Provider registry
@@ -314,6 +314,13 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
         contextWindow: 128000,
         outputWindow: 4096,
         capabilities: { streaming: true, tools: true, vision: true },
+      },
+      {
+        id: 'nvidia/nemotron-3-super-120b-a12b:free',
+        name: 'NVIDIA Nemotron 3 Super (OpenRouter free)',
+        contextWindow: 1000000,
+        outputWindow: 16384,
+        capabilities: { streaming: true, tools: true, vision: false },
       },
       {
         id: 'gpt-4-turbo',
