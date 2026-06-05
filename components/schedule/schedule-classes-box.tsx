@@ -607,7 +607,9 @@ export function ScheduleClassesBox({
                                 : event.classroomId
                                   ? ` · ${t('home.schedule.unlinkedClassroom')}`
                                   : ''}
-                              {event.multiplayerGame?.enabled ? ' · Multiplayer' : ''}
+                              {event.multiplayerGame?.enabled
+                                ? ` · ${t('home.schedule.multiplayer.badge')}`
+                                : ''}
                               {discordIntegration && discordStatus ? ` · ${discordStatus}` : ''}
                             </p>
                             {discordIntegration && event.discordSync?.syncWarning ? (
@@ -673,7 +675,7 @@ export function ScheduleClassesBox({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          aria-label="Copy multiplayer invite"
+                          aria-label={t('home.schedule.multiplayer.copyInvite')}
                           className="opacity-80 hover:bg-white/80 dark:hover:bg-white/5 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                           onClick={() => void copyInvite(event)}
                         >
@@ -789,7 +791,7 @@ export function ScheduleClassesBox({
                     className="inline-flex items-center gap-2"
                   >
                     <Users className="size-3.5 text-violet-500" />
-                    Multiplayer game class
+                    {t('home.schedule.multiplayer.gameClassLabel')}
                   </Label>
                 </div>
                 <Switch
@@ -798,7 +800,7 @@ export function ScheduleClassesBox({
                   onCheckedChange={(checked) =>
                     setForm((prev) => ({ ...prev, multiplayerGameEnabled: checked }))
                   }
-                  aria-label="Multiplayer game class"
+                  aria-label={t('home.schedule.multiplayer.gameClassLabel')}
                 />
               </div>
             ) : null}

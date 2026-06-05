@@ -34,6 +34,11 @@
       "linkFailed": "课堂已创建，但关联课程安排失败。",
       "saveFailed": "保存课程安排失败",
       "deleteFailed": "删除课程安排失败",
+      "multiplayer": {
+        "badge": "多人游戏",
+        "gameClassLabel": "多人游戏课程",
+        "copyInvite": "复制多人游戏邀请"
+      },
       "discord": {
         "title": "Discord",
         "notConfigured": "Discord 尚未配置",

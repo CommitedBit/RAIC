@@ -157,6 +157,9 @@ vi.mock('@/lib/hooks/use-i18n', () => ({
         'home.schedule.delete': 'Delete',
         'home.schedule.saveFailed': 'Failed to save scheduled class',
         'home.schedule.deleteFailed': 'Failed to delete scheduled class',
+        'home.schedule.multiplayer.badge': 'Multiplayer',
+        'home.schedule.multiplayer.gameClassLabel': 'Multiplayer game class',
+        'home.schedule.multiplayer.copyInvite': 'Copy multiplayer invite',
         'home.schedule.discord.title': 'Discord',
         'home.schedule.discord.notConfigured': 'Discord is not configured',
         'home.schedule.discord.notConnected': 'Not connected',
@@ -466,6 +469,7 @@ describe('ScheduleClassesBox', () => {
       findButton(container, 'Physics game')?.click();
       container.querySelector<HTMLButtonElement>('[role="switch"]')?.click();
     });
+    expect(container.textContent).toContain('Multiplayer game class');
     await act(async () => {
       findButton(container, 'Create & join')?.click();
     });
@@ -480,6 +484,28 @@ describe('ScheduleClassesBox', () => {
         },
       }),
     );
+  });
+
+  it('shows multiplayer badge and copy invite action for multiplayer events', async () => {
+    const { container } = await mountBox({
+      classrooms: [{ id: 'room-1', name: 'Physics room' }],
+      events: [
+        {
+          ...makeEvent('1', '2099-05-12T17:00:00.000Z', 'room-1'),
+          multiplayerGame: {
+            enabled: true,
+            mode: 'both',
+            linkPolicy: 'always_open',
+            inviteUrl: 'https://example.com/join',
+          },
+        },
+      ],
+    });
+
+    expect(container.textContent).toContain('Multiplayer');
+    expect(
+      container.querySelector<HTMLButtonElement>('button[aria-label="Copy multiplayer invite"]'),
+    ).toBeTruthy();
   });
 
   it('shows at most five upcoming events and opens linked classrooms', async () => {

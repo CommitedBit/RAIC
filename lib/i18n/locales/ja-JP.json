@@ -34,6 +34,11 @@
       "linkFailed": "教室は作成されましたが、スケジュールへのリンクに失敗しました。",
       "saveFailed": "予定クラスを保存できませんでした",
       "deleteFailed": "予定クラスを削除できませんでした",
+      "multiplayer": {
+        "badge": "マルチプレイ",
+        "gameClassLabel": "マルチプレイ・ゲームクラス",
+        "copyInvite": "マルチプレイ招待をコピー"
+      },
       "discord": {
         "title": "Discord",
         "notConfigured": "Discord は未設定です",

@@ -34,6 +34,11 @@
       "linkFailed": "Classroom created, but schedule linking failed.",
       "saveFailed": "Failed to save scheduled class",
       "deleteFailed": "Failed to delete scheduled class",
+      "multiplayer": {
+        "badge": "Multiplayer",
+        "gameClassLabel": "Multiplayer game class",
+        "copyInvite": "Copy multiplayer invite"
+      },
       "discord": {
         "title": "Discord",
         "notConfigured": "Discord is not configured",
