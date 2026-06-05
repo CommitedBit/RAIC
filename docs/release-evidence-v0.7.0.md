@@ -1,8 +1,8 @@
 # Release Evidence: v0.7.0 Discord Scheduled-Class Beta Readiness
 
-Date: 2026-05-31
+Date: 2026-06-05
 Target release: `v0.7.0`
-Evidence status: draft branch evidence. Final clean-main gates, live Discord smoke, production deployment ID, and tag are pending.
+Evidence status: release closeout in progress. Clean-main gates, production deployment, and automated production smoke evidence are recorded; credentialed live Discord smoke and the `v0.7.0` tag remain pending.
 
 ## Scope
 
@@ -16,7 +16,8 @@ Evidence status: draft branch evidence. Final clean-main gates, live Discord smo
 ## Pull Requests
 
 - Backend PR: `#53`, merged into `main` as `de2fdf20a99388748e60804a50a586900375706a`.
-- Teacher UI PR: `#54`, branch `codex/v0.7.0-discord-scheduled-classes-ui`.
+- Teacher UI PR: `#54`, branch `codex/v0.7.0-discord-scheduled-classes-ui`, merged into `main` as `e06abed752ce0e22cd62a593115ba335f6897826`.
+- Release closeout deployment: `8faaad63e12665ab5ad3aac9c5b98b97e7c844b3`, which includes PR #54 plus the subsequent Vercel Analytics hardening from PR #59.
 - Notable branch commits:
   - `303e30d` `feat: add discord schedule teacher UI`
   - `aade99c` `test: add discord beta smoke gate`
@@ -298,6 +299,36 @@ Manual Discord beta checks printed by the smoke gate:
 
 ## Current Blockers
 
-- Live preview and production Discord smoke require real `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, and `CRON_SECRET` values. The latest secret-safe Vercel CLI fallback audit confirms all four Discord keys are missing in both preview and production. Record only variable presence, never secret values.
-- Live smoke also requires a maintainer teacher account, a disposable Discord test server, bot install permissions, and a future teacher-owned scheduled class linked to a classroom.
-- Final `v0.7.0` closeout requires a clean `main` gate run, production deployment ID, production smoke output, and `v0.7.0` tag.
+- Secret-safe Vercel env metadata and production `/api/health` now show Discord beta env ready in production, with `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, and `CRON_SECRET` configured.
+- Preview env now has Discord, cron, Google OAuth, OpenAI, and branch-scoped Governed Co-Thinking model settings, but Postgres/Neon env remains production-only. Do not point protected previews at production Postgres without an explicit release decision.
+- Live credentialed Discord smoke still requires a maintainer teacher session cookie, a disposable Discord test server, bot install permissions, a saved channel id, a future teacher-owned scheduled class linked to a classroom, and an operator-local smoke cron secret. Record only pass/fail/blocker state and sanitized ids, never credentials.
+- Final `v0.7.0` closeout still requires credentialed live Discord smoke or an explicit manual sign-off decision, then the `v0.7.0` tag.
+
+## Closeout Evidence
+
+Current production deployment:
+
+- Commit: `8faaad63e12665ab5ad3aac9c5b98b97e7c844b3`
+- Deployment id: `dpl_6WEnjrA1kzFcojtn7Nf1KBK5nJvM`
+- Production aliases: `https://open-raic.com`, `https://raic.vercel.app`, `https://raic-vangorestudios-6959s-projects.vercel.app`, and `https://raic-git-main-vangorestudios-6959s-projects.vercel.app`
+- Production health: auth, Discord, encryption, and Postgres storage are ready; MiroFish remains intentionally not configured for this release.
+- Server providers: OpenAI exposes `gpt-4o-mini` through `https://openrouter.ai/api/v1`.
+
+GitHub clean-main gates:
+
+- `main` CI run `26998089920` completed successfully on `8faaad63e12665ab5ad3aac9c5b98b97e7c844b3`.
+- Jobs passed: Lint/Typecheck/Unit, MiroFish Contract Gate, E2E Tests, and Ops Drift.
+
+Production smoke output, run against `https://open-raic.com/` after the production deployment was aliased:
+
+- `npm run smoke:production:milestone`
+  - Result: 12 passed, 0 failed, 0 blocked, 4 skipped.
+  - Discord readiness passed with production scheduled-class env configured.
+  - LLM provider readiness passed with OpenAI enabled and one allowed server model.
+- `npm run smoke:production:classroom`
+  - Result: 3 automated passed, 0 failed, 5 manual checks listed.
+  - Guards confirmed publish-local and scheduled-class APIs remain authenticated.
+- `npm run smoke:discord-beta -- --allow-blockers`
+  - Result: 4 automated passed, 0 failed, 2 blocked, 7 manual checks listed.
+  - Automated guards confirmed teacher auth is required for Discord connection and sync routes, and cron auth is required for reminders.
+  - Remaining blockers require a signed-in maintainer teacher session and operator-local cron/smoke identifiers.
