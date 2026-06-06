@@ -2,7 +2,7 @@
 
 Date: 2026-06-05
 Target release: `v0.7.0`
-Evidence status: release closeout in progress. Clean-main gates, production deployment, automated production smoke evidence, source and deployed package metadata for `v0.7.0`, and the Discord reminder-cron timestamp hotfix are recorded; the final reminder-send sign-off decision and edit/re-sync/delete waiver are recorded; the `v0.7.0` tag remains pending.
+Evidence status: release closeout complete. Clean-main gates, production deployment, automated production smoke evidence, source and deployed package metadata for `v0.7.0`, the Discord reminder-cron timestamp hotfix, the final reminder-send sign-off decision, the edit/re-sync/delete waiver, and the pushed `v0.7.0` tag are recorded.
 
 ## Scope
 
@@ -24,6 +24,7 @@ Evidence status: release closeout in progress. Clean-main gates, production depl
 - Production deployment evidence clarification PR: `#64`, current clean-main baseline `dc6f0c1080771a7c6ae2f0910c89d9fe76ce2f6d`.
 - Release metadata closeout PR: `#65`, merged into `main` as `612874b0b2f947134445ce960fed9cbb7731987c`.
 - Production health evidence PR: `#66`, merged into `main` as `dbabb0d73b65341e05a7dd0e78847a66d0e7fa08`.
+- Release decision evidence PR: `#67`, merged into `main` as `171f8859924c1254b1f9a7694889619c625a0268`.
 - Notable branch commits:
   - `303e30d` `feat: add discord schedule teacher UI`
   - `aade99c` `test: add discord beta smoke gate`
@@ -310,7 +311,7 @@ Manual Discord beta checks printed by the smoke gate:
 - Live credentialed Discord smoke has verified sign-in, Discord install/connection, saved `#general` channel, and scheduled-event sync to Discord.
 - Reminder-send release decision: accept the post-hotfix cron-health evidence as sufficient for the `v0.7.0` production beta release. The failed live reminder proof identified a timestamp-cast bug, PR `#62` fixed and deployed that path, and post-hotfix production logs showed the reminder cron returning `200` without repeat `500` entries in the checked window. A new future-event reminder-send proof remains useful follow-up evidence, but is not required to tag `v0.7.0`.
 - Edit/re-sync/delete release decision: explicitly waive the manual edit/re-sync/delete checklist for `v0.7.0` closeout. Existing automated coverage and the live credentialed sync proof are accepted for the beta release; a full disposable-event edit/re-sync/delete walkthrough remains follow-up release evidence rather than a tag blocker.
-- Final `v0.7.0` closeout still requires final clean gates, refreshed production smokes and live alias checks, then the `v0.7.0` tag.
+- Final `v0.7.0` closeout completed with final clean gates, refreshed production smokes, live alias checks, and the pushed `v0.7.0` tag.
 
 ## Closeout Evidence
 
@@ -322,6 +323,7 @@ Production deployment evidence:
 - Post-evidence docs-only production deployment: `0fdda33b925def2ee839f8f70a74643eec392683` at `https://raic-61mtaqcqq-vangorestudios-6959s-projects.vercel.app`
 - Release metadata closeout deployment: `612874b0b2f947134445ce960fed9cbb7731987c`, with Vercel production status success after PR `#65` merged.
 - Production health evidence deployment: `dbabb0d73b65341e05a7dd0e78847a66d0e7fa08`, with production `/api/health` still reporting `version: "0.7.0"` after PR `#66` merged.
+- Release decision evidence deployment: `171f8859924c1254b1f9a7694889619c625a0268`, with Vercel status success after PR `#67` merged.
 - Public production aliases: `https://open-raic.com` and `https://raic.vercel.app`; `https://www.open-raic.com` redirects to the apex domain.
 - Protected Vercel deployment/project aliases may return Vercel Authentication Required without project access: `https://raic-vangorestudios-6959s-projects.vercel.app`, `https://raic-git-main-vangorestudios-6959s-projects.vercel.app`, and the concrete deployment URLs above.
 - Production health: `/api/health` on `https://open-raic.com` reports version `0.7.0`; auth, Discord, encryption, and Postgres storage are ready; MiroFish remains intentionally not configured for this release.
@@ -335,6 +337,17 @@ GitHub clean-main gates:
 - Release metadata closeout PR `#65` CI run `27071933509` completed successfully on `0adf7f0c54eec08c81605a83ec2b889390663006`; post-merge `main` CI run `27072016394` completed successfully on `612874b0b2f947134445ce960fed9cbb7731987c`.
 - Production health evidence PR `#66` CI run `27072140030` completed successfully on `cfa711192febe3cd88c379103d049f9ec8dd4abf`.
 - Post-PR `#66` `main` CI run `27072225560` completed successfully on `dbabb0d73b65341e05a7dd0e78847a66d0e7fa08`.
+- Release decision evidence PR `#67` CI run `27072359856` completed successfully on `957de2a118bd006b04e186610967d8d88a0fe8f7`.
+- Post-PR `#67` `main` CI run `27072477697` completed successfully on `171f8859924c1254b1f9a7694889619c625a0268`.
+
+Release tag evidence:
+
+- Annotated tag: `v0.7.0`
+- Tag object: `076d1851d9507fb9db3a2a70ee0870e9f644e3e8`
+- Tagged commit: `171f8859924c1254b1f9a7694889619c625a0268`
+- Tag message: `v0.7.0 Discord scheduled-class beta readiness`
+- Tagger timestamp: `2026-06-06T20:07:57Z`
+- Remote verification: `refs/tags/v0.7.0` resolves to tag object `076d1851d9507fb9db3a2a70ee0870e9f644e3e8`; peeled ref `refs/tags/v0.7.0^{}` resolves to commit `171f8859924c1254b1f9a7694889619c625a0268`.
 
 Local continuation verification, 2026-06-06:
 
@@ -365,7 +378,7 @@ Final release decision verification, 2026-06-06:
 - `npm run build`
   - Result: passed; Next.js production build compiled successfully, finished TypeScript, and generated 52 static pages.
 
-Production smoke output, refreshed against `https://open-raic.com/` after the PR `#65` production deployment:
+Production smoke output, refreshed against `https://open-raic.com/` after the PR `#67` production deployment and before tagging:
 
 - `npm run smoke:production:milestone`
   - Result: 12 passed, 0 failed, 0 blocked, 4 skipped.
@@ -378,7 +391,7 @@ Production smoke output, refreshed against `https://open-raic.com/` after the PR
   - Result: 4 automated passed, 0 failed, 2 blocked, 7 manual checks listed.
   - Automated guards confirmed teacher auth is required for Discord connection and sync routes, and cron auth is required for reminders.
   - Remaining blockers require a signed-in maintainer teacher session and operator-local cron/smoke identifiers.
-- Live aliases, refreshed after PR `#65`: `https://open-raic.com` and `https://raic.vercel.app` return `200`, `https://www.open-raic.com` redirects to the apex domain, protected Vercel project/git aliases return `401`, and unauthenticated `/studio` redirects to `/sign-in?next=%2Fstudio`.
+- Live health and aliases, refreshed after PR `#67`: `/api/health` returns `200` with `version: "0.7.0"`; auth, Discord, encryption, and storage ready; MiroFish intentionally not ready. `https://open-raic.com` and `https://raic.vercel.app` return `200`, `https://www.open-raic.com` redirects to the apex domain, protected Vercel project/git aliases return `401`, and unauthenticated `/studio` redirects to `/sign-in?next=%2Fstudio`.
 
 Manual production Discord smoke update, 2026-06-05:
 
