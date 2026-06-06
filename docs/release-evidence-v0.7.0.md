@@ -2,7 +2,7 @@
 
 Date: 2026-06-05
 Target release: `v0.7.0`
-Evidence status: release closeout in progress. Clean-main gates, production deployment, automated production smoke evidence, and the Discord reminder-cron timestamp hotfix are recorded; final live reminder-send sign-off and the `v0.7.0` tag remain pending.
+Evidence status: release closeout in progress. Clean-main gates, production deployment, automated production smoke evidence, source package metadata for `v0.7.0`, and the Discord reminder-cron timestamp hotfix are recorded; edit/re-sync/delete disposition, final deployed health/version recheck, final reminder-send proof or explicit manual sign-off decision, and the `v0.7.0` tag remain pending.
 
 ## Scope
 
@@ -21,6 +21,7 @@ Evidence status: release closeout in progress. Clean-main gates, production depl
 - Google sign-in hotfix PR: `#61`, merged into `main` as `364b5e59da07f63552893b00609b3928fa91145d`.
 - Discord reminder timestamp hotfix PR: `#62`, merged into `main` as `843f1189649eeb0416dca0469d9db3dddd4c766d`.
 - Release evidence update PR: `#63`, merged into `main` as `0fdda33b925def2ee839f8f70a74643eec392683`.
+- Production deployment evidence clarification PR: `#64`, current clean-main baseline `dc6f0c1080771a7c6ae2f0910c89d9fe76ce2f6d`.
 - Notable branch commits:
   - `303e30d` `feat: add discord schedule teacher UI`
   - `aade99c` `test: add discord beta smoke gate`
@@ -303,9 +304,10 @@ Manual Discord beta checks printed by the smoke gate:
 ## Current Blockers
 
 - Secret-safe Vercel env metadata and production `/api/health` now show Discord beta env ready in production, with `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, and `CRON_SECRET` configured.
+- Source package metadata now targets `0.7.0`; before tagging `v0.7.0`, deploy this metadata bump and recheck that production `/api/health` reports version `0.7.0`.
 - Preview env now has Discord, cron, Google OAuth, OpenAI, and branch-scoped Governed Co-Thinking model settings, but Postgres/Neon env remains production-only. Do not point protected previews at production Postgres without an explicit release decision.
-- Live credentialed Discord smoke has verified sign-in, Discord install/connection, saved `#general` channel, and scheduled-event sync to Discord. The remaining release-signoff item is a final future-event reminder-send proof, or an explicit manual decision to accept the post-hotfix cron-health evidence in place of that proof.
-- Final `v0.7.0` closeout still requires that reminder-send sign-off decision, then the `v0.7.0` tag.
+- Live credentialed Discord smoke has verified sign-in, Discord install/connection, saved `#general` channel, and scheduled-event sync to Discord. The edit/re-sync/delete checklist item is not yet recorded as complete or waived, and the reminder-send gate still needs a final future-event proof or an explicit manual decision to accept the post-hotfix cron-health evidence in place of that proof.
+- Final `v0.7.0` closeout still requires the edit/re-sync/delete decision, the reminder-send sign-off decision, then the `v0.7.0` tag.
 
 ## Closeout Evidence
 
@@ -315,14 +317,32 @@ Production deployment evidence:
 - Reminder hotfix deployment id: `dpl_5EdswdM8E7hCKtPQvBVFdKHvMWbE`
 - Reminder hotfix deployment URL: `https://raic-djubi5kkl-vangorestudios-6959s-projects.vercel.app`
 - Post-evidence docs-only production deployment: `0fdda33b925def2ee839f8f70a74643eec392683` at `https://raic-61mtaqcqq-vangorestudios-6959s-projects.vercel.app`
-- Production aliases: `https://open-raic.com`, `https://raic.vercel.app`, `https://raic-vangorestudios-6959s-projects.vercel.app`, and `https://raic-git-main-vangorestudios-6959s-projects.vercel.app`
-- Production health: auth, Discord, encryption, and Postgres storage are ready; MiroFish remains intentionally not configured for this release.
+- Public production aliases: `https://open-raic.com` and `https://raic.vercel.app`; `https://www.open-raic.com` redirects to the apex domain.
+- Protected Vercel deployment/project aliases may return Vercel Authentication Required without project access: `https://raic-vangorestudios-6959s-projects.vercel.app`, `https://raic-git-main-vangorestudios-6959s-projects.vercel.app`, and the concrete deployment URLs above.
+- Production health: auth, Discord, encryption, and Postgres storage are ready; MiroFish remains intentionally not configured for this release. The current live health payload still reports version `0.6.0` from the pre-bump deployment; recheck for version `0.7.0` after deploying the source package metadata bump.
 - Server providers: OpenAI exposes `gpt-4o-mini` through `https://openrouter.ai/api/v1`.
 
 GitHub clean-main gates:
 
 - `main` CI run `27032187550` completed successfully on `843f1189649eeb0416dca0469d9db3dddd4c766d`.
 - Jobs passed: Lint/Typecheck/Unit, MiroFish Contract Gate, E2E Tests, and Ops Drift.
+- Follow-up PR `#64` CI run `27044684142` completed successfully on `dc6f0c1080771a7c6ae2f0910c89d9fe76ce2f6d`.
+
+Local continuation verification, 2026-06-06:
+
+- Before applying this closeout patch, GitHub `main` and local `HEAD` both resolved to `dc6f0c1080771a7c6ae2f0910c89d9fe76ce2f6d`; `v0.7.0` was still absent locally and remotely.
+- `npm test -- tests/components/google-sign-in-button.test.tsx tests/server/scheduled-classes-repository.test.ts`
+  - Result: 2 files passed, 7 tests passed.
+- `npm run check`
+  - Result: passed; all matched files use Prettier code style.
+- `npm test`
+  - Result on local Node `v22.11.0`: 149 files passed, 1 skipped; 901 tests passed, 3 skipped.
+- Node 24 release-parity checks used bundled Node `v24.14.0`.
+  - `npm test -- tests/components/google-sign-in-button.test.tsx tests/server/scheduled-classes-repository.test.ts`: 2 files passed, 7 tests passed.
+  - `npm run check`: passed; all matched files use Prettier code style.
+  - `npm test`: 149 files passed, 1 skipped; 901 tests passed, 3 skipped.
+  - `npm run lint`: passed after rehydrating the frozen pnpm dependency install; the previous ESLint stall was caused by a corrupted local `node_modules/.pnpm/es-abstract@1.24.1` materialization, not the three-file source diff.
+  - `npm run build`: passed after clearing ignored local runtime/build artifacts from `.next`, `data/* 4`, `data/* 7`, `data/* 12`, and a generated duplicate `packages/mathml2omml/dist/index.d 2.ts`.
 
 Production smoke output, run against `https://open-raic.com/` after the production deployment was aliased:
 
@@ -346,4 +366,4 @@ Manual production Discord smoke update, 2026-06-05:
 - The 09:55 AKDT production reminder cron for `Open-RAIC Discord Reminder Smoke 2` returned `500` with Postgres error `column "updated_at" is of type timestamp with time zone but expression is of type text`. PR `#62` fixed the reminder claim/finalize/release SQL by casting timestamp parameters to `timestamptz`.
 - PR `#62` passed GitHub checks and was merged to `main` as `843f1189649eeb0416dca0469d9db3dddd4c766d`; production deployed it as `dpl_5EdswdM8E7hCKtPQvBVFdKHvMWbE`.
 - After the hotfix deployment, Vercel production logs showed `/api/cron/discord-scheduled-class-reminders` returning `200` at 10:20:35 AKDT and 10:25:35 AKDT on `raic-djubi5kkl-vangorestudios-6959s-projects.vercel.app`, with no production `500` entries in the checked window.
-- A final live reminder-send proof still needs a future synced scheduled class inside the reminder window, or an explicit release decision to accept the post-hotfix cron-health evidence as sufficient for `v0.7.0`.
+- Edit/re-sync/delete cleanup evidence is not yet recorded as complete or waived. A final live reminder-send proof still needs a future synced scheduled class inside the reminder window, or an explicit release decision to accept the post-hotfix cron-health evidence as sufficient for `v0.7.0`.

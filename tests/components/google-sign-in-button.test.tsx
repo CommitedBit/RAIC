@@ -8,6 +8,11 @@ const scriptMockState = vi.hoisted(() => ({
   onLoad: null as null | (() => void),
 }));
 
+const routerMockState = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+}));
+
 vi.mock('next/script', async () => {
   const React = await import('react');
   return {
@@ -19,10 +24,7 @@ vi.mock('next/script', async () => {
 });
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    refresh: vi.fn(),
-  }),
+  useRouter: () => routerMockState,
 }));
 
 vi.mock('@/components/ui/button', async () => {
@@ -61,6 +63,9 @@ describe('GoogleSignInButton', () => {
     vi.unstubAllGlobals();
     vi.stubGlobal('fetch', vi.fn());
     scriptMockState.onLoad = null;
+    routerMockState.push.mockReset();
+    routerMockState.refresh.mockReset();
+    delete (window as Window & { google?: unknown }).google;
     delete process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   });
 
@@ -74,6 +79,7 @@ describe('GoogleSignInButton', () => {
       });
       mounted.container.remove();
     }
+    delete (window as Window & { google?: unknown }).google;
   });
 
   it('shows a configuration warning when the public Google client id is missing', async () => {
@@ -121,10 +127,16 @@ describe('GoogleSignInButton', () => {
 
   it('initializes Google sign-in with the popup callback flow', async () => {
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'google-client-id';
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => Response.json({ nonce: 'nonce-123' })),
-    );
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (input === '/api/auth/nonce') {
+        return Response.json({ nonce: 'nonce-123' });
+      }
+      if (input === '/api/auth/google') {
+        return Response.json({ success: true, redirectTo: '/studio' });
+      }
+      return Response.json({ error: 'Unexpected request' }, { status: 500 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     const initialize = vi.fn();
     const renderButton = vi.fn();
@@ -156,10 +168,37 @@ describe('GoogleSignInButton', () => {
         use_fedcm_for_prompt: false,
       }),
     );
+    const initializeOptions = initialize.mock.calls[0]?.[0] as
+      | { callback?: (response: { credential?: string }) => Promise<void> | void }
+      | undefined;
+    expect(initializeOptions?.callback).toEqual(expect.any(Function));
     expect(renderButton).toHaveBeenCalledWith(
       expect.any(HTMLDivElement),
       expect.objectContaining({ text: 'signin_with' }),
     );
+
+    await act(async () => {
+      await initializeOptions?.callback?.({ credential: 'google-jwt' });
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/auth/nonce', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/auth/google', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        credential: 'google-jwt',
+        redirectTo: '/studio',
+      }),
+    });
+    expect(routerMockState.push).toHaveBeenCalledWith('/studio');
+    expect(routerMockState.refresh).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain('Google sign-in is limited');
   });
 });
