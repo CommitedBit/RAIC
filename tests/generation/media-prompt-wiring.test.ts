@@ -176,8 +176,18 @@ describe('media prompt wiring', () => {
       id: GOVERNED_CO_THINKING_PRESET,
       labelKey: 'toolbar.governedCoThinkingPreset',
       hintKey: 'toolbar.governedCoThinkingPresetHint',
+      composerTitleKey: 'toolbar.governedCoThinkingActiveTitle',
+      composerHintKey: 'toolbar.governedCoThinkingActiveHint',
+      composerPlaceholderKey: 'toolbar.governedCoThinkingPlaceholder',
       sourceRequirement: 'none',
     });
+    expect(governedDefinition?.checkpointKeys).toEqual([
+      'toolbar.governedCoThinkingCheckpointIntention',
+      'toolbar.governedCoThinkingCheckpointSteering',
+      'toolbar.governedCoThinkingCheckpointVerification',
+      'toolbar.governedCoThinkingCheckpointAuthorship',
+      'toolbar.governedCoThinkingCheckpointTransfer',
+    ]);
     expect(getAvailableExperiencePresetDefinitions()).toContain(governedDefinition);
   });
 

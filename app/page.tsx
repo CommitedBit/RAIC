@@ -970,6 +970,13 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
   const interactiveModeStateLabel = form.interactiveMode
     ? t('toolbar.interactiveModeOn')
     : t('toolbar.interactiveModeOff');
+  const governedCoThinkingSelected = form.experiencePreset === GOVERNED_CO_THINKING_PRESET;
+  const requirementPlaceholder =
+    form.creationMode === 'game-arcade'
+      ? t('upload.gameRequirementPlaceholder')
+      : governedCoThinkingSelected && GOVERNED_CO_THINKING_PRESET_DEFINITION?.composerPlaceholderKey
+        ? t(GOVERNED_CO_THINKING_PRESET_DEFINITION.composerPlaceholderKey)
+        : t('upload.requirementPlaceholder');
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -1366,6 +1373,44 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
               </div>
             </div>
 
+            {governedCoThinkingSelected ? (
+              <div
+                data-testid="governed-co-thinking-active-panel"
+                className="mx-3 mt-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-emerald-950 shadow-sm dark:border-emerald-800/70 dark:bg-emerald-950/30 dark:text-emerald-100"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold">
+                      <Brain className="size-3.5 shrink-0" />
+                      {t(
+                        GOVERNED_CO_THINKING_PRESET_DEFINITION?.composerTitleKey ??
+                          'toolbar.governedCoThinkingPreset',
+                      )}
+                    </div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-emerald-800 dark:text-emerald-200/85">
+                      {t(
+                        GOVERNED_CO_THINKING_PRESET_DEFINITION?.composerHintKey ??
+                          'toolbar.governedCoThinkingPresetHint',
+                      )}
+                    </p>
+                  </div>
+                  <div className="grid shrink-0 grid-cols-2 gap-1 sm:grid-cols-1">
+                    {(GOVERNED_CO_THINKING_PRESET_DEFINITION?.checkpointKeys ?? []).map(
+                      (checkpointKey) => (
+                        <div
+                          key={checkpointKey}
+                          className="inline-flex min-h-5 items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-100 dark:ring-emerald-800/70"
+                        >
+                          <Check className="size-3 shrink-0" />
+                          <span>{t(checkpointKey)}</span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {/* Textarea */}
             <label htmlFor="requirement-input" className="sr-only">
               {t('upload.requirementPlaceholder')}
@@ -1375,11 +1420,7 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
               ref={textareaRef}
               data-testid="requirement-input"
               aria-label={t('upload.requirementPlaceholder')}
-              placeholder={
-                form.creationMode === 'game-arcade'
-                  ? t('upload.gameRequirementPlaceholder')
-                  : t('upload.requirementPlaceholder')
-              }
+              placeholder={requirementPlaceholder}
               className="w-full resize-none border-0 bg-transparent px-4 pt-1 pb-2 text-[13px] leading-relaxed placeholder:text-muted-foreground/40 focus:outline-none min-h-[140px] max-h-[300px]"
               value={form.requirement}
               onChange={(e) => updateForm('requirement', e.target.value)}
