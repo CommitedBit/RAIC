@@ -270,12 +270,13 @@ export function LiveClassroomCockpit({
 
   return (
     <div
+      data-testid="live-classroom-cockpit"
       className={cn(
-        'pointer-events-none absolute inset-x-4 top-4 z-30 flex flex-col gap-3',
+        'pointer-events-none absolute inset-x-4 bottom-4 top-4 z-30 flex min-h-0 flex-col gap-3',
         className,
       )}
     >
-      <div className="pointer-events-auto mx-auto flex w-full max-w-5xl items-center justify-between gap-3 rounded-3xl border border-white/40 bg-white/88 px-4 py-3 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/76">
+      <div className="pointer-events-auto mx-auto flex w-full max-w-5xl shrink-0 flex-col gap-3 rounded-3xl border border-white/40 bg-white/88 px-4 py-3 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-slate-950/76">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300">
             <Sparkles className="size-3.5" />
@@ -306,7 +307,7 @@ export function LiveClassroomCockpit({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
           <Button
             type="button"
             variant="outline"
@@ -333,329 +334,340 @@ export function LiveClassroomCockpit({
       </div>
 
       {open ? (
-        <div className="pointer-events-auto ml-auto w-full max-w-[28rem] overflow-hidden rounded-3xl border border-white/35 bg-white/92 shadow-[0_25px_60px_-26px_rgba(15,23,42,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/86">
-          <div className="grid gap-5 p-4">
-            <section className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
+        <div
+          data-testid="live-classroom-cockpit-panel"
+          className="pointer-events-auto ml-auto flex max-h-full min-h-0 w-full max-w-[28rem] flex-1 flex-col overflow-hidden rounded-3xl border border-white/35 bg-white/92 shadow-[0_25px_60px_-26px_rgba(15,23,42,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/86"
+        >
+          <div
+            data-testid="live-classroom-cockpit-scroll"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+          >
+            <div className="grid gap-5">
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      AI approval inbox
+                    </h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Teacher approval is required before these suggestions run.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                    {pendingApprovalCount} pending
+                  </Badge>
+                </div>
+                <div className="space-y-3">
+                  {approvalItems.length > 0 ? (
+                    approvalItems.map((item) => (
+                      <ApprovalCard
+                        key={item.id}
+                        item={item}
+                        onApprove={onApproveApproval}
+                        onReject={onRejectApproval}
+                        onEdit={onEditApproval}
+                      />
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                      No approvals waiting right now.
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <Separator />
+
+              <section className="space-y-3">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    AI approval inbox
+                    Scene rail
                   </h2>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Teacher approval is required before these suggestions run.
+                    Move through the live lesson without leaving the stage.
                   </p>
                 </div>
-                <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
-                  {pendingApprovalCount} pending
-                </Badge>
-              </div>
-              <div className="space-y-3">
-                {approvalItems.length > 0 ? (
-                  approvalItems.map((item) => (
-                    <ApprovalCard
-                      key={item.id}
-                      item={item}
-                      onApprove={onApproveApproval}
-                      onReject={onRejectApproval}
-                      onEdit={onEditApproval}
-                    />
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
-                    No approvals waiting right now.
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => previousScene && onSelectScene(previousScene.id)}
+                    disabled={!previousScene || !viewerCanControlPresentation}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                      <ChevronLeft className="size-3.5" />
+                      Previous
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {previousScene?.title || 'No earlier scene'}
+                    </p>
+                  </button>
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-3 dark:border-sky-900/40 dark:bg-sky-950/30">
+                    <div className="flex items-center gap-2 text-xs font-medium text-sky-700 dark:text-sky-300">
+                      <Presentation className="size-3.5" />
+                      Current
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {currentSceneTitle || 'Untitled scene'}
+                    </p>
                   </div>
-                )}
-              </div>
-            </section>
-
-            <Separator />
-
-            <section className="space-y-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Scene rail
-                </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Move through the live lesson without leaving the stage.
-                </p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <button
-                  type="button"
-                  onClick={() => previousScene && onSelectScene(previousScene.id)}
-                  disabled={!previousScene || !viewerCanControlPresentation}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
-                >
-                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    <ChevronLeft className="size-3.5" />
-                    Previous
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {previousScene?.title || 'No earlier scene'}
-                  </p>
-                </button>
-                <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-3 dark:border-sky-900/40 dark:bg-sky-950/30">
-                  <div className="flex items-center gap-2 text-xs font-medium text-sky-700 dark:text-sky-300">
-                    <Presentation className="size-3.5" />
-                    Current
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {currentSceneTitle || 'Untitled scene'}
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => nextScene && onSelectScene(nextScene.id)}
+                    disabled={!nextScene || !viewerCanControlPresentation}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Next
+                      <ChevronRight className="size-3.5" />
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {nextScene?.title || 'No later scene'}
+                    </p>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => nextScene && onSelectScene(nextScene.id)}
-                  disabled={!nextScene || !viewerCanControlPresentation}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
-                >
-                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Next
-                    <ChevronRight className="size-3.5" />
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {nextScene?.title || 'No later scene'}
-                  </p>
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={!viewerCanControlPresentation}
-                  onClick={onPreviousScene}
-                >
-                  <ChevronLeft />
-                  Previous
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={!viewerCanControlPresentation}
-                  onClick={onNextScene}
-                >
-                  <ChevronRight />
-                  Next
-                </Button>
-                {onReplayScene ? (
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     disabled={!viewerCanControlPresentation}
-                    onClick={onReplayScene}
+                    onClick={onPreviousScene}
                   >
-                    <RotateCcw />
-                    Replay scene
+                    <ChevronLeft />
+                    Previous
                   </Button>
-                ) : null}
-              </div>
-            </section>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!viewerCanControlPresentation}
+                    onClick={onNextScene}
+                  >
+                    <ChevronRight />
+                    Next
+                  </Button>
+                  {onReplayScene ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={!viewerCanControlPresentation}
+                      onClick={onReplayScene}
+                    >
+                      <RotateCcw />
+                      Replay scene
+                    </Button>
+                  ) : null}
+                </div>
+              </section>
 
-            <Separator />
+              <Separator />
 
-            <section className="space-y-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Student pulse
-                </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Lightweight live presence for the current classroom.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                    Students
-                  </div>
-                  <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {studentCount}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                    Hands
-                  </div>
-                  <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {handRaiseCount}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Help</div>
-                  <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {helpCount}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                    Controller
-                  </div>
-                  <div className="mt-2 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {controllerDisplayName}
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
-                {sortedStudentParticipants.length > 0 ? (
-                  <div className="space-y-2">
-                    {sortedStudentParticipants.slice(0, 5).map((participant) => {
-                      const activityLabel = getParticipantActivityLabel(participant.lastSeenAt);
-                      return (
-                        <ParticipantPresenceCard
-                          key={participant.sessionId}
-                          variant="compact-card"
-                          name={participant.displayName}
-                          status={activityLabel.state}
-                          activityLabel={activityLabel.label}
-                          chips={[
-                            ...(participant.isController
-                              ? [
-                                  {
-                                    key: 'controller',
-                                    label: 'Controller',
-                                    variant: 'default' as const,
-                                  },
-                                ]
-                              : []),
-                          ]}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    No student classroom sessions are active yet.
+              <section className="space-y-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Student pulse
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Lightweight live presence for the current classroom.
                   </p>
-                )}
-              </div>
-            </section>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                      Students
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      {studentCount}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                      Hands
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      {handRaiseCount}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                      Help
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      {helpCount}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                      Controller
+                    </div>
+                    <div className="mt-2 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {controllerDisplayName}
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                  {sortedStudentParticipants.length > 0 ? (
+                    <div className="space-y-2">
+                      {sortedStudentParticipants.slice(0, 5).map((participant) => {
+                        const activityLabel = getParticipantActivityLabel(participant.lastSeenAt);
+                        return (
+                          <ParticipantPresenceCard
+                            key={participant.sessionId}
+                            variant="compact-card"
+                            name={participant.displayName}
+                            status={activityLabel.state}
+                            activityLabel={activityLabel.label}
+                            chips={[
+                              ...(participant.isController
+                                ? [
+                                    {
+                                      key: 'controller',
+                                      label: 'Controller',
+                                      variant: 'default' as const,
+                                    },
+                                  ]
+                                : []),
+                            ]}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      No student classroom sessions are active yet.
+                    </p>
+                  )}
+                </div>
+              </section>
 
-            <Separator />
+              <Separator />
 
-            <section className="space-y-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Surface switcher
-                </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Move between lesson, whiteboard, simulation, and report without leaving class.
-                </p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <SurfaceButton
-                  active={activeSurface === 'lesson' && !whiteboardOpen}
-                  icon={<BookOpen />}
-                  label="Lesson"
-                  disabled={!viewerCanControlPresentation}
-                  onClick={() => onSetPresentationSurface('lesson')}
-                />
-                <SurfaceButton
-                  active={whiteboardOpen}
-                  icon={<PenSquare />}
-                  label="Whiteboard"
-                  disabled={!viewerCanControlPresentation}
-                  onClick={onToggleWhiteboard}
-                />
-                <SurfaceButton
-                  active={activeSurface === 'simulation'}
-                  icon={<MonitorPlay />}
-                  label="Simulation"
-                  disabled={!viewerCanControlPresentation || !simulationAvailable}
-                  onClick={() => onSetPresentationSurface('simulation')}
-                />
-                <SurfaceButton
-                  active={activeSurface === 'report'}
-                  icon={<FileBarChart2 />}
-                  label="Report"
-                  disabled={!viewerCanControlPresentation || !reportAvailable}
-                  onClick={() => onSetPresentationSurface('report')}
-                />
-              </div>
-            </section>
+              <section className="space-y-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Surface switcher
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Move between lesson, whiteboard, simulation, and report without leaving class.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <SurfaceButton
+                    active={activeSurface === 'lesson' && !whiteboardOpen}
+                    icon={<BookOpen />}
+                    label="Lesson"
+                    disabled={!viewerCanControlPresentation}
+                    onClick={() => onSetPresentationSurface('lesson')}
+                  />
+                  <SurfaceButton
+                    active={whiteboardOpen}
+                    icon={<PenSquare />}
+                    label="Whiteboard"
+                    disabled={!viewerCanControlPresentation}
+                    onClick={onToggleWhiteboard}
+                  />
+                  <SurfaceButton
+                    active={activeSurface === 'simulation'}
+                    icon={<MonitorPlay />}
+                    label="Simulation"
+                    disabled={!viewerCanControlPresentation || !simulationAvailable}
+                    onClick={() => onSetPresentationSurface('simulation')}
+                  />
+                  <SurfaceButton
+                    active={activeSurface === 'report'}
+                    icon={<FileBarChart2 />}
+                    label="Report"
+                    disabled={!viewerCanControlPresentation || !reportAvailable}
+                    onClick={() => onSetPresentationSurface('report')}
+                  />
+                </div>
+              </section>
 
-            <Separator />
+              <Separator />
 
-            <section className="space-y-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Safety lock
-                </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Freeze live prompts, mute narration, and keep the teacher in control.
-                </p>
-              </div>
-              <div className="grid gap-2">
-                <Button type="button" variant="outline" onClick={onTogglePromptsLock}>
-                  <Shield />
-                  {promptsLocked ? 'Unlock live prompts' : 'Freeze live prompts'}
-                </Button>
-                <Button type="button" variant="outline" onClick={onToggleNarrationMute}>
-                  {ttsMuted ? <Volume2 /> : <VolumeX />}
-                  {ttsMuted ? 'Unmute narration' : 'Mute narration'}
-                </Button>
-                <Button type="button" variant="outline" onClick={onToggleAutoPlay}>
-                  <Waves />
-                  {autoPlayEnabled ? 'Disable autoplay' : 'Enable autoplay'}
-                </Button>
-                <Button type="button" variant="outline" onClick={onRecoverToLesson}>
-                  <BookOpen />
-                  Recover to lesson
-                </Button>
-                {viewerCanManageSimulation || viewerCanControlPresentation ? (
-                  <Button type="button" variant="outline" onClick={onOpenAdvancedControls}>
-                    <Wand2 />
-                    Advanced controls
+              <section className="space-y-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Safety lock
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Freeze live prompts, mute narration, and keep the teacher in control.
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <Button type="button" variant="outline" onClick={onTogglePromptsLock}>
+                    <Shield />
+                    {promptsLocked ? 'Unlock live prompts' : 'Freeze live prompts'}
                   </Button>
-                ) : null}
-              </div>
-            </section>
+                  <Button type="button" variant="outline" onClick={onToggleNarrationMute}>
+                    {ttsMuted ? <Volume2 /> : <VolumeX />}
+                    {ttsMuted ? 'Unmute narration' : 'Mute narration'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={onToggleAutoPlay}>
+                    <Waves />
+                    {autoPlayEnabled ? 'Disable autoplay' : 'Enable autoplay'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={onRecoverToLesson}>
+                    <BookOpen />
+                    Recover to lesson
+                  </Button>
+                  {viewerCanManageSimulation || viewerCanControlPresentation ? (
+                    <Button type="button" variant="outline" onClick={onOpenAdvancedControls}>
+                      <Wand2 />
+                      Advanced controls
+                    </Button>
+                  ) : null}
+                </div>
+              </section>
 
-            <Separator />
+              <Separator />
 
-            <section className="space-y-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Quick intervene
-                </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Inject a teacher-approved prompt into the live class without leaving the cockpit.
-                </p>
-              </div>
-              <Textarea
-                value={interventionDraft}
-                onChange={(event) => setInterventionDraft(event.target.value)}
-                placeholder="Ask the AI teacher to slow down, clarify a term, or recap a key idea."
-                className="min-h-24 bg-white/80 text-sm dark:bg-slate-900/80"
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  disabled={!viewerCanControlPresentation}
-                  onClick={() => {
-                    const nextPrompt = interventionDraft.trim();
-                    if (!nextPrompt) {
-                      return;
-                    }
+              <section className="space-y-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Quick intervene
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Inject a teacher-approved prompt into the live class without leaving the
+                    cockpit.
+                  </p>
+                </div>
+                <Textarea
+                  value={interventionDraft}
+                  onChange={(event) => setInterventionDraft(event.target.value)}
+                  placeholder="Ask the AI teacher to slow down, clarify a term, or recap a key idea."
+                  className="min-h-24 bg-white/80 text-sm dark:bg-slate-900/80"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    disabled={!viewerCanControlPresentation}
+                    onClick={() => {
+                      const nextPrompt = interventionDraft.trim();
+                      if (!nextPrompt) {
+                        return;
+                      }
 
-                    void onSendTeacherPrompt(nextPrompt);
-                    setInterventionDraft('');
-                  }}
-                >
-                  <Sparkles />
-                  Send intervention
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setInterventionDraft('')}
-                  disabled={!interventionDraft.trim()}
-                >
-                  Clear
-                </Button>
-              </div>
-            </section>
+                      void onSendTeacherPrompt(nextPrompt);
+                      setInterventionDraft('');
+                    }}
+                  >
+                    <Sparkles />
+                    Send intervention
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setInterventionDraft('')}
+                    disabled={!interventionDraft.trim()}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       ) : null}

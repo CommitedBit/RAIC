@@ -194,6 +194,26 @@ describe('LiveClassroomCockpit', () => {
     expect(props.onApproveApproval).toHaveBeenCalledWith(approval);
   });
 
+  it('bounds the expanded cockpit controls in an internal scroll container', async () => {
+    const { container } = await mountCockpit();
+
+    const cockpit = container.querySelector('[data-testid="live-classroom-cockpit"]');
+    const panel = container.querySelector('[data-testid="live-classroom-cockpit-panel"]');
+    const scroll = container.querySelector('[data-testid="live-classroom-cockpit-scroll"]');
+
+    expect(cockpit).toBeTruthy();
+    expect(panel).toBeTruthy();
+    expect(scroll).toBeTruthy();
+    expect(cockpit?.className).toContain('bottom-4');
+    expect(cockpit?.className).toContain('min-h-0');
+    expect(panel?.className).toContain('max-h-full');
+    expect(panel?.className).toContain('flex-1');
+    expect(panel?.className).toContain('overflow-hidden');
+    expect(scroll?.className).toContain('overflow-y-auto');
+    expect(scroll?.textContent).toContain('Quick intervene');
+    expect(scroll?.textContent).toContain('Advanced controls');
+  });
+
   it('supports editing approval prompts and sending quick interventions', async () => {
     const { container, props, approval } = await mountCockpit();
 
