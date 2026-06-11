@@ -1,6 +1,7 @@
 import { after, type NextRequest } from 'next/server';
 import { nanoid } from 'nanoid';
 import { requireRequestRole } from '@/lib/auth/authorize';
+import type { AuthContext } from '@/lib/auth/current-user';
 import {
   apiErrorWithRequestSession,
   apiSuccessWithRequestSession,
@@ -18,6 +19,11 @@ import {
   experiencePresetRequiresSource,
   HISTORY_VLOG_SOURCE_REQUIRED_MESSAGE,
 } from '@/lib/generation/experience-presets';
+import {
+  isGovernedProviderResolutionError,
+  resolveGovernedProviderConfig,
+} from '@/lib/server/ai-governance';
+import { recordRequestFailureTelemetry } from '@/lib/server/request-failure-telemetry';
 import type { ScheduledClassGenerationInput } from '@/lib/types/scheduled-classes';
 
 const log = createLogger('GenerateClassroom API');
@@ -38,6 +44,24 @@ type GenerateClassroomRequestBody = Partial<GenerateClassroomInput> & {
 
 function buildPollUrl(req: NextRequest, jobId: string): string {
   return new URL(`/api/generate-classroom/${jobId}`, req.nextUrl.origin).toString();
+}
+
+async function hasConfiguredWebSearchSource(auth: AuthContext): Promise<boolean> {
+  try {
+    await resolveGovernedProviderConfig({
+      auth,
+      organizationId: auth.organization?.id ?? null,
+      family: 'webSearch',
+      providerId: 'tavily',
+      mode: 'background',
+    });
+    return true;
+  } catch (error) {
+    if (isGovernedProviderResolutionError(error)) {
+      return false;
+    }
+    throw error;
+  }
 }
 
 function readScheduledClassGenerationInput(value: unknown): ScheduledClassGenerationInput | null {
@@ -66,15 +90,15 @@ function readScheduledClassGenerationInput(value: unknown): ScheduledClassGenera
 }
 
 export async function POST(req: NextRequest) {
-  let requirementSnippet: string | undefined;
+  let authContext: AuthContext | null = null;
   try {
     const auth = await requireRequestRole(req, ['teacher']);
     if ('status' in auth) {
       return auth;
     }
+    authContext = auth;
 
     const rawBody = (await req.json()) as GenerateClassroomRequestBody;
-    requirementSnippet = rawBody.requirement?.substring(0, 60);
     const rawScheduledClass = readScheduledClassGenerationInput(rawBody.scheduledClass);
     const normalizedScheduledClass = rawScheduledClass
       ? normalizeScheduledClassInput(rawScheduledClass, { requireFutureStart: true })
@@ -142,12 +166,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const sourceRequired = experiencePresetRequiresSource(body.experiencePreset);
     const hasPdfSource = Boolean(rawBody.pdfContent?.text?.trim());
-    if (
-      experiencePresetRequiresSource(body.experiencePreset) &&
-      !body.enableWebSearch &&
-      !hasPdfSource
-    ) {
+    const hasWebSearchSource =
+      sourceRequired && !hasPdfSource && body.enableWebSearch
+        ? await hasConfiguredWebSearchSource(auth)
+        : false;
+    if (sourceRequired && !hasPdfSource && !hasWebSearchSource) {
+      await recordRequestFailureTelemetry({
+        auth,
+        request: req,
+        routeId: 'generate-classroom',
+        status: 400,
+        errorCode: 'INVALID_REQUEST',
+        failureSource: 'source_preflight',
+        providerId: body.enableWebSearch ? 'tavily' : null,
+        taskBucket: 'webSearch',
+      });
       return apiErrorWithRequestSession(
         req,
         'INVALID_REQUEST',
@@ -195,10 +230,16 @@ export async function POST(req: NextRequest) {
       202,
     );
   } catch (error) {
-    log.error(
-      `Classroom generation job creation failed [requirement="${requirementSnippet ?? 'unknown'}..."]:`,
+    log.error('Classroom generation job creation failed:', error);
+    await recordRequestFailureTelemetry({
+      auth: authContext,
+      request: req,
+      routeId: 'generate-classroom',
+      status: 500,
+      errorCode: 'INTERNAL_ERROR',
+      failureSource: 'job_creation',
       error,
-    );
+    });
     return apiErrorWithRequestSession(
       req,
       'INTERNAL_ERROR',

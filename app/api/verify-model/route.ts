@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { generateText } from 'ai';
 import { getRequestAuth } from '@/lib/auth/current-user';
+import type { AuthContext } from '@/lib/auth/current-user';
 import { createLogger } from '@/lib/logger';
 import {
   apiErrorWithRequestSession,
@@ -10,10 +11,12 @@ import {
 import { toGovernedProviderApiErrorResponse } from '@/lib/server/ai-governance';
 import { remapModelVerificationError } from '@/lib/server/model-verification-errors';
 import { resolveVerificationModelScenario } from '@/lib/server/provider-scenario-routing';
+import { recordRequestFailureTelemetry } from '@/lib/server/request-failure-telemetry';
 import { resolveModel } from '@/lib/server/resolve-model';
 const log = createLogger('Verify Model');
 
 export async function POST(req: NextRequest) {
+  let auth: AuthContext | null = null;
   let model: string | undefined;
   let testedModel: string | undefined;
   let requestedBaseUrl: string | undefined;
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
     model = body.model;
     testedModel = model;
     requestedBaseUrl = baseUrl || undefined;
-    const auth = await getRequestAuth(req);
+    auth = await getRequestAuth(req);
     const usesLegacyLocalConfig = Boolean(apiKey || baseUrl);
 
     if (!model) {
@@ -69,9 +72,31 @@ export async function POST(req: NextRequest) {
       return await (async () => {
         const governanceError = toGovernedProviderApiErrorResponse(error);
         if (governanceError) {
+          await recordRequestFailureTelemetry({
+            auth,
+            request: req,
+            routeId: 'verify-model',
+            status: governanceError.status,
+            errorCode: 'GOVERNED_PROVIDER_ERROR',
+            failureSource: 'provider_governance',
+            error,
+            modelId: testedModel || model,
+            taskBucket: 'scene',
+          });
           return withRequestWebSession(req, governanceError);
         }
 
+        await recordRequestFailureTelemetry({
+          auth,
+          request: req,
+          routeId: 'verify-model',
+          status: 401,
+          errorCode: 'INVALID_REQUEST',
+          failureSource: 'model_resolution',
+          error,
+          modelId: testedModel || model,
+          taskBucket: 'scene',
+        });
         return apiErrorWithRequestSession(
           req,
           'INVALID_REQUEST',
@@ -131,6 +156,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    await recordRequestFailureTelemetry({
+      auth,
+      request: req,
+      routeId: 'verify-model',
+      status: 500,
+      errorCode: 'INTERNAL_ERROR',
+      failureSource: 'provider_request',
+      error,
+      modelId: testedModel || model || 'unknown',
+      taskBucket: 'scene',
+    });
     return apiErrorWithRequestSession(req, 'INTERNAL_ERROR', 500, errorMessage);
   }
 }

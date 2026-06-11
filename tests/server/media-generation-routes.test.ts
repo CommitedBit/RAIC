@@ -341,6 +341,139 @@ describe('media generation routes', () => {
     });
   });
 
+  it('routes image generation through the scenario-managed candidate when the requested provider is outside the profile', async () => {
+    getProviderScenarioProfileMock.mockReturnValue({
+      id: 'teacher-differentiation-v1',
+      description: 'Scenario-managed provider routing.',
+      buckets: {
+        image: [{ providerId: 'seedream', modelId: 'doubao-seedream-5-0-260128' }],
+      },
+    });
+    generateImageMock.mockResolvedValue({ url: 'https://cdn.example.com/image.png' });
+
+    const { POST } = await import('@/app/api/generate/image/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/image', {
+        method: 'POST',
+        headers: {
+          'x-image-provider': 'qwen-image',
+          'x-image-model': 'qwen-image-max',
+        },
+        body: JSON.stringify({
+          prompt: 'A fallback image test',
+          aspectRatio: '16:9',
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(resolveGovernedProviderConfigMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        family: 'image',
+        providerId: 'seedream',
+        requestedModel: 'doubao-seedream-5-0-260128',
+      }),
+    );
+    expect(generateImageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerId: 'seedream',
+        model: 'doubao-seedream-5-0-260128',
+      }),
+      expect.objectContaining({
+        prompt: 'A fallback image test',
+        width: 1280,
+        height: 720,
+      }),
+    );
+    expect(appendAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'provider_scenario.route_selected',
+        resourceType: 'provider_scenario',
+        resourceId: 'generate-image',
+        metadata: expect.objectContaining({
+          scenarioProfileId: 'teacher-differentiation-v1',
+          taskBucket: 'image',
+          routeId: 'generate-image',
+          selectedProviderId: 'seedream',
+          selectedModelId: 'doubao-seedream-5-0-260128',
+          validationStatus: 'selected',
+          requestedProviderId: 'qwen-image',
+          requestedModelId: 'qwen-image-max',
+        }),
+      }),
+    );
+    expect(body).toEqual({
+      success: true,
+      result: { url: 'https://cdn.example.com/image.png' },
+    });
+  });
+
+  it('records sanitized provider-scenario request failure telemetry after image route selection', async () => {
+    getProviderScenarioProfileMock.mockReturnValue({
+      id: 'teacher-differentiation-v1',
+      description: 'Scenario-managed provider routing.',
+      buckets: {
+        image: [{ providerId: 'seedream', modelId: 'doubao-seedream-5-0-260128' }],
+      },
+    });
+    generateImageMock.mockRejectedValue(
+      Object.assign(new Error('upstream failed'), {
+        code: 'E_UPSTREAM',
+        status: 502,
+      }),
+    );
+
+    const { POST } = await import('@/app/api/generate/image/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/image', {
+        method: 'POST',
+        headers: {
+          'x-image-provider': 'qwen-image',
+          'x-image-model': 'qwen-image-max',
+          'x-image-api-key': 'client-secret-key',
+          'x-image-base-url': 'https://private-provider.example/v1',
+        },
+        body: JSON.stringify({
+          prompt: 'A failing private prompt that must not be audited',
+          aspectRatio: '16:9',
+        }),
+      }),
+    );
+    const body = await response.json();
+    const failureAudit = appendAuditLogMock.mock.calls.find(
+      ([input]) => input.action === 'provider_scenario.request_failed',
+    )?.[0];
+
+    expect(response.status).toBe(500);
+    expect(body.errorCode).toBe('INTERNAL_ERROR');
+    expect(failureAudit).toEqual(
+      expect.objectContaining({
+        action: 'provider_scenario.request_failed',
+        resourceType: 'provider_scenario',
+        resourceId: 'generate-image',
+        metadata: expect.objectContaining({
+          scenarioProfileId: 'teacher-differentiation-v1',
+          routeId: 'generate-image',
+          method: 'POST',
+          path: '/api/generate/image',
+          status: 500,
+          errorCode: 'INTERNAL_ERROR',
+          failureSource: 'provider_request',
+          providerId: 'seedream',
+          modelId: 'doubao-seedream-5-0-260128',
+          taskBucket: 'image',
+          errorName: 'Error',
+          upstreamCode: 'E_UPSTREAM',
+          upstreamStatus: 502,
+        }),
+      }),
+    );
+    expect(JSON.stringify(failureAudit?.metadata)).not.toContain('failing private prompt');
+    expect(JSON.stringify(failureAudit?.metadata)).not.toContain('client-secret-key');
+    expect(JSON.stringify(failureAudit?.metadata)).not.toContain('private-provider.example');
+  });
+
   it('falls back to the next validated image scenario candidate when the first provider cannot satisfy the aspect ratio', async () => {
     getProviderScenarioProfileMock.mockReturnValue({
       id: 'teacher-differentiation-v1',
@@ -606,6 +739,79 @@ describe('media generation routes', () => {
       }),
     );
     expect(body.success).toBe(true);
+  });
+
+  it('routes video generation through the scenario-managed candidate when the requested provider is outside the profile', async () => {
+    getProviderScenarioProfileMock.mockReturnValue({
+      id: 'teacher-differentiation-v1',
+      description: 'Scenario-managed provider routing.',
+      buckets: {
+        video: [{ providerId: 'seedance', modelId: 'doubao-seedance-1-5-pro-251215' }],
+      },
+    });
+    generateVideoMock.mockResolvedValue({
+      url: 'https://cdn.example.com/video.mp4',
+      width: 1280,
+      height: 720,
+      duration: 5,
+    });
+
+    const { POST } = await import('@/app/api/generate/video/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/video', {
+        method: 'POST',
+        headers: {
+          'x-video-provider': 'veo',
+          'x-video-model': 'veo-3.1-fast-generate-001',
+        },
+        body: JSON.stringify({
+          prompt: 'A fallback video test',
+          duration: 5,
+          aspectRatio: '16:9',
+          resolution: '720p',
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(resolveGovernedProviderConfigMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        family: 'video',
+        providerId: 'seedance',
+        requestedModel: 'doubao-seedance-1-5-pro-251215',
+      }),
+    );
+    expect(generateVideoMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerId: 'seedance',
+        model: 'doubao-seedance-1-5-pro-251215',
+      }),
+      expect.objectContaining({
+        duration: 5,
+        aspectRatio: '16:9',
+        resolution: '720p',
+      }),
+    );
+    expect(appendAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'provider_scenario.route_selected',
+        resourceType: 'provider_scenario',
+        resourceId: 'generate-video',
+        metadata: expect.objectContaining({
+          scenarioProfileId: 'teacher-differentiation-v1',
+          taskBucket: 'video',
+          routeId: 'generate-video',
+          selectedProviderId: 'seedance',
+          selectedModelId: 'doubao-seedance-1-5-pro-251215',
+          validationStatus: 'selected',
+          requestedProviderId: 'veo',
+          requestedModelId: 'veo-3.1-fast-generate-001',
+        }),
+      }),
+    );
+    expect(body.success).toBe(true);
+    expect(body.result.url).toBe('https://cdn.example.com/video.mp4');
   });
 
   it('falls back to the next validated video scenario candidate when the first provider resolves to an unsafe base URL', async () => {
@@ -917,6 +1123,75 @@ describe('media generation routes', () => {
       }),
     );
     expect(body.success).toBe(true);
+  });
+
+  it('routes TTS generation through the scenario-managed candidate when the requested provider is outside the profile', async () => {
+    getProviderScenarioProfileMock.mockReturnValue({
+      id: 'teacher-differentiation-v1',
+      description: 'Scenario-managed provider routing.',
+      buckets: {
+        tts: [{ providerId: 'openai-tts', modelId: 'gpt-4o-mini-tts' }],
+      },
+    });
+    generateTTSMock.mockResolvedValue({
+      audio: new Uint8Array([1, 2, 3]),
+      format: 'mp3',
+    });
+
+    const { POST } = await import('@/app/api/generate/tts/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/tts', {
+        method: 'POST',
+        body: JSON.stringify({
+          text: 'Hello world',
+          audioId: 'audio-1',
+          ttsProviderId: 'qwen-tts',
+          ttsModelId: 'qwen3-tts-flash',
+          ttsVoice: 'alloy',
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(resolveGovernedProviderConfigMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        family: 'tts',
+        providerId: 'openai-tts',
+        requestedModel: 'gpt-4o-mini-tts',
+      }),
+    );
+    expect(generateTTSMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerId: 'openai-tts',
+        modelId: 'gpt-4o-mini-tts',
+        voice: 'alloy',
+      }),
+      'Hello world',
+    );
+    expect(appendAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'provider_scenario.route_selected',
+        resourceType: 'provider_scenario',
+        resourceId: 'generate-tts',
+        metadata: expect.objectContaining({
+          scenarioProfileId: 'teacher-differentiation-v1',
+          taskBucket: 'tts',
+          routeId: 'generate-tts',
+          selectedProviderId: 'openai-tts',
+          selectedModelId: 'gpt-4o-mini-tts',
+          validationStatus: 'selected',
+          requestedProviderId: 'qwen-tts',
+          requestedModelId: 'qwen3-tts-flash',
+        }),
+      }),
+    );
+    expect(body).toEqual({
+      success: true,
+      audioId: 'audio-1',
+      base64: 'AQID',
+      format: 'mp3',
+    });
   });
 
   it('honors TTS voice compatible-model constraints before selecting a scenario candidate', async () => {

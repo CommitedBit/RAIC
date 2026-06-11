@@ -9,14 +9,14 @@ checks can be repeated without guessing.
 Run the non-destructive smoke:
 
 ```bash
-pnpm smoke:production:milestone
+corepack pnpm run smoke:production:milestone
 ```
 
 Use this when known configuration blockers are acceptable but you still want the regression checks
 to pass:
 
 ```bash
-pnpm smoke:production:milestone -- --allow-blockers
+corepack pnpm run smoke:production:milestone -- --allow-blockers
 ```
 
 The smoke checks:
@@ -24,7 +24,11 @@ The smoke checks:
 - `/api/health` core readiness: auth, encryption, and Postgres storage.
 - MiroFish readiness, reported as blocked when env vars are missing.
 - `/api/server-providers` and `/api/ai/options` provider readiness.
-- Current model registry exposure for OpenAI `gpt-5.5` and ElevenLabs `eleven_v3`.
+- Enabled server-backed provider groups for LLM plus optional image, video, TTS, MiroFish, and
+  web-search readiness.
+- Optional feature requirements from `RAIC_REQUIRED_PRODUCTION_FEATURES` and
+  `RAIC_REQUIRE_<FEATURE>_SMOKE=true`; unrequired optional features are reported as skipped rather
+  than blocked.
 - Friendly missing-key behavior for `/api/verify-model`.
 - Teacher auth guard on `/api/generate-classroom`.
 - Clean 404s for missing classroom, session context, collaboration state, and presentation state.

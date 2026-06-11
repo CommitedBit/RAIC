@@ -41,6 +41,65 @@ export const noAdaptivePromptExpectation: PromptReplayExpectation = {
   absent: Object.values(adaptivePromptMarkers),
 };
 
+export const studentPrivateSentinel = 'STUDENT_PRIVATE_SENTINEL';
+
+export const adaptiveLeakageMarkers = [
+  'adaptiveContext',
+  'adaptivePrompt',
+  'sessionContext',
+  'reflectionSummary',
+  'requirementFingerprint',
+  'masteryHints',
+  'analytics',
+  'qualitySignals',
+  studentPrivateSentinel,
+] as const;
+
+function collectLeakageMarkers(
+  value: unknown,
+  markers: readonly string[],
+  found = new Set<string>(),
+) {
+  if (value == null) {
+    return found;
+  }
+
+  if (typeof value === 'string') {
+    for (const marker of markers) {
+      if (value.includes(marker)) {
+        found.add(marker);
+      }
+    }
+    return found;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      collectLeakageMarkers(entry, markers, found);
+    }
+    return found;
+  }
+
+  if (typeof value === 'object') {
+    for (const [key, entry] of Object.entries(value)) {
+      collectLeakageMarkers(key, markers, found);
+      collectLeakageMarkers(entry, markers, found);
+    }
+  }
+
+  return found;
+}
+
+export function scoreNoAdaptiveLeakage(value: unknown): ReplayScore {
+  const unexpected = Array.from(collectLeakageMarkers(value, adaptiveLeakageMarkers)).sort();
+
+  return {
+    pass: unexpected.length === 0,
+    missing: [],
+    unexpected,
+  };
+}
+
 export function scorePromptReplay(
   prompt: string | null | undefined,
   expectation: PromptReplayExpectation,

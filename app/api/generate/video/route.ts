@@ -19,6 +19,7 @@
 import { NextRequest } from 'next/server';
 import { generateVideo, normalizeVideoOptions, VIDEO_PROVIDERS } from '@/lib/media/video-providers';
 import { getRequestAuth } from '@/lib/auth/current-user';
+import type { AuthContext } from '@/lib/auth/current-user';
 import type { VideoProviderId, VideoGenerationOptions } from '@/lib/media/types';
 import { createLogger } from '@/lib/logger';
 import {
@@ -34,6 +35,7 @@ import {
   resolveScenarioManagedProviderRoute,
   type ScenarioProviderCandidateValidationContext,
 } from '@/lib/server/provider-scenario-routing';
+import { recordRequestFailureTelemetry } from '@/lib/server/request-failure-telemetry';
 import { validateUrlForSSRF } from '@/lib/server/ssrf-guard';
 
 const log = createLogger('VideoGeneration API');
@@ -91,8 +93,10 @@ function createVideoScenarioValidator(options: VideoGenerationOptions) {
 }
 
 export async function POST(request: NextRequest) {
+  let auth: AuthContext | null = null;
   let resolvedProviderId: string | undefined;
   let resolvedModelId: string | undefined;
+  let scenarioProfileId: string | null = null;
   try {
     const body = (await request.json()) as VideoGenerationOptions;
 
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const auth = await getRequestAuth(request);
+    auth = await getRequestAuth(request);
     const resolved =
       (await resolveScenarioManagedProviderRoute({
         auth,
@@ -139,13 +143,14 @@ export async function POST(request: NextRequest) {
       }));
     resolvedProviderId = resolved.providerId;
     resolvedModelId = resolved.modelId || clientModel || undefined;
+    scenarioProfileId = 'scenarioProfileId' in resolved ? resolved.scenarioProfileId : null;
 
     // Normalize options against provider capabilities
     const options = normalizeVideoOptions(resolved.providerId as VideoProviderId, body);
 
     log.info(
       `Generating video: provider=${resolvedProviderId}, model=${resolvedModelId || 'default'}, ` +
-        `prompt="${body.prompt.slice(0, 80)}...", duration=${options.duration ?? 'auto'}, ` +
+        `promptChars=${body.prompt.length}, duration=${options.duration ?? 'auto'}, ` +
         `aspect=${options.aspectRatio ?? 'auto'}, resolution=${options.resolution ?? 'auto'}`,
     );
 
@@ -168,17 +173,56 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     const governanceError = toGovernedProviderApiErrorResponse(error);
     if (governanceError) {
+      await recordRequestFailureTelemetry({
+        auth,
+        request,
+        routeId: 'generate-video',
+        status: governanceError.status,
+        errorCode: 'GOVERNED_PROVIDER_ERROR',
+        failureSource: 'provider_governance',
+        error,
+        providerId: resolvedProviderId,
+        modelId: resolvedModelId,
+        taskBucket: 'video',
+        scenarioProfileId,
+      });
       return withRequestWebSession(request, governanceError);
     }
     // Detect content safety filter rejections (e.g. Seedance SensitiveContent errors)
     if (message.includes('SensitiveContent') || message.includes('sensitive information')) {
       log.warn(`Video blocked by content safety filter: ${message}`);
+      await recordRequestFailureTelemetry({
+        auth,
+        request,
+        routeId: 'generate-video',
+        status: 400,
+        errorCode: 'CONTENT_SENSITIVE',
+        failureSource: 'content_safety',
+        error,
+        providerId: resolvedProviderId,
+        modelId: resolvedModelId,
+        taskBucket: 'video',
+        scenarioProfileId,
+      });
       return apiErrorWithRequestSession(request, 'CONTENT_SENSITIVE', 400, message);
     }
     log.error(
       `Video generation failed [provider=${resolvedProviderId ?? 'seedance'}, model=${resolvedModelId ?? 'default'}]:`,
       error,
     );
+    await recordRequestFailureTelemetry({
+      auth,
+      request,
+      routeId: 'generate-video',
+      status: 500,
+      errorCode: 'INTERNAL_ERROR',
+      failureSource: 'provider_request',
+      error,
+      providerId: resolvedProviderId ?? 'seedance',
+      modelId: resolvedModelId ?? 'default',
+      taskBucket: 'video',
+      scenarioProfileId,
+    });
     return apiErrorWithRequestSession(request, 'INTERNAL_ERROR', 500, message);
   }
 }

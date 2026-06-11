@@ -5,6 +5,7 @@ import {
   repeatedSessionAdaptiveContext,
   repeatedSessionPromptExpectation,
   scorePromptReplay,
+  studentPrivateSentinel,
 } from '../support/adaptive-runtime-replay';
 
 type DbGlobals = typeof globalThis & {
@@ -288,6 +289,76 @@ describe('classroom intelligence persistence', () => {
       },
     });
     expect(analytics?.generatedAt).toEqual(expect.any(String));
+  });
+
+  it('keeps student-only signals out of teacher runtime context and analytics', async () => {
+    vi.stubEnv('DATABASE_URL', '');
+    const {
+      buildAdaptiveRuntimeContext,
+      buildClassroomLearningAnalytics,
+      createClassroomReflection,
+      upsertClassroomSessionContext,
+    } = await import('@/lib/server/classroom-intelligence');
+
+    await upsertClassroomSessionContext({
+      classroomId: 'class-leakage',
+      organizationId: 'org-1',
+      userId: 'teacher-1',
+      stageName: 'Orbital Mechanics',
+      language: 'en-US',
+      lastCompletedSceneId: 'scene-2',
+      lastCompletedSceneTitle: 'Teacher-only transfer lesson',
+      completedSceneCount: 2,
+      totalSceneCount: 4,
+      masteryHints: ['teacher scoped hint'],
+    });
+    await createClassroomReflection({
+      classroomId: 'class-leakage',
+      organizationId: 'org-1',
+      userId: 'teacher-1',
+      summary: 'Teacher reflection should remain visible to teacher analytics only.',
+      challengingAreas: ['teacher scoped hint'],
+      confidenceScore: 3,
+      revisitIntent: 'revisit',
+    });
+
+    await upsertClassroomSessionContext({
+      classroomId: 'class-leakage',
+      organizationId: 'org-1',
+      userId: 'student-1',
+      stageName: 'Orbital Mechanics',
+      language: 'en-US',
+      lastCompletedSceneId: 'scene-student',
+      lastCompletedSceneTitle: studentPrivateSentinel,
+      completedSceneCount: 1,
+      totalSceneCount: 4,
+      masteryHints: [studentPrivateSentinel],
+    });
+    await createClassroomReflection({
+      classroomId: 'class-leakage',
+      organizationId: 'org-1',
+      userId: 'student-1',
+      summary: studentPrivateSentinel,
+      challengingAreas: [studentPrivateSentinel],
+      confidenceScore: 1,
+      revisitIntent: 'remediate',
+    });
+
+    const adaptiveContext = await buildAdaptiveRuntimeContext({
+      classroomId: 'class-leakage',
+      userId: 'teacher-1',
+    });
+    const analytics = await buildClassroomLearningAnalytics({
+      classroomId: 'class-leakage',
+      userId: 'teacher-1',
+    });
+    const serialized = JSON.stringify({ adaptiveContext, analytics });
+
+    expect(serialized).not.toContain(studentPrivateSentinel);
+    expect(serialized).not.toContain('student-1');
+    expect(adaptiveContext?.masteryHints).toEqual(['teacher scoped hint']);
+    expect(analytics?.reflections.count).toBe(1);
+    expect(analytics?.qualitySignals.suggestedFocus).toEqual(['teacher scoped hint']);
   });
 
   it('keeps learning analytics off when no authenticated teacher user is present', async () => {
