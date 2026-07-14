@@ -15,6 +15,7 @@ import {
   type SceneGenerationContext,
   type AgentInfo,
 } from '@/lib/generation/generation-pipeline';
+import { withGenerationRetry } from '@/lib/generation/generation-retry';
 import type { SceneOutline } from '@/lib/types/generation';
 import type {
   GeneratedSlideContent,
@@ -35,6 +36,13 @@ import { resolveModelFromHeadersWithScope } from '@/lib/server/resolve-model';
 const log = createLogger('Scene Actions API');
 
 export const maxDuration = 60;
+
+function configuredRetryBaseDelayMs(): number | undefined {
+  const raw = process.env.GENERATION_RETRY_BASE_DELAY_MS;
+  if (!raw) return undefined;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
 
 export async function POST(req: NextRequest) {
   let outlineTitle: string | undefined;
@@ -163,12 +171,25 @@ export async function POST(req: NextRequest) {
     // ── Generate actions ──
     log.info(`Generating actions: "${outline.title}" (${outline.type}) [model=${modelString}]`);
 
-    const actions = await generateSceneActions(outline, content, aiCall, {
-      ctx,
-      agents,
-      userProfile,
-      languageDirective,
-    });
+    const actions = await withGenerationRetry(
+      () =>
+        generateSceneActions(outline, content, aiCall, {
+          ctx,
+          agents,
+          userProfile,
+          languageDirective,
+        }),
+      {
+        label: `scene-actions:${outline.type}`,
+        baseDelayMs: configuredRetryBaseDelayMs(),
+        signal: req.signal,
+        onRetry: ({ attempt, maxAttempts, nextDelayMs, reason }) => {
+          log.warn(
+            `Retrying scene action generation for "${outline.title}" (${attempt}/${maxAttempts}) in ${nextDelayMs}ms: ${reason}`,
+          );
+        },
+      },
+    );
 
     log.info(`Generated ${actions.length} actions for: "${outline.title}"`);
 

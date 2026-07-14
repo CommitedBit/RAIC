@@ -63,6 +63,7 @@ function buildGameSession(
 async function renderRenderer(
   gameSession: ClassroomGameSessionPayload | null,
   onGameEvent = vi.fn(),
+  content: InteractiveContent = gameContent,
 ) {
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -72,7 +73,7 @@ async function renderRenderer(
   await act(async () => {
     root.render(
       <InteractiveRenderer
-        content={gameContent}
+        content={content}
         mode="playback"
         sceneId="scene-1"
         gameSession={gameSession}
@@ -89,7 +90,7 @@ async function renderRenderer(
       await act(async () => {
         root.render(
           <InteractiveRenderer
-            content={gameContent}
+            content={content}
             mode="playback"
             sceneId="scene-1"
             gameSession={nextSession}
@@ -128,6 +129,30 @@ describe('InteractiveRenderer game bridge', () => {
       });
       mounted.container.remove();
     }
+  });
+
+  it('isolates generated srcDoc content from the host origin', async () => {
+    const { iframe } = await renderRenderer(buildGameSession());
+    const sandboxTokens = iframe.getAttribute('sandbox')?.split(/\s+/) ?? [];
+
+    expect(sandboxTokens).toContain('allow-scripts');
+    expect(sandboxTokens).toContain('allow-forms');
+    expect(sandboxTokens).toContain('allow-popups');
+    expect(sandboxTokens).not.toContain('allow-same-origin');
+  });
+
+  it('keeps same-origin available for URL-backed interactive embeds', async () => {
+    const urlBackedContent: InteractiveContent = {
+      ...gameContent,
+      url: 'https://widgets.example.test/game',
+    };
+    delete (urlBackedContent as Partial<InteractiveContent>).html;
+    const { iframe } = await renderRenderer(buildGameSession(), vi.fn(), urlBackedContent);
+    const sandboxTokens = iframe.getAttribute('sandbox')?.split(/\s+/) ?? [];
+
+    expect(iframe.getAttribute('srcdoc')).toBeNull();
+    expect(iframe.getAttribute('src')).toBe('https://widgets.example.test/game');
+    expect(sandboxTokens).toContain('allow-same-origin');
   });
 
   it('forwards the current round id and debounces progress events', async () => {

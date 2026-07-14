@@ -318,6 +318,100 @@ describe('generation routes', () => {
     });
   });
 
+  it('retries transient scene content generation failures', async () => {
+    vi.stubEnv('GENERATION_RETRY_BASE_DELAY_MS', '0');
+    const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide', language: 'en-US' };
+    applyOutlineFallbacksMock.mockReturnValue(outline);
+    generateSceneContentMock
+      .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
+      .mockResolvedValue({ slideTitle: 'Recovered' });
+
+    const { POST } = await import('@/app/api/generate/scene-content/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-content', {
+        method: 'POST',
+        body: JSON.stringify({
+          outline,
+          allOutlines: [outline],
+          stageId: 'stage-1',
+          stageInfo: { name: 'Physics 101', language: 'en-US' },
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.content).toEqual({ slideTitle: 'Recovered' });
+    expect(generateSceneContentMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry governed scene content failures', async () => {
+    vi.stubEnv('GENERATION_RETRY_BASE_DELAY_MS', '0');
+    const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide', language: 'en-US' };
+    const governedResponse = new Response(
+      JSON.stringify({
+        success: false,
+        errorCode: 'PROVIDER_AUTH_FAILED',
+        error: 'Provider authentication failed.',
+      }),
+      {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+    applyOutlineFallbacksMock.mockReturnValue(outline);
+    generateSceneContentMock.mockRejectedValue(
+      Object.assign(new Error('Unauthorized'), { status: 401 }),
+    );
+    toGovernedProviderApiErrorResponseMock.mockReturnValue(governedResponse);
+
+    const { POST } = await import('@/app/api/generate/scene-content/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-content', {
+        method: 'POST',
+        body: JSON.stringify({
+          outline,
+          allOutlines: [outline],
+          stageId: 'stage-1',
+          stageInfo: { name: 'Physics 101', language: 'en-US' },
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.errorCode).toBe('PROVIDER_AUTH_FAILED');
+    expect(generateSceneContentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops scene content retries when the request is aborted', async () => {
+    vi.stubEnv('GENERATION_RETRY_BASE_DELAY_MS', '0');
+    const controller = new AbortController();
+    const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide', language: 'en-US' };
+    applyOutlineFallbacksMock.mockReturnValue(outline);
+    generateSceneContentMock.mockImplementationOnce(async () => {
+      controller.abort();
+      throw Object.assign(new Error('rate limited'), { status: 429 });
+    });
+
+    const { POST } = await import('@/app/api/generate/scene-content/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-content', {
+        method: 'POST',
+        signal: controller.signal,
+        body: JSON.stringify({
+          outline,
+          allOutlines: [outline],
+          stageId: 'stage-1',
+          stageInfo: { name: 'Physics 101', language: 'en-US' },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(generateSceneContentMock).toHaveBeenCalledTimes(1);
+  });
+
   it('routes scene content generation through the scene scenario profile before header fallback', async () => {
     const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide', language: 'en-US' };
     applyOutlineFallbacksMock.mockReturnValue(outline);
@@ -526,6 +620,105 @@ describe('generation routes', () => {
     expect(response.status).toBe(200);
     expect(body.scene.id).toBe('scene-1');
     expect(body.previousSpeeches).toEqual(['Welcome aboard.']);
+  });
+
+  it('retries transient scene action generation failures', async () => {
+    vi.stubEnv('GENERATION_RETRY_BASE_DELAY_MS', '0');
+    const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide' };
+    generateSceneActionsMock
+      .mockRejectedValueOnce(Object.assign(new Error('fetch failed'), { status: 503 }))
+      .mockResolvedValue([{ type: 'speech', text: 'Welcome aboard.' }]);
+    buildCompleteSceneMock.mockReturnValue({
+      id: 'scene-1',
+      order: 1,
+      type: 'slide',
+      actions: [{ type: 'speech', text: 'Welcome aboard.' }],
+      content: { slideTitle: 'Welcome' },
+    });
+
+    const { POST } = await import('@/app/api/generate/scene-actions/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-actions', {
+        method: 'POST',
+        body: JSON.stringify({
+          outline,
+          allOutlines: [outline],
+          content: { slideTitle: 'Welcome' },
+          stageId: 'stage-1',
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.scene.id).toBe('scene-1');
+    expect(generateSceneActionsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry governed scene action failures', async () => {
+    vi.stubEnv('GENERATION_RETRY_BASE_DELAY_MS', '0');
+    const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide' };
+    const governedResponse = new Response(
+      JSON.stringify({
+        success: false,
+        errorCode: 'PROVIDER_AUTH_FAILED',
+        error: 'Provider authentication failed.',
+      }),
+      {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+    generateSceneActionsMock.mockRejectedValue(
+      Object.assign(new Error('Unauthorized'), { status: 401 }),
+    );
+    toGovernedProviderApiErrorResponseMock.mockReturnValue(governedResponse);
+
+    const { POST } = await import('@/app/api/generate/scene-actions/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-actions', {
+        method: 'POST',
+        body: JSON.stringify({
+          outline,
+          allOutlines: [outline],
+          content: { slideTitle: 'Welcome' },
+          stageId: 'stage-1',
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.errorCode).toBe('PROVIDER_AUTH_FAILED');
+    expect(generateSceneActionsMock).toHaveBeenCalledTimes(1);
+    expect(buildCompleteSceneMock).not.toHaveBeenCalled();
+  });
+
+  it('stops scene action retries when the request is aborted', async () => {
+    vi.stubEnv('GENERATION_RETRY_BASE_DELAY_MS', '0');
+    const controller = new AbortController();
+    const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide' };
+    generateSceneActionsMock.mockImplementationOnce(async () => {
+      controller.abort();
+      throw Object.assign(new Error('fetch failed'), { status: 503 });
+    });
+
+    const { POST } = await import('@/app/api/generate/scene-actions/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-actions', {
+        method: 'POST',
+        signal: controller.signal,
+        body: JSON.stringify({
+          outline,
+          allOutlines: [outline],
+          content: { slideTitle: 'Welcome' },
+          stageId: 'stage-1',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(generateSceneActionsMock).toHaveBeenCalledTimes(1);
   });
 
   it('routes scene action generation through the scene scenario profile', async () => {

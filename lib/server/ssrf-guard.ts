@@ -7,6 +7,10 @@
 import { promises as dns } from 'node:dns';
 import { isIP } from 'node:net';
 
+const LOCAL_NETWORKS_BLOCKED_MESSAGE =
+  'Local/private network URLs are not allowed. ' +
+  'Set ALLOW_LOCAL_NETWORKS=true only for trusted self-hosted deployments.';
+
 function normalizeAddress(value: string): string {
   let normalized = value.trim().toLowerCase();
   if (normalized.startsWith('[') && normalized.endsWith(']')) {
@@ -192,7 +196,7 @@ export async function validateUrlForSSRF(url: string): Promise<string | null> {
     hostname === '::1' ||
     isPrivateIP(hostname)
   ) {
-    return 'Local/private network URLs are not allowed';
+    return LOCAL_NETWORKS_BLOCKED_MESSAGE;
   }
 
   if (isIP(hostname)) {
@@ -211,7 +215,7 @@ export async function validateUrlForSSRF(url: string): Promise<string | null> {
   }
 
   if (resolvedAddresses.some(({ address }) => isPrivateIP(address))) {
-    return 'Local/private network URLs are not allowed';
+    return LOCAL_NETWORKS_BLOCKED_MESSAGE;
   }
 
   return null;
