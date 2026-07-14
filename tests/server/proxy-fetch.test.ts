@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { proxyAgentMock, undiciFetchMock } = vi.hoisted(() => ({
+const { loggerInfoMock, proxyAgentMock, undiciFetchMock } = vi.hoisted(() => ({
+  loggerInfoMock: vi.fn(),
   proxyAgentMock: vi.fn(function ProxyAgentMock(this: { proxyUrl?: string }, proxyUrl: string) {
     this.proxyUrl = proxyUrl;
   }),
@@ -14,7 +15,7 @@ vi.mock('undici', () => ({
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
-    info: vi.fn(),
+    info: loggerInfoMock,
   }),
 }));
 
@@ -93,6 +94,25 @@ describe('proxyFetch', () => {
 
     expect(proxyAgentMock).toHaveBeenNthCalledWith(1, 'http://http-proxy.example.test:8080');
     expect(proxyAgentMock).toHaveBeenNthCalledWith(2, 'http://https-proxy.example.test:8443');
+  });
+
+  it('redacts credentials, query strings, and fragments from proxy logs', async () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy-user:proxy-secret@proxy.example.test:8443/tunnel');
+    const proxyFetch = await loadProxyFetch();
+
+    await proxyFetch(
+      'https://api-user:api-secret@api.example.test/v1/items?api_key=target-secret#details',
+    );
+
+    const logOutput = JSON.stringify(loggerInfoMock.mock.calls);
+    expect(logOutput).toContain('http://proxy.example.test:8443');
+    expect(logOutput).toContain('https://api.example.test/v1/items');
+    expect(logOutput).not.toContain('proxy-user');
+    expect(logOutput).not.toContain('proxy-secret');
+    expect(logOutput).not.toContain('api-user');
+    expect(logOutput).not.toContain('api-secret');
+    expect(logOutput).not.toContain('target-secret');
+    expect(logOutput).not.toContain('#details');
   });
 
   it.each([
