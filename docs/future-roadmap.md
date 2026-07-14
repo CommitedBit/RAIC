@@ -2,7 +2,7 @@
 
 This roadmap translates the current single-branch model into a dated execution sequence with one validated slice landing at a time.
 
-The completed v0.4.0 cycle plan is documented in [Execution Plan: v0.4.0 Reliable Adaptive Learning Platform (2026-05-17)](./execution-plans/2026-05-17-v0.4.0-reliable-adaptive-learning-platform.md). The v0.5.0 release evidence is captured in [Release Evidence: v0.5.0 Source-Grounded Experience Presets (2026-05-18)](./release-evidence-v0.5.0.md). The current release line is tracked in [v0.7.0 Discord Scheduled-Class Beta Readiness](./release-evidence-v0.7.0.md) and [v0.7.1 Reliability Hardening](./release-evidence-v0.7.1.md).
+The completed v0.4.0 cycle plan is documented in [Execution Plan: v0.4.0 Reliable Adaptive Learning Platform (2026-05-17)](./execution-plans/2026-05-17-v0.4.0-reliable-adaptive-learning-platform.md). The v0.5.0 release evidence is captured in [Release Evidence: v0.5.0 Source-Grounded Experience Presets (2026-05-18)](./release-evidence-v0.5.0.md). The current release line is tracked in [v0.7.1 Reliability Hardening](./release-evidence-v0.7.1.md) and [v0.8.0 Governed Co-Thinking](./release-evidence-v0.8.0.md).
 
 Current post-v0.7.0 hardening and adaptive-student follow-up notes are documented in:
 
@@ -51,6 +51,7 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Goal: rebuild the Course-mode Co-Thinking preset on `v0.7.1` with focused prompt, i18n, reflection, and dialog-state behavior.
   - Acceptance: no database schema or research-scoring changes; reflection and analytics remain teacher/internal; preview generation and reflection save/reload smokes pass before tag and release.
   - Exclusions: unrelated model-registry, scenario-fallback, audit-date, and formatting-only changes from the earlier feature branch.
+  - Evidence: [v0.8.0 Governed Co-Thinking](./release-evidence-v0.8.0.md).
 
 - Post-v0.7.0 adaptive-student follow-up
   - Goal: complete privacy/compliance readiness for consent, retention, deletion, leakage controls, and rollback before enabling any broader student-facing adaptation.
