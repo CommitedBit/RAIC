@@ -53,6 +53,9 @@ export function InteractiveRenderer({
     () => (content.html ? patchHtmlForIframe(content.html) : undefined),
     [content.html],
   );
+  const iframeSandbox = patchedHtml
+    ? 'allow-scripts allow-forms allow-popups'
+    : 'allow-scripts allow-same-origin allow-forms allow-popups';
   const submissionGateKey = useMemo(() => {
     if (!gameSession) return 'no-session';
     return [
@@ -249,7 +252,7 @@ export function InteractiveRenderer({
         src={patchedHtml ? undefined : content.url}
         className="absolute inset-0 w-full h-full border-0"
         title={`Interactive Scene ${sceneId}`}
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        sandbox={iframeSandbox}
         onLoad={() => {
           sendGameSessionToIframe();
           sendGameControlToIframe('request_bridge_ready');

@@ -15,6 +15,10 @@ const toGovernedProviderApiErrorResponseMock = vi.fn();
 const transcribeAudioMock = vi.fn();
 const validateUrlForSSRFMock = vi.fn();
 
+const LOCAL_NETWORKS_BLOCKED_MESSAGE =
+  'Local/private network URLs are not allowed. ' +
+  'Set ALLOW_LOCAL_NETWORKS=true only for trusted self-hosted deployments.';
+
 class MockGovernedProviderResolutionError extends Error {
   readonly code: string;
   readonly status: number;
@@ -838,7 +842,7 @@ describe('media generation routes', () => {
         baseUrl: 'https://video.example.com',
         modelId: 'doubao-seedance-1-5-pro-251215',
       });
-    validateUrlForSSRFMock.mockResolvedValueOnce('Local/private network URLs are not allowed');
+    validateUrlForSSRFMock.mockResolvedValueOnce(LOCAL_NETWORKS_BLOCKED_MESSAGE);
     validateUrlForSSRFMock.mockResolvedValueOnce(null);
     normalizeVideoOptionsMock.mockImplementation((providerId, options) =>
       providerId === 'veo'

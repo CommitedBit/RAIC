@@ -60,7 +60,7 @@ export function remapModelVerificationError(params: {
 
   const normalizedError = params.errorMessage.toLowerCase();
   if (
-    params.errorMessage === RAW_LOCAL_NETWORK_ERROR ||
+    normalizedError.includes(RAW_LOCAL_NETWORK_ERROR.toLowerCase()) ||
     normalizedError.includes('econnrefused') ||
     normalizedError.includes('enotfound')
   ) {

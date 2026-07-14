@@ -25,6 +25,10 @@ const toGovernedProviderApiErrorResponseMock = vi.fn();
 const validateUrlForSSRFMock = vi.fn();
 const fetchMock = vi.fn();
 
+const LOCAL_NETWORKS_BLOCKED_MESSAGE =
+  'Local/private network URLs are not allowed. ' +
+  'Set ALLOW_LOCAL_NETWORKS=true only for trusted self-hosted deployments.';
+
 class MockGovernedProviderResolutionError extends Error {
   readonly code: string;
   readonly status: number;
@@ -738,7 +742,7 @@ describe('provider and verification routes', () => {
   });
 
   it('remaps LM Studio local/private SSRF failures to a topology message', async () => {
-    resolveModelMock.mockRejectedValue(new Error('Local/private network URLs are not allowed'));
+    resolveModelMock.mockRejectedValue(new Error(LOCAL_NETWORKS_BLOCKED_MESSAGE));
 
     const { POST } = await import('@/app/api/verify-model/route');
     const response = await POST(
@@ -1099,7 +1103,7 @@ describe('provider and verification routes', () => {
 
   it('rejects unsafe web-search client base URLs before provider resolution in production', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    validateUrlForSSRFMock.mockResolvedValueOnce('Local/private network URLs are not allowed');
+    validateUrlForSSRFMock.mockResolvedValueOnce(LOCAL_NETWORKS_BLOCKED_MESSAGE);
 
     const { POST } = await import('@/app/api/web-search/route');
     const response = await POST(

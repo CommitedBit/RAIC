@@ -14,6 +14,7 @@ import {
   buildVisionUserContent,
 } from '@/lib/generation/generation-pipeline';
 import type { AgentInfo } from '@/lib/generation/generation-pipeline';
+import { withGenerationRetry } from '@/lib/generation/generation-retry';
 import type { SceneOutline, PdfImage, ImageMapping } from '@/lib/types/generation';
 import type { ProviderType } from '@/lib/types/provider';
 import { getRequestAuth } from '@/lib/auth/current-user';
@@ -27,6 +28,13 @@ import { resolveModelFromHeadersWithScope } from '@/lib/server/resolve-model';
 const log = createLogger('Scene Content API');
 
 export const maxDuration = 300;
+
+function configuredRetryBaseDelayMs(): number | undefined {
+  const raw = process.env.GENERATION_RETRY_BASE_DELAY_MS;
+  if (!raw) return undefined;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
 
 export async function POST(req: NextRequest) {
   let outlineTitle: string | undefined;
@@ -172,16 +180,30 @@ export async function POST(req: NextRequest) {
       `Generating content: "${effectiveOutline.title}" (${effectiveOutline.type}) [model=${modelString}]`,
     );
 
-    const content = await generateSceneContent(effectiveOutline, aiCall, {
-      assignedImages,
-      imageMapping,
-      languageModel: effectiveOutline.type === 'pbl' ? languageModel : undefined,
-      visionEnabled: hasVision,
-      generatedMediaMapping,
-      agents,
-      adaptivePrompt,
-      languageDirective: languageDirective || stageInfo?.languageDirective,
-    });
+    const content = await withGenerationRetry(
+      () =>
+        generateSceneContent(effectiveOutline, aiCall, {
+          assignedImages,
+          imageMapping,
+          languageModel: effectiveOutline.type === 'pbl' ? languageModel : undefined,
+          visionEnabled: hasVision,
+          generatedMediaMapping,
+          agents,
+          adaptivePrompt,
+          languageDirective: languageDirective || stageInfo?.languageDirective,
+        }),
+      {
+        label: `scene-content:${effectiveOutline.type}`,
+        baseDelayMs: configuredRetryBaseDelayMs(),
+        signal: req.signal,
+        shouldRetryResult: (nextContent) => !nextContent,
+        onRetry: ({ attempt, maxAttempts, nextDelayMs, reason }) => {
+          log.warn(
+            `Retrying scene content generation for "${effectiveOutline.title}" (${attempt}/${maxAttempts}) in ${nextDelayMs}ms: ${reason}`,
+          );
+        },
+      },
+    );
 
     if (!content) {
       log.error(`Failed to generate content for: "${effectiveOutline.title}"`);
