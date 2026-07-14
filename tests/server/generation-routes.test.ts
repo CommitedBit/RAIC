@@ -18,18 +18,22 @@ const generateSceneActionsMock = vi.fn();
 const generateSceneContentMock = vi.fn();
 const getRequestAuthMock = vi.fn();
 const loadTeacherAdaptivePromptMock = vi.fn();
+const logErrorMock = vi.fn();
+const logWarnMock = vi.fn();
 const recordGenerationRetryTelemetryMock = vi.fn();
 const recordRequestFailureTelemetryMock = vi.fn();
 const resolveModelFromHeadersMock = vi.fn();
 const resolveModelFromHeadersWithScopeMock = vi.fn();
 const resolveSceneGenerationScenarioMock = vi.fn();
 const streamLLMMock = vi.fn();
+const summarizeProviderErrorMock = vi.fn();
 const toGovernedProviderApiErrorResponseMock = vi.fn();
 const uniquifyMediaElementIdsMock = vi.fn();
 
 vi.mock('@/lib/ai/llm', () => ({
   callLLM: callLLMMock,
   streamLLM: streamLLMMock,
+  summarizeProviderError: summarizeProviderErrorMock,
 }));
 
 vi.mock('@/lib/server/resolve-model', () => ({
@@ -80,9 +84,9 @@ vi.mock('@/lib/generation/prompts', () => ({
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
     debug: vi.fn(),
-    error: vi.fn(),
+    error: logErrorMock,
     info: vi.fn(),
-    warn: vi.fn(),
+    warn: logWarnMock,
   }),
 }));
 
@@ -120,12 +124,15 @@ describe('generation routes', () => {
     generateSceneContentMock.mockReset();
     getRequestAuthMock.mockReset();
     loadTeacherAdaptivePromptMock.mockReset();
+    logErrorMock.mockReset();
+    logWarnMock.mockReset();
     recordGenerationRetryTelemetryMock.mockReset();
     recordRequestFailureTelemetryMock.mockReset();
     resolveModelFromHeadersMock.mockReset();
     resolveModelFromHeadersWithScopeMock.mockReset();
     resolveSceneGenerationScenarioMock.mockReset();
     streamLLMMock.mockReset();
+    summarizeProviderErrorMock.mockReset();
     toGovernedProviderApiErrorResponseMock.mockReset();
     uniquifyMediaElementIdsMock.mockReset();
 
@@ -151,6 +158,7 @@ describe('generation routes', () => {
       modelString: 'resolved-model',
     });
     resolveSceneGenerationScenarioMock.mockResolvedValue(null);
+    summarizeProviderErrorMock.mockReturnValue({ errorCode: 'error' });
     toGovernedProviderApiErrorResponseMock.mockReturnValue(null);
     uniquifyMediaElementIdsMock.mockImplementation((outlines) => outlines);
   });
@@ -1026,6 +1034,90 @@ describe('generation routes', () => {
     const bodyText = await readResponseBody(response);
     expect(bodyText).toContain('"type":"outline"');
     expect(bodyText).toContain('"type":"done"');
+  });
+
+  it('summarizes provider errors before logging outline retries and exhaustion', async () => {
+    const providerError = Object.assign(
+      new Error('Transient provider failure: sk-or-v1-outline-secret'),
+      {
+        name: 'AI_APICallError',
+        statusCode: 503,
+        isRetryable: true,
+        url: 'https://provider.example/v1/chat?token=outline-secret',
+        responseBody: '{"error":"private provider response"}',
+      },
+    );
+    const safeSummary = {
+      errorName: 'AI_APICallError',
+      statusCode: 503,
+      retryable: true,
+    };
+    summarizeProviderErrorMock.mockReturnValue(safeSummary);
+    streamLLMMock.mockImplementation(() => ({
+      textStream: (async function* () {
+        throw providerError;
+      })(),
+    }));
+
+    const { POST } = await import('@/app/api/generate/scene-outlines-stream/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-outlines-stream', {
+        method: 'POST',
+        body: JSON.stringify({
+          requirements: {
+            requirement: 'Teach renewable energy',
+            language: 'en-US',
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await readResponseBody(response)).toContain('"type":"error"');
+    expect(summarizeProviderErrorMock).toHaveBeenCalledTimes(3);
+    expect(logWarnMock).toHaveBeenCalledTimes(2);
+    expect(logWarnMock).toHaveBeenCalledWith(expect.stringContaining('Stream error'), safeSummary);
+    expect(logErrorMock).toHaveBeenCalledWith(
+      'Outline generation failed after 3 attempts',
+      safeSummary,
+    );
+
+    const serializedLogs = JSON.stringify([...logWarnMock.mock.calls, ...logErrorMock.mock.calls]);
+    expect(serializedLogs).not.toContain('sk-or-v1-outline-secret');
+    expect(serializedLogs).not.toContain('outline-secret');
+    expect(serializedLogs).not.toContain('private provider response');
+    expect(serializedLogs).not.toContain('provider.example');
+  });
+
+  it('summarizes provider errors before logging outline setup failures', async () => {
+    const providerError = Object.assign(new Error('Provider response included setup-secret'), {
+      name: 'AI_APICallError',
+      statusCode: 503,
+      responseBody: 'setup-secret',
+    });
+    const safeSummary = { errorName: 'AI_APICallError', statusCode: 503 };
+    summarizeProviderErrorMock.mockReturnValue(safeSummary);
+    resolveSceneGenerationScenarioMock.mockRejectedValue(providerError);
+
+    const { POST } = await import('@/app/api/generate/scene-outlines-stream/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-outlines-stream', {
+        method: 'POST',
+        body: JSON.stringify({
+          requirements: {
+            requirement: 'Teach renewable energy',
+            language: 'en-US',
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(logErrorMock).toHaveBeenCalledWith(
+      expect.stringContaining('Outline streaming failed'),
+      safeSummary,
+    );
+    expect(JSON.stringify(logErrorMock.mock.calls)).not.toContain('setup-secret');
   });
 
   it('routes outline streaming through the scene scenario profile', async () => {

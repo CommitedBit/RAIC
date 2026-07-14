@@ -106,7 +106,7 @@ function _normalizeErrorCode(error: unknown): string {
   return 'error';
 }
 
-function summarizeProviderError(error: unknown): Record<string, string | number | boolean> {
+export function summarizeProviderError(error: unknown): Record<string, string | number | boolean> {
   if (!error || typeof error !== 'object') {
     return { errorCode: _normalizeErrorCode(error) };
   }
