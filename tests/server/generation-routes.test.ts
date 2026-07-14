@@ -18,6 +18,8 @@ const generateSceneActionsMock = vi.fn();
 const generateSceneContentMock = vi.fn();
 const getRequestAuthMock = vi.fn();
 const loadTeacherAdaptivePromptMock = vi.fn();
+const recordGenerationRetryTelemetryMock = vi.fn();
+const recordRequestFailureTelemetryMock = vi.fn();
 const resolveModelFromHeadersMock = vi.fn();
 const resolveModelFromHeadersWithScopeMock = vi.fn();
 const resolveSceneGenerationScenarioMock = vi.fn();
@@ -49,6 +51,11 @@ vi.mock('@/lib/server/provider-scenario-routing', () => ({
 
 vi.mock('@/lib/server/adaptive-runtime-prompt', () => ({
   loadTeacherAdaptivePrompt: loadTeacherAdaptivePromptMock,
+}));
+
+vi.mock('@/lib/server/request-failure-telemetry', () => ({
+  recordGenerationRetryTelemetry: recordGenerationRetryTelemetryMock,
+  recordRequestFailureTelemetry: recordRequestFailureTelemetryMock,
 }));
 
 vi.mock('@/lib/generation/generation-pipeline', () => ({
@@ -113,6 +120,8 @@ describe('generation routes', () => {
     generateSceneContentMock.mockReset();
     getRequestAuthMock.mockReset();
     loadTeacherAdaptivePromptMock.mockReset();
+    recordGenerationRetryTelemetryMock.mockReset();
+    recordRequestFailureTelemetryMock.mockReset();
     resolveModelFromHeadersMock.mockReset();
     resolveModelFromHeadersWithScopeMock.mockReset();
     resolveSceneGenerationScenarioMock.mockReset();
@@ -343,6 +352,67 @@ describe('generation routes', () => {
     expect(response.status).toBe(200);
     expect(body.content).toEqual({ slideTitle: 'Recovered' });
     expect(generateSceneContentMock).toHaveBeenCalledTimes(2);
+    expect(recordGenerationRetryTelemetryMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        routeId: 'scene-content',
+        category: 'http_429',
+        attempt: 1,
+        maxAttempts: 3,
+        nextDelayMs: 0,
+        outcome: 'scheduled',
+      }),
+    );
+    expect(recordGenerationRetryTelemetryMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        routeId: 'scene-content',
+        category: 'http_429',
+        attempt: 2,
+        maxAttempts: 3,
+        outcome: 'recovered',
+      }),
+    );
+  });
+
+  it('caps scene content retries at two and records exhaustion', async () => {
+    vi.stubEnv('GENERATION_RETRY_BASE_DELAY_MS', '0');
+    const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide', language: 'en-US' };
+    applyOutlineFallbacksMock.mockReturnValue(outline);
+    generateSceneContentMock.mockRejectedValue(
+      Object.assign(new Error('upstream unavailable'), { status: 503 }),
+    );
+
+    const { POST } = await import('@/app/api/generate/scene-content/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-content', {
+        method: 'POST',
+        body: JSON.stringify({
+          outline,
+          allOutlines: [outline],
+          stageId: 'stage-1',
+          stageInfo: { name: 'Physics 101', language: 'en-US' },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(generateSceneContentMock).toHaveBeenCalledTimes(3);
+    expect(recordGenerationRetryTelemetryMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        routeId: 'scene-content',
+        category: 'http_5xx',
+        attempt: 3,
+        maxAttempts: 3,
+        outcome: 'failed',
+      }),
+    );
+    expect(recordRequestFailureTelemetryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: 'scene-content',
+        failureSource: 'retry_exhausted',
+      }),
+    );
   });
 
   it('does not retry governed scene content failures', async () => {
@@ -653,6 +723,67 @@ describe('generation routes', () => {
     expect(response.status).toBe(200);
     expect(body.scene.id).toBe('scene-1');
     expect(generateSceneActionsMock).toHaveBeenCalledTimes(2);
+    expect(recordGenerationRetryTelemetryMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        routeId: 'scene-actions',
+        category: 'http_5xx',
+        attempt: 1,
+        maxAttempts: 2,
+        nextDelayMs: 0,
+        outcome: 'scheduled',
+      }),
+    );
+    expect(recordGenerationRetryTelemetryMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        routeId: 'scene-actions',
+        category: 'http_5xx',
+        attempt: 2,
+        maxAttempts: 2,
+        outcome: 'recovered',
+      }),
+    );
+  });
+
+  it('caps scene action retries at one and records exhaustion', async () => {
+    vi.stubEnv('GENERATION_RETRY_BASE_DELAY_MS', '0');
+    const outline = { id: 'outline-1', order: 1, title: 'Intro', type: 'slide' };
+    generateSceneActionsMock.mockRejectedValue(
+      Object.assign(new Error('upstream unavailable'), { status: 503 }),
+    );
+
+    const { POST } = await import('@/app/api/generate/scene-actions/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate/scene-actions', {
+        method: 'POST',
+        body: JSON.stringify({
+          outline,
+          allOutlines: [outline],
+          content: { slideTitle: 'Welcome' },
+          stageId: 'stage-1',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(generateSceneActionsMock).toHaveBeenCalledTimes(2);
+    expect(buildCompleteSceneMock).not.toHaveBeenCalled();
+    expect(recordGenerationRetryTelemetryMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        routeId: 'scene-actions',
+        category: 'http_5xx',
+        attempt: 2,
+        maxAttempts: 2,
+        outcome: 'failed',
+      }),
+    );
+    expect(recordRequestFailureTelemetryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: 'scene-actions',
+        failureSource: 'retry_exhausted',
+      }),
+    );
   });
 
   it('does not retry governed scene action failures', async () => {

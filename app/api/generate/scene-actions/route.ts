@@ -15,7 +15,10 @@ import {
   type SceneGenerationContext,
   type AgentInfo,
 } from '@/lib/generation/generation-pipeline';
-import { withGenerationRetry } from '@/lib/generation/generation-retry';
+import {
+  withGenerationRetry,
+  type GenerationRetryCategory,
+} from '@/lib/generation/generation-retry';
 import type { SceneOutline } from '@/lib/types/generation';
 import type {
   GeneratedSlideContent,
@@ -25,17 +28,24 @@ import type {
 } from '@/lib/types/generation';
 import type { SpeechAction } from '@/lib/types/action';
 import type { ProviderType } from '@/lib/types/provider';
-import { getRequestAuth } from '@/lib/auth/current-user';
+import { getRequestAuth, type AuthContext } from '@/lib/auth/current-user';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { loadTeacherAdaptivePrompt } from '@/lib/server/adaptive-runtime-prompt';
 import { toGovernedProviderApiErrorResponse } from '@/lib/server/ai-governance';
 import { resolveSceneGenerationScenario } from '@/lib/server/provider-scenario-routing';
+import {
+  recordGenerationRetryTelemetry,
+  recordRequestFailureTelemetry,
+} from '@/lib/server/request-failure-telemetry';
 import { resolveModelFromHeadersWithScope } from '@/lib/server/resolve-model';
 
 const log = createLogger('Scene Actions API');
 
 export const maxDuration = 60;
+const MAX_RETRIES = 1;
+const MAX_ATTEMPTS = MAX_RETRIES + 1;
+const MAX_RETRY_DELAY_MS = 2000;
 
 function configuredRetryBaseDelayMs(): number | undefined {
   const raw = process.env.GENERATION_RETRY_BASE_DELAY_MS;
@@ -45,8 +55,12 @@ function configuredRetryBaseDelayMs(): number | undefined {
 }
 
 export async function POST(req: NextRequest) {
+  let auth: AuthContext | null = null;
   let outlineTitle: string | undefined;
   let resolvedModelString: string | undefined;
+  let retryCategory: GenerationRetryCategory | null = null;
+  let retryLabel = 'scene-actions';
+  let generationAttempt = 0;
   try {
     const body = await req.json();
     const {
@@ -100,7 +114,7 @@ export async function POST(req: NextRequest) {
     });
 
     // ── Model resolution from scene scenario profile, falling back to request headers ──
-    const auth = await getRequestAuth(req);
+    auth = await getRequestAuth(req);
     const scenarioResolvedModel = await resolveSceneGenerationScenario({
       auth,
       routeId: 'scene-actions',
@@ -171,26 +185,57 @@ export async function POST(req: NextRequest) {
     // ── Generate actions ──
     log.info(`Generating actions: "${outline.title}" (${outline.type}) [model=${modelString}]`);
 
+    retryLabel = `scene-actions:${outline.type}`;
     const actions = await withGenerationRetry(
-      () =>
-        generateSceneActions(outline, content, aiCall, {
+      (attempt) => {
+        generationAttempt = attempt;
+        return generateSceneActions(outline, content, aiCall, {
           ctx,
           agents,
           userProfile,
           languageDirective,
-        }),
+        });
+      },
       {
-        label: `scene-actions:${outline.type}`,
+        label: retryLabel,
+        maxRetries: MAX_RETRIES,
         baseDelayMs: configuredRetryBaseDelayMs(),
+        maxDelayMs: MAX_RETRY_DELAY_MS,
         signal: req.signal,
-        onRetry: ({ attempt, maxAttempts, nextDelayMs, reason }) => {
+        onRetry: async ({ attempt, maxAttempts, nextDelayMs, category }) => {
+          retryCategory = category;
+          await recordGenerationRetryTelemetry({
+            auth,
+            request: req,
+            routeId: 'scene-actions',
+            label: retryLabel,
+            category,
+            attempt,
+            maxAttempts,
+            nextDelayMs,
+            outcome: 'scheduled',
+            modelId: modelString,
+          });
           log.warn(
-            `Retrying scene action generation for "${outline.title}" (${attempt}/${maxAttempts}) in ${nextDelayMs}ms: ${reason}`,
+            `Retrying scene action generation for "${outline.title}" (${attempt}/${maxAttempts}) in ${nextDelayMs}ms [category=${category}]`,
           );
         },
       },
     );
 
+    if (retryCategory) {
+      await recordGenerationRetryTelemetry({
+        auth,
+        request: req,
+        routeId: 'scene-actions',
+        label: retryLabel,
+        category: retryCategory,
+        attempt: generationAttempt,
+        maxAttempts: MAX_ATTEMPTS,
+        outcome: 'recovered',
+        modelId: modelString,
+      });
+    }
     log.info(`Generated ${actions.length} actions for: "${outline.title}"`);
 
     // ── Build complete scene ──
@@ -198,6 +243,16 @@ export async function POST(req: NextRequest) {
 
     if (!scene) {
       log.error(`Failed to build scene: "${outline.title}"`);
+      await recordRequestFailureTelemetry({
+        auth,
+        request: req,
+        routeId: 'scene-actions',
+        status: 500,
+        errorCode: 'GENERATION_FAILED',
+        failureSource: 'scene_assembly',
+        modelId: modelString,
+        taskBucket: 'scene',
+      });
 
       return apiError('GENERATION_FAILED', 500, `Failed to build scene: ${outline.title}`);
     }
@@ -213,15 +268,53 @@ export async function POST(req: NextRequest) {
 
     return apiSuccess({ scene, previousSpeeches: outputPreviousSpeeches });
   } catch (error) {
+    if (retryCategory) {
+      await recordGenerationRetryTelemetry({
+        auth,
+        request: req,
+        routeId: 'scene-actions',
+        label: retryLabel,
+        category: retryCategory,
+        attempt: generationAttempt,
+        maxAttempts: MAX_ATTEMPTS,
+        outcome: 'failed',
+        modelId: resolvedModelString,
+      });
+    }
     const governanceError = toGovernedProviderApiErrorResponse(error);
     if (governanceError) {
+      await recordRequestFailureTelemetry({
+        auth,
+        request: req,
+        routeId: 'scene-actions',
+        status: governanceError.status,
+        errorCode: 'GOVERNED_PROVIDER_ERROR',
+        failureSource: 'provider_governance',
+        error,
+        modelId: resolvedModelString,
+        taskBucket: 'scene',
+      });
       return governanceError;
     }
 
     log.error(
-      `Scene actions generation failed [scene="${outlineTitle ?? 'unknown'}", model=${resolvedModelString ?? 'unknown'}]:`,
-      error,
+      `Scene actions generation failed [scene="${outlineTitle ?? 'unknown'}", model=${resolvedModelString ?? 'unknown'}]`,
+      {
+        errorName: error instanceof Error ? error.name : typeof error,
+        retryCategory,
+      },
     );
+    await recordRequestFailureTelemetry({
+      auth,
+      request: req,
+      routeId: 'scene-actions',
+      status: 500,
+      errorCode: 'INTERNAL_ERROR',
+      failureSource: retryCategory ? 'retry_exhausted' : 'generation',
+      error,
+      modelId: resolvedModelString,
+      taskBucket: 'scene',
+    });
     return apiError('INTERNAL_ERROR', 500, error instanceof Error ? error.message : String(error));
   }
 }
