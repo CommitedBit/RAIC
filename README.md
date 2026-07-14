@@ -300,7 +300,7 @@ This repository is configured for Vercel-first releases.
 - On hosted serverless runtimes without durable backing storage, classroom job files fall back to temporary runtime storage. Long-running generation should be treated as resilient only on self-hosted Node or a deployment with durable DB/filesystem backing.
 - Treat generic Vercel preview URLs as non-authoritative for teacher/admin auth unless you add a fixed staging domain, because Google JavaScript origins are exact-origin based.
 - Before each production merge, run:
-  `corepack pnpm run secrets:scan`, `corepack pnpm run ops:drift`, `corepack pnpm run check`, `corepack pnpm run build`, `corepack pnpm run test:mirofish:gate`, `corepack pnpm run test:mirofish:e2e`, `$env:CI='1'; corepack pnpm run test:e2e`, and `corepack pnpm run ops:verify`.
+  `corepack pnpm run secrets:scan`, `corepack pnpm run ops:drift`, `corepack pnpm run lint`, `corepack pnpm run build`, `corepack pnpm run check`, `corepack pnpm run test:mirofish:gate`, `corepack pnpm run test:mirofish:e2e`, `CI=1 corepack pnpm run test:e2e`, `corepack pnpm run benchmark:milestone`, and `corepack pnpm run ops:verify`.
 - If a production deployment is bad, use Vercel rollback or promote rather than hotfixing directly on the server.
 
  Or manually:

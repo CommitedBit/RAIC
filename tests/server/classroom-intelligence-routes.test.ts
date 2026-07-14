@@ -144,6 +144,43 @@ describe('classroom intelligence routes', () => {
     expect(upsertClassroomSessionContextMock).not.toHaveBeenCalled();
   });
 
+  it('rejects classroom-cookie students for teacher intelligence read paths', async () => {
+    requireClassroomAccessMock.mockResolvedValue(
+      buildWebAccess({
+        source: 'classroom',
+        auth: {
+          session: { role: 'student', kind: 'classroom', classroomId: 'room-1' },
+          user: { id: 'student-1' },
+        },
+      }),
+    );
+
+    const sessionContextRoute = await import('@/app/api/classroom/[id]/session-context/route');
+    const reflectionRoute = await import('@/app/api/classroom/[id]/reflection/route');
+    const analyticsRoute = await import('@/app/api/classroom/[id]/analytics/route');
+    const params = { params: Promise.resolve({ id: 'room-1' }) };
+
+    const responses = await Promise.all([
+      sessionContextRoute.GET(
+        new NextRequest('http://localhost/api/classroom/room-1/session-context'),
+        params,
+      ),
+      reflectionRoute.GET(
+        new NextRequest('http://localhost/api/classroom/room-1/reflection'),
+        params,
+      ),
+      analyticsRoute.GET(
+        new NextRequest('http://localhost/api/classroom/room-1/analytics'),
+        params,
+      ),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([403, 403, 403]);
+    expect(getClassroomSessionContextMock).not.toHaveBeenCalled();
+    expect(listClassroomReflectionsMock).not.toHaveBeenCalled();
+    expect(buildClassroomLearningAnalyticsMock).not.toHaveBeenCalled();
+  });
+
   it('validates session-context counts and normalizes the payload', async () => {
     const { POST } = await import('@/app/api/classroom/[id]/session-context/route');
     const response = await POST(

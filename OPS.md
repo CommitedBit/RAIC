@@ -31,7 +31,9 @@ For each functional slice:
 6. Push `main`.
 7. Remove the scratch branch locally.
 
-Use `pnpm run ops:verify` for the full required set, or run the same commands manually.
+Run the full required gate set below for release sign-off. `pnpm run ops:verify` validates the
+canonical post-merge gates and existing benchmark evidence; capture fresh benchmark evidence before
+running it when the slice touches classroom/runtime/provider paths.
 
 ### Parallel prep / single merge lane
 
@@ -49,12 +51,16 @@ Use `pnpm run ops:verify` for the full required set, or run the same commands ma
 
 Run these gates after each slice merge and before pushing `main`:
 
-- `pnpm run secrets:scan`
-- `pnpm run check`
-- `pnpm run build`
-- `pnpm run test:mirofish:gate`
-- `pnpm run test:mirofish:e2e`
-- `CI=1 pnpm run test:e2e` (PowerShell: `$env:CI='1'; pnpm run test:e2e`)
+- `corepack pnpm run secrets:scan`
+- `corepack pnpm run ops:drift`
+- `corepack pnpm run lint`
+- `corepack pnpm run build`
+- `corepack pnpm run check`
+- `corepack pnpm run test:mirofish:gate`
+- `corepack pnpm run test:mirofish:e2e`
+- `CI=1 corepack pnpm run test:e2e`
+- `corepack pnpm run benchmark:milestone`
+- `corepack pnpm run ops:verify`
 
 ### Performance planning
 
@@ -64,8 +70,8 @@ Run these gates after each slice merge and before pushing `main`:
 
 ### Live benchmark evidence capture
 
-- `pnpm run ops:verify` now requires a real live snapshot at `data/perf-results/latest.json`; the replay fixture is baseline coverage only.
-- Capture live evidence through the internal admin ops endpoint, which records through `recordBenchmarkArtifact()` and updates the latest snapshot:
+- `pnpm run ops:verify` requires a real live snapshot at `data/perf-results/latest.json`; the replay fixture is baseline coverage only.
+- Capture local milestone evidence with `corepack pnpm run benchmark:milestone`, or capture production/admin evidence through the internal admin ops endpoint, which records through `recordBenchmarkArtifact()` and updates the latest snapshot:
   - `POST /api/admin/ops/benchmarks`
   - auth: `system_admin` web session
   - required body fields: `scope`, `source`, and at least one numeric metric from `ops/perf-budgets.json`
@@ -123,7 +129,9 @@ This cycle is split into three tracks for deliberate originality and performance
 
 The active dated execution sequence for the current cycle is documented in:
 
-- `docs/execution-plans/2026-04-17-release-recovery-and-next-milestones.md`
+- `docs/future-roadmap.md`
+- `docs/execution-plans/2026-06-10-v0.4.1-release-hardening.md`
+- `docs/execution-plans/2026-06-10-v0.5.0-adaptive-student-beta-readiness.md`
 
 Feature stack details are documented in:
 
@@ -138,11 +146,14 @@ The canonical local release flow is:
 
 - `pnpm run secrets:scan`
 - `pnpm run ops:drift`
-- `pnpm run check`
+- `pnpm run lint`
 - `pnpm run build`
+- `pnpm run check`
 - `pnpm run test:mirofish:gate`
 - `pnpm run test:mirofish:e2e`
 - `CI=1 pnpm run test:e2e`
+- `pnpm run benchmark:milestone`
+- `pnpm run ops:verify`
 
 Failure output is intentionally short and gate-oriented; the ops script prints gate labels so CI logs indicate where failure occurred.
 

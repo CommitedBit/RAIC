@@ -577,4 +577,95 @@ describe('POST /api/chat', () => {
       unexpected: [],
     });
   });
+
+  it('keeps mixed teacher and student chat replay isolated', async () => {
+    requireClassroomAccessMock
+      .mockResolvedValueOnce({
+        auth: {
+          user: { id: 'teacher-1' },
+          organization: { id: 'org-1' },
+          session: { role: 'teacher' },
+        },
+        source: 'web',
+      })
+      .mockResolvedValueOnce({
+        auth: {
+          user: { id: 'student-1' },
+          organization: { id: 'org-1' },
+          session: { role: 'student' },
+        },
+        source: 'classroom',
+      });
+    resolveModelMock.mockResolvedValue({
+      model: { id: 'mock-model' },
+      modelInfo: undefined,
+      modelString: 'openai:gpt-4o',
+      providerId: 'openai',
+      apiKey: 'resolved-key',
+    });
+    buildAdaptiveRuntimeContextMock.mockResolvedValue(repeatedSessionAdaptiveContext);
+    statelessGenerateMock.mockImplementation(() =>
+      (async function* () {
+        return;
+      })(),
+    );
+
+    const { POST } = await import('@/app/api/chat/route');
+    const requestBody = {
+      messages: [{ id: 'msg-1', role: 'user', parts: [] }],
+      storeState: {
+        stage: { id: 'room-1' },
+        scenes: [],
+        currentSceneId: null,
+        mode: 'playback',
+        whiteboardOpen: false,
+      },
+      config: {
+        agentIds: ['agent-1'],
+      },
+      apiKey: '',
+    };
+
+    const teacherResponse = await POST(
+      new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(requestBody),
+      }),
+    );
+    const studentResponse = await POST(
+      new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(requestBody),
+      }),
+    );
+
+    expect(teacherResponse.status).toBe(200);
+    expect(studentResponse.status).toBe(200);
+    expect(buildAdaptiveRuntimeContextMock).toHaveBeenCalledTimes(1);
+    expect(buildAdaptiveRuntimeContextMock).toHaveBeenCalledWith({
+      classroomId: 'room-1',
+      userId: 'teacher-1',
+    });
+    expect(statelessGenerateMock).toHaveBeenCalledTimes(2);
+    expect(
+      scoreAdaptiveContextReplay(
+        statelessGenerateMock.mock.calls[0]?.[0]?.adaptiveContext,
+        'present',
+      ),
+    ).toEqual({
+      pass: true,
+      missing: [],
+      unexpected: [],
+    });
+    expect(
+      scoreAdaptiveContextReplay(
+        statelessGenerateMock.mock.calls[1]?.[0]?.adaptiveContext,
+        'absent',
+      ),
+    ).toEqual({
+      pass: true,
+      missing: [],
+      unexpected: [],
+    });
+  });
 });

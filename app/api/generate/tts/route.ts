@@ -11,6 +11,7 @@ import { NextRequest } from 'next/server';
 import { generateTTS } from '@/lib/audio/tts-providers';
 import { TTS_PROVIDERS } from '@/lib/audio/constants';
 import { getRequestAuth } from '@/lib/auth/current-user';
+import type { AuthContext } from '@/lib/auth/current-user';
 import type { TTSProviderId } from '@/lib/audio/types';
 import { createLogger } from '@/lib/logger';
 import {
@@ -26,6 +27,7 @@ import {
   resolveScenarioManagedProviderRoute,
   type ScenarioProviderCandidateValidationContext,
 } from '@/lib/server/provider-scenario-routing';
+import { recordRequestFailureTelemetry } from '@/lib/server/request-failure-telemetry';
 import { validateUrlForSSRF } from '@/lib/server/ssrf-guard';
 
 const log = createLogger('TTS API');
@@ -67,12 +69,21 @@ function createTtsScenarioValidator(ttsVoice: string) {
 }
 
 export async function POST(req: NextRequest) {
+  let auth: AuthContext | null = null;
   let ttsProviderId: string | undefined;
+  let ttsModelId: string | undefined;
   let ttsVoice: string | undefined;
   let audioId: string | undefined;
+  let scenarioProfileId: string | null = null;
   try {
     const body = await req.json();
-    const { text, ttsModelId, ttsSpeed, ttsApiKey, ttsBaseUrl } = body as {
+    const {
+      text,
+      ttsModelId: requestedTtsModelId,
+      ttsSpeed,
+      ttsApiKey,
+      ttsBaseUrl,
+    } = body as {
       text: string;
       audioId: string;
       ttsProviderId: TTSProviderId;
@@ -83,6 +94,7 @@ export async function POST(req: NextRequest) {
       ttsBaseUrl?: string;
     };
     ttsProviderId = body.ttsProviderId;
+    ttsModelId = requestedTtsModelId;
     ttsVoice = body.ttsVoice;
     audioId = body.audioId;
 
@@ -114,7 +126,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const auth = await getRequestAuth(req);
+    auth = await getRequestAuth(req);
     const resolved =
       (await resolveScenarioManagedProviderRoute({
         auth,
@@ -122,7 +134,7 @@ export async function POST(req: NextRequest) {
         taskBucket: 'tts',
         family: 'tts',
         requestedProviderId: ttsProviderId,
-        requestedModelId: ttsModelId || undefined,
+        requestedModelId: requestedTtsModelId || undefined,
         requestedSecret: ttsApiKey || undefined,
         requestedBaseUrl: clientBaseUrl,
         validateResolvedCandidate: createTtsScenarioValidator(ttsVoice),
@@ -133,15 +145,17 @@ export async function POST(req: NextRequest) {
         providerId: ttsProviderId,
         requestedSecret: ttsApiKey || undefined,
         requestedBaseUrl: clientBaseUrl,
-        requestedModel: ttsModelId || undefined,
+        requestedModel: requestedTtsModelId || undefined,
       }));
 
     ttsProviderId = resolved.providerId;
+    ttsModelId = resolved.modelId || requestedTtsModelId;
+    scenarioProfileId = 'scenarioProfileId' in resolved ? resolved.scenarioProfileId : null;
 
     // Build TTS config
     const config = {
       providerId: resolved.providerId as TTSProviderId,
-      modelId: resolved.modelId || ttsModelId,
+      modelId: resolved.modelId || requestedTtsModelId,
       voice: ttsVoice,
       speed: ttsSpeed ?? 1.0,
       apiKey: resolved.apiKey,
@@ -162,6 +176,19 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const governanceError = toGovernedProviderApiErrorResponse(error);
     if (governanceError) {
+      await recordRequestFailureTelemetry({
+        auth,
+        request: req,
+        routeId: 'generate-tts',
+        status: governanceError.status,
+        errorCode: 'GOVERNED_PROVIDER_ERROR',
+        failureSource: 'provider_governance',
+        error,
+        providerId: ttsProviderId,
+        modelId: ttsModelId,
+        taskBucket: 'tts',
+        scenarioProfileId,
+      });
       return withRequestWebSession(req, governanceError);
     }
 
@@ -169,6 +196,19 @@ export async function POST(req: NextRequest) {
       `TTS generation failed [provider=${ttsProviderId ?? 'unknown'}, voice=${ttsVoice ?? 'unknown'}, audioId=${audioId ?? 'unknown'}]:`,
       error,
     );
+    await recordRequestFailureTelemetry({
+      auth,
+      request: req,
+      routeId: 'generate-tts',
+      status: 500,
+      errorCode: 'GENERATION_FAILED',
+      failureSource: 'provider_request',
+      error,
+      providerId: ttsProviderId ?? 'unknown',
+      modelId: ttsModelId ?? 'default',
+      taskBucket: 'tts',
+      scenarioProfileId,
+    });
     return apiErrorWithRequestSession(
       req,
       'GENERATION_FAILED',

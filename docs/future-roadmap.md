@@ -4,6 +4,11 @@ This roadmap translates the current single-branch model into a dated execution s
 
 The completed v0.4.0 cycle plan is documented in [Execution Plan: v0.4.0 Reliable Adaptive Learning Platform (2026-05-17)](./execution-plans/2026-05-17-v0.4.0-reliable-adaptive-learning-platform.md). The v0.5.0 release evidence is captured in [Release Evidence: v0.5.0 Source-Grounded Experience Presets (2026-05-18)](./release-evidence-v0.5.0.md). The latest release evidence is tracked in [v0.7.0 Discord Scheduled-Class Beta Readiness](./release-evidence-v0.7.0.md).
 
+Current post-v0.7.0 hardening and adaptive-student follow-up notes are documented in:
+
+- [Execution Plan: post-v0.7.0 Release Hardening](./execution-plans/2026-06-10-v0.4.1-release-hardening.md)
+- [Execution Plan: post-v0.7.0 Adaptive Student Beta Follow-up](./execution-plans/2026-06-10-v0.5.0-adaptive-student-beta-readiness.md)
+
 ## 1) Operating baseline
 
 - Keep `main` as the only shared branch.
@@ -41,6 +46,18 @@ The completed v0.4.0 cycle plan is documented in [Execution Plan: v0.4.0 Reliabl
   - Acceptance: preview credentials and smoke pass first, clean-main gates pass after merge, production smoke evidence is captured, and `v0.7.0` is tagged.
   - Draft evidence: [v0.7.0 Discord Scheduled-Class Beta Readiness](./release-evidence-v0.7.0.md).
 
+- Post-v0.7.0 hardening track
+  - Goal: harden release stability by adding provider-governance observability, fallback telemetry, and explicit rollout/ops clarity without changing payloads or user flows.
+  - Scoping: one-purpose, reversible slices focused on diagnostics and docs.
+  - Acceptance: provider scenario denials, fallback routing, and legacy unmanaged-path usage are visible in telemetry; request failure and smoke context visibility improve; docs remain current and links/commands are validated.
+  - Execution source: [post-v0.7.0 Release Hardening](./execution-plans/2026-06-10-v0.4.1-release-hardening.md)
+
+- Post-v0.7.0 adaptive-student follow-up
+  - Goal: complete privacy/compliance readiness (consent, retention, leakage controls) before enabling any broader student-facing adaptation.
+  - Scoping: no public/student behavior changes before all beta gates pass.
+  - Acceptance: student adaptation entrypoints remain feature-flagged, consent-guarded, rollback-safe, and covered by non-leakage replay tests.
+  - Execution source: [post-v0.7.0 Adaptive Student Beta Follow-up](./execution-plans/2026-06-10-v0.5.0-adaptive-student-beta-readiness.md)
+
 ## 3) Performance and ops overlap
 
 - Keep benchmark artifact capture and `ops:verify` evidence enforcement active throughout every milestone.
@@ -59,9 +76,32 @@ The completed v0.4.0 cycle plan is documented in [Execution Plan: v0.4.0 Reliabl
 
 ## 5) Exit criteria for each slice
 
-- Functional gates: the full release gate set on local `main`, including `pnpm run ops:verify`.
+- Functional gates: the full release gate set on local `main` for each slice, including `pnpm run ops:verify`.
 - Perf gates: a valid non-fixture benchmark artifact when the slice touches latency-sensitive classroom or provider paths.
 - Merge hygiene: no stale local branches, worktrees, or parked multi-objective residue after handoff.
+
+Slice-level minimum acceptance:
+
+- Post-v0.7.0 hardening: error observability coverage plus no behavior regressions in stable generation/presentation flows.
+- Adaptive-student follow-up: privacy/retention tests plus confirmed student path disabled by default and fully rollback-safe via feature-flag disable.
+
+Required milestone merge checks:
+
+- `corepack pnpm run secrets:scan`
+- `corepack pnpm run ops:drift`
+- `corepack pnpm run lint`
+- `corepack pnpm run build`
+- `corepack pnpm run check`
+- `corepack pnpm run test:mirofish:gate`
+- `corepack pnpm run test:mirofish:e2e`
+- `CI=1 corepack pnpm run test:e2e`
+- `corepack pnpm run benchmark:milestone`
+- `corepack pnpm run ops:verify`
+
+Post-deploy milestone proof:
+
+- `corepack pnpm run smoke:production:milestone`
+- `corepack pnpm run smoke:production:classroom` (when classroom-path behavior changed by slice)
 
 ## 6) Governance contract
 

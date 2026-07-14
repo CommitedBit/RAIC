@@ -9,6 +9,7 @@ import { NextRequest } from 'next/server';
 import { callLLM } from '@/lib/ai/llm';
 import type { AICallFn } from '@/lib/generation/pipeline-types';
 import { getRequestAuth } from '@/lib/auth/current-user';
+import type { AuthContext } from '@/lib/auth/current-user';
 import { createLogger } from '@/lib/logger';
 import {
   apiErrorWithRequestSession,
@@ -24,6 +25,7 @@ import {
   SEARCH_QUERY_REWRITE_EXCERPT_LENGTH,
 } from '@/lib/server/search-query-builder';
 import { resolveScenarioManagedProviderRoute } from '@/lib/server/provider-scenario-routing';
+import { recordRequestFailureTelemetry } from '@/lib/server/request-failure-telemetry';
 import { resolveModelFromHeaders } from '@/lib/server/resolve-model';
 import { validateUrlForSSRF } from '@/lib/server/ssrf-guard';
 import { formatSearchResultsAsContext, searchWeb } from '@/lib/web-search';
@@ -34,6 +36,9 @@ const log = createLogger('WebSearch');
 
 export async function POST(req: NextRequest) {
   let query: string | undefined;
+  let auth: AuthContext | null = null;
+  let resolvedProviderId: string | undefined;
+  let scenarioProfileId: string | null = null;
   try {
     const body = await req.json();
     const {
@@ -55,7 +60,7 @@ export async function POST(req: NextRequest) {
       return apiErrorWithRequestSession(req, 'MISSING_REQUIRED_FIELD', 400, 'query is required');
     }
 
-    const auth = await getRequestAuth(req);
+    auth = await getRequestAuth(req);
     const providerId: WebSearchProviderId =
       requestProviderId && WEB_SEARCH_PROVIDERS[requestProviderId] ? requestProviderId : 'tavily';
     if (clientBaseUrl && process.env.NODE_ENV === 'production') {
@@ -82,6 +87,9 @@ export async function POST(req: NextRequest) {
         requestedSecret: clientApiKey || undefined,
         requestedBaseUrl: clientBaseUrl || undefined,
       }));
+    resolvedProviderId = resolvedWebSearch.providerId;
+    scenarioProfileId =
+      'scenarioProfileId' in resolvedWebSearch ? resolvedWebSearch.scenarioProfileId : null;
 
     const boundedPdfText = pdfText?.slice(0, SEARCH_QUERY_REWRITE_EXCERPT_LENGTH);
 
@@ -133,11 +141,35 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const governanceError = toGovernedProviderApiErrorResponse(err);
     if (governanceError) {
+      await recordRequestFailureTelemetry({
+        auth,
+        request: req,
+        routeId: 'web-search',
+        status: governanceError.status,
+        errorCode: 'GOVERNED_PROVIDER_ERROR',
+        failureSource: 'provider_governance',
+        error: err,
+        providerId: resolvedProviderId,
+        taskBucket: 'webSearch',
+        scenarioProfileId,
+      });
       return withRequestWebSession(req, governanceError);
     }
 
-    log.error(`Web search failed [query="${query?.substring(0, 60) ?? 'unknown'}"]:`, err);
+    log.error(`Web search failed [queryChars=${query?.length ?? 0}]:`, err);
     const message = err instanceof Error ? err.message : 'Web search failed';
+    await recordRequestFailureTelemetry({
+      auth,
+      request: req,
+      routeId: 'web-search',
+      status: 500,
+      errorCode: 'INTERNAL_ERROR',
+      failureSource: 'provider_request',
+      error: err,
+      providerId: resolvedProviderId ?? 'unknown',
+      taskBucket: 'webSearch',
+      scenarioProfileId,
+    });
     return apiErrorWithRequestSession(req, 'INTERNAL_ERROR', 500, message);
   }
 }

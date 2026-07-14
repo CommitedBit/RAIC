@@ -22,6 +22,7 @@ import {
   IMAGE_PROVIDERS,
 } from '@/lib/media/image-providers';
 import { getRequestAuth } from '@/lib/auth/current-user';
+import type { AuthContext } from '@/lib/auth/current-user';
 import type { ImageProviderId, ImageGenerationOptions } from '@/lib/media/types';
 import { createLogger } from '@/lib/logger';
 import {
@@ -37,6 +38,7 @@ import {
   resolveScenarioManagedProviderRoute,
   type ScenarioProviderCandidateValidationContext,
 } from '@/lib/server/provider-scenario-routing';
+import { recordRequestFailureTelemetry } from '@/lib/server/request-failure-telemetry';
 import { validateUrlForSSRF } from '@/lib/server/ssrf-guard';
 
 const log = createLogger('ImageGeneration API');
@@ -76,8 +78,10 @@ function createImageScenarioValidator(options: ImageGenerationOptions) {
 }
 
 export async function POST(request: NextRequest) {
+  let auth: AuthContext | null = null;
   let resolvedProviderId: string | undefined;
   let resolvedModelId: string | undefined;
+  let scenarioProfileId: string | null = null;
   try {
     const body = (await request.json()) as ImageGenerationOptions;
 
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const auth = await getRequestAuth(request);
+    auth = await getRequestAuth(request);
     const resolved =
       (await resolveScenarioManagedProviderRoute({
         auth,
@@ -124,6 +128,7 @@ export async function POST(request: NextRequest) {
       }));
     resolvedProviderId = resolved.providerId;
     resolvedModelId = resolved.modelId || clientModel || undefined;
+    scenarioProfileId = 'scenarioProfileId' in resolved ? resolved.scenarioProfileId : null;
 
     // Resolve dimensions from aspect ratio if not explicitly set
     if (!body.width && !body.height && body.aspectRatio) {
@@ -134,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     log.info(
       `Generating image: provider=${resolvedProviderId}, model=${resolvedModelId || 'default'}, ` +
-        `prompt="${body.prompt.slice(0, 80)}...", size=${body.width ?? 'auto'}x${body.height ?? 'auto'}`,
+        `promptChars=${body.prompt.length}, size=${body.width ?? 'auto'}x${body.height ?? 'auto'}`,
     );
 
     const result = await generateImage(
@@ -152,17 +157,56 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     const governanceError = toGovernedProviderApiErrorResponse(error);
     if (governanceError) {
+      await recordRequestFailureTelemetry({
+        auth,
+        request,
+        routeId: 'generate-image',
+        status: governanceError.status,
+        errorCode: 'GOVERNED_PROVIDER_ERROR',
+        failureSource: 'provider_governance',
+        error,
+        providerId: resolvedProviderId,
+        modelId: resolvedModelId,
+        taskBucket: 'image',
+        scenarioProfileId,
+      });
       return withRequestWebSession(request, governanceError);
     }
     // Detect content safety filter rejections (e.g. Seedream OutputImageSensitiveContentDetected)
     if (message.includes('SensitiveContent') || message.includes('sensitive information')) {
       log.warn(`Image blocked by content safety filter: ${message}`);
+      await recordRequestFailureTelemetry({
+        auth,
+        request,
+        routeId: 'generate-image',
+        status: 400,
+        errorCode: 'CONTENT_SENSITIVE',
+        failureSource: 'content_safety',
+        error,
+        providerId: resolvedProviderId,
+        modelId: resolvedModelId,
+        taskBucket: 'image',
+        scenarioProfileId,
+      });
       return apiErrorWithRequestSession(request, 'CONTENT_SENSITIVE', 400, message);
     }
     log.error(
       `Image generation failed [provider=${resolvedProviderId ?? 'seedream'}, model=${resolvedModelId ?? 'default'}]:`,
       error,
     );
+    await recordRequestFailureTelemetry({
+      auth,
+      request,
+      routeId: 'generate-image',
+      status: 500,
+      errorCode: 'INTERNAL_ERROR',
+      failureSource: 'provider_request',
+      error,
+      providerId: resolvedProviderId ?? 'seedream',
+      modelId: resolvedModelId ?? 'default',
+      taskBucket: 'image',
+      scenarioProfileId,
+    });
     return apiErrorWithRequestSession(request, 'INTERNAL_ERROR', 500, message);
   }
 }

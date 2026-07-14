@@ -178,7 +178,10 @@ function createScenarioResolutionError(message: string): GovernedProviderResolut
 
 async function appendScenarioAuditLog(
   auth: AuthContext | null,
-  action: 'provider_scenario.route_selected' | 'provider_scenario.route_denied',
+  action:
+    | 'provider_scenario.route_selected'
+    | 'provider_scenario.route_denied'
+    | 'provider_scenario.unmanaged_fallback',
   metadata: ScenarioAuditMetadata,
 ) {
   try {
@@ -582,11 +585,32 @@ export async function resolveVerificationModelScenario(
     return null;
   }
 
+  const requested = parseModelString(input.requestedModelString);
   if (!profile.buckets[input.taskBucket]?.length) {
+    const metadata = createAuditMetadata({
+      profileId: profile.id,
+      taskBucket: input.taskBucket,
+      routeId: input.routeId,
+      selectedProviderId: null,
+      selectedModelId: null,
+      fallbackProviderId: null,
+      fallbackModelId: null,
+      validationStatus: 'failed_closed',
+      attempts: [
+        {
+          providerId: requested.providerId,
+          modelId: requested.modelId,
+          status: 'rejected',
+          reason: `scenario profile "${profile.id}" has no candidates for task bucket "${input.taskBucket}"`,
+        },
+      ],
+      requestedProviderId: requested.providerId,
+      requestedModelId: requested.modelId,
+    });
+    await appendScenarioAuditLog(input.auth, 'provider_scenario.unmanaged_fallback', metadata);
     return null;
   }
 
-  const requested = parseModelString(input.requestedModelString);
   const managed = getRequestedScenarioCandidates(
     profile.buckets[input.taskBucket] ?? [],
     requested.providerId,
@@ -620,6 +644,31 @@ export async function resolveVerificationModelScenario(
         `Requested model "${input.requestedModelString}" is not managed by scenario profile "${profile.id}" for route "${input.routeId}".`,
       );
     }
+    const unmanagedFallbackMetadata = createAuditMetadata({
+      profileId: profile.id,
+      taskBucket: input.taskBucket,
+      routeId: input.routeId,
+      selectedProviderId: null,
+      selectedModelId: null,
+      fallbackProviderId: null,
+      fallbackModelId: null,
+      validationStatus: 'failed_closed',
+      attempts: [
+        {
+          providerId: requested.providerId,
+          modelId: requested.modelId,
+          status: 'rejected',
+          reason: `requested model "${input.requestedModelString}" is not managed by scenario profile "${profile.id}"`,
+        },
+      ],
+      requestedProviderId: requested.providerId,
+      requestedModelId: requested.modelId,
+    });
+    await appendScenarioAuditLog(
+      input.auth,
+      'provider_scenario.unmanaged_fallback',
+      unmanagedFallbackMetadata,
+    );
     return null;
   }
 
@@ -705,6 +754,30 @@ export async function resolveSceneGenerationScenario(
 
   const candidates = profile.buckets.scene;
   if (!candidates?.length) {
+    const requested = input.requestedModelString
+      ? parseModelString(input.requestedModelString)
+      : { providerId: null, modelId: null };
+    const metadata = createAuditMetadata({
+      profileId: profile.id,
+      taskBucket: 'scene',
+      routeId: input.routeId,
+      selectedProviderId: null,
+      selectedModelId: null,
+      fallbackProviderId: null,
+      fallbackModelId: null,
+      validationStatus: 'failed_closed',
+      attempts: [
+        {
+          providerId: requested.providerId ?? 'unknown',
+          modelId: requested.modelId,
+          status: 'rejected',
+          reason: `scenario profile "${profile.id}" has no candidates for task bucket "scene"`,
+        },
+      ],
+      requestedProviderId: requested.providerId,
+      requestedModelId: requested.modelId,
+    });
+    await appendScenarioAuditLog(input.auth, 'provider_scenario.unmanaged_fallback', metadata);
     return null;
   }
 
@@ -791,13 +864,34 @@ export async function resolveScenarioManagedProviderRoute(
     return null;
   }
 
+  const requestedProviderId = input.requestedProviderId?.trim() || null;
+  const requestedModelId = input.requestedModelId?.trim() || null;
   const bucketCandidates = profile.buckets[input.taskBucket];
   if (!bucketCandidates?.length) {
+    const metadata = createAuditMetadata({
+      profileId: profile.id,
+      taskBucket: input.taskBucket,
+      routeId: input.routeId,
+      selectedProviderId: null,
+      selectedModelId: null,
+      fallbackProviderId: null,
+      fallbackModelId: null,
+      validationStatus: 'failed_closed',
+      attempts: [
+        {
+          providerId: requestedProviderId ?? 'unknown',
+          modelId: requestedModelId,
+          status: 'rejected',
+          reason: `scenario profile "${profile.id}" has no candidates for task bucket "${input.taskBucket}"`,
+        },
+      ],
+      requestedProviderId,
+      requestedModelId,
+    });
+    await appendScenarioAuditLog(input.auth, 'provider_scenario.unmanaged_fallback', metadata);
     return null;
   }
 
-  const requestedProviderId = input.requestedProviderId?.trim() || null;
-  const requestedModelId = input.requestedModelId?.trim() || null;
   const managed = getScenarioCandidatesForRoute(
     bucketCandidates,
     input.selectionMode ?? 'authoritative',
@@ -832,6 +926,31 @@ export async function resolveScenarioManagedProviderRoute(
         `Requested provider "${requestedProviderId ?? 'unknown'}" is not managed by scenario profile "${profile.id}" for route "${input.routeId}".`,
       );
     }
+    const unmanagedFallbackMetadata = createAuditMetadata({
+      profileId: profile.id,
+      taskBucket: input.taskBucket,
+      routeId: input.routeId,
+      selectedProviderId: null,
+      selectedModelId: null,
+      fallbackProviderId: null,
+      fallbackModelId: null,
+      validationStatus: 'failed_closed',
+      attempts: [
+        {
+          providerId: requestedProviderId ?? 'unknown',
+          modelId: requestedModelId,
+          status: 'rejected',
+          reason: `requested provider "${requestedProviderId ?? 'unknown'}" is not managed by scenario profile "${profile.id}"`,
+        },
+      ],
+      requestedProviderId,
+      requestedModelId,
+    });
+    await appendScenarioAuditLog(
+      input.auth,
+      'provider_scenario.unmanaged_fallback',
+      unmanagedFallbackMetadata,
+    );
     return null;
   }
 

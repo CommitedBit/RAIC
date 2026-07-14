@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+import { scoreNoAdaptiveLeakage } from '../support/adaptive-runtime-replay';
 
 const persistClassroomMock = vi.fn();
 const buildRequestOriginMock = vi.fn(() => 'https://app.example.com');
@@ -287,8 +288,19 @@ describe('POST /api/classroom', () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
+    expect(Object.keys(json).sort()).toEqual(['classroom', 'success', 'viewer']);
     expect(json.success).toBe(true);
     expect(json.classroom.id).toBe('safe-id');
+    expect(json.viewer).toEqual({
+      source: 'classroom',
+      role: 'student',
+      canShare: false,
+    });
+    expect(scoreNoAdaptiveLeakage(json)).toEqual({
+      pass: true,
+      missing: [],
+      unexpected: [],
+    });
     expect(json.classroom.stage.sharedSimulation).toEqual(
       expect.objectContaining({
         simulationId: 'sim-1',

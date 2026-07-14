@@ -98,6 +98,7 @@ Public launch on `open-raic.com`:
    - `corepack pnpm run secrets:scan`
    - `corepack pnpm run ops:drift`
    - `corepack pnpm run ops:env:vercel` from a linked, logged-in Vercel CLI checkout, or `VERCEL_PROJECT_ID=<project-id> VERCEL_TEAM_ID=<team-id> VERCEL_TOKEN=<token> corepack pnpm run ops:env:vercel` for REST-token automation
+   - `corepack pnpm run lint`
    - `corepack pnpm run check`
    - `corepack pnpm run build`
    - `corepack pnpm run test:mirofish:gate`

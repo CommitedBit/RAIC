@@ -8,8 +8,10 @@ const { afterMock } = vi.hoisted(() => ({
 const buildRequestOriginMock = vi.fn();
 const createClassroomGenerationJobMock = vi.fn();
 const createOrReuseClassroomGenerationJobMock = vi.fn();
+const appendAuditLogMock = vi.fn();
 const nanoidMock = vi.fn();
 const requireRequestRoleMock = vi.fn();
+const resolveGovernedProviderConfigMock = vi.fn();
 const runClassroomGenerationJobMock = vi.fn();
 
 vi.mock('next/server', async (importOriginal) => {
@@ -41,6 +43,16 @@ vi.mock('@/lib/server/classroom-storage', () => ({
   buildRequestOrigin: buildRequestOriginMock,
 }));
 
+vi.mock('@/lib/db/repositories/audit-logs', () => ({
+  appendAuditLog: appendAuditLogMock,
+}));
+
+vi.mock('@/lib/server/ai-governance', () => ({
+  isGovernedProviderResolutionError: (error: unknown) =>
+    Boolean(error && typeof error === 'object' && 'apiErrorCode' in error),
+  resolveGovernedProviderConfig: resolveGovernedProviderConfigMock,
+}));
+
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
     debug: vi.fn(),
@@ -63,8 +75,10 @@ describe('POST /api/generate-classroom', () => {
     buildRequestOriginMock.mockReset();
     createOrReuseClassroomGenerationJobMock.mockReset();
     createClassroomGenerationJobMock.mockReset();
+    appendAuditLogMock.mockReset();
     nanoidMock.mockReset();
     requireRequestRoleMock.mockReset();
+    resolveGovernedProviderConfigMock.mockReset();
     runClassroomGenerationJobMock.mockReset();
 
     afterMock.mockImplementation((callback: () => unknown) => {
@@ -88,6 +102,16 @@ describe('POST /api/generate-classroom', () => {
     });
     nanoidMock.mockReturnValue('job-123456');
     requireRequestRoleMock.mockResolvedValue(authContext);
+    resolveGovernedProviderConfigMock.mockResolvedValue({
+      apiKey: 'tavily-test-key',
+      baseUrl: 'https://tavily.example.test',
+    });
+    appendAuditLogMock.mockResolvedValue({
+      id: 'audit-1',
+      action: 'api.request_failed',
+      createdAt: new Date().toISOString(),
+      metadata: {},
+    });
     runClassroomGenerationJobMock.mockResolvedValue(undefined);
   });
 
@@ -143,6 +167,59 @@ describe('POST /api/generate-classroom', () => {
     expect(response.status).toBe(400);
     expect(body.errorCode).toBe('INVALID_REQUEST');
     expect(body.error).toContain('History Vlog requires');
+    expect(createClassroomGenerationJobMock).not.toHaveBeenCalled();
+    expect(runClassroomGenerationJobMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects historical-vlogger requests when web search is enabled but not configured', async () => {
+    resolveGovernedProviderConfigMock.mockRejectedValueOnce(
+      Object.assign(new Error('Missing Tavily credentials'), {
+        apiErrorCode: 'MISSING_API_KEY',
+        code: 'MISSING_PROVIDER_CREDENTIALS',
+        status: 400,
+      }),
+    );
+
+    const { POST } = await import('@/app/api/generate-classroom/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/generate-classroom', {
+        method: 'POST',
+        body: JSON.stringify({
+          requirement: 'Create a History Vlog lesson about the Titanic',
+          experiencePreset: 'historical-vlogger',
+          enableWebSearch: true,
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe('INVALID_REQUEST');
+    expect(body.error).toContain('History Vlog requires');
+    expect(resolveGovernedProviderConfigMock).toHaveBeenCalledWith({
+      auth: authContext,
+      organizationId: 'org-1',
+      family: 'webSearch',
+      providerId: 'tavily',
+      mode: 'background',
+    });
+    expect(appendAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'api.request_failed',
+        resourceType: 'api_route',
+        resourceId: 'generate-classroom',
+        metadata: expect.objectContaining({
+          routeId: 'generate-classroom',
+          method: 'POST',
+          path: '/api/generate-classroom',
+          status: 400,
+          errorCode: 'INVALID_REQUEST',
+          failureSource: 'source_preflight',
+          providerId: 'tavily',
+          taskBucket: 'webSearch',
+        }),
+      }),
+    );
     expect(createClassroomGenerationJobMock).not.toHaveBeenCalled();
     expect(runClassroomGenerationJobMock).not.toHaveBeenCalled();
   });

@@ -694,7 +694,24 @@ describe('provider and verification routes', () => {
       auth: authContext,
     });
     expect(generateTextMock).toHaveBeenCalled();
-    expect(appendAuditLogMock).not.toHaveBeenCalled();
+    expect(appendAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'provider_scenario.unmanaged_fallback',
+        resourceType: 'provider_scenario',
+        resourceId: 'verify-model',
+        metadata: expect.objectContaining({
+          scenarioProfileId: 'teacher-differentiation-v1',
+          taskBucket: 'scene',
+          routeId: 'verify-model',
+          selectedProviderId: null,
+          selectedModelId: null,
+          validationStatus: 'failed_closed',
+          requestedProviderId: 'openai',
+          requestedModelId: 'gpt-5.4-mini',
+          fallbackReason: expect.stringContaining('not managed by scenario profile'),
+        }),
+      }),
+    );
   });
 
   it('includes the tested model id in verification failures', async () => {
@@ -1176,6 +1193,133 @@ describe('provider and verification routes', () => {
       responseTime: 123,
       sources: [{ title: 'Source', url: 'https://example.com' }],
     });
+  });
+
+  it('records sanitized provider-scenario request failure telemetry for web search', async () => {
+    getProviderScenarioProfileMock.mockReturnValue({
+      id: 'teacher-differentiation-v1',
+      description: 'Scenario-managed provider routing.',
+      buckets: {
+        webSearch: [{ providerId: 'tavily' }],
+      },
+    });
+    buildSearchQueryMock.mockResolvedValue({
+      query: 'private student query',
+      hasPdfContext: true,
+      rawRequirementLength: 21,
+      rewriteAttempted: true,
+      finalQueryLength: 21,
+    });
+    searchWebMock.mockRejectedValue(
+      Object.assign(new Error('upstream unavailable'), {
+        code: 'E_SEARCH',
+        status: 503,
+      }),
+    );
+
+    const { POST } = await import('@/app/api/web-search/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/web-search', {
+        method: 'POST',
+        body: JSON.stringify({
+          query: 'private student query',
+          pdfText: 'confidential source text',
+          apiKey: 'client-search-secret',
+          baseUrl: 'https://private-search.example',
+        }),
+      }),
+    );
+    const body = await response.json();
+    const failureAudit = appendAuditLogMock.mock.calls.find(
+      ([input]) => input.action === 'provider_scenario.request_failed',
+    )?.[0];
+
+    expect(response.status).toBe(500);
+    expect(body.errorCode).toBe('INTERNAL_ERROR');
+    expect(failureAudit).toEqual(
+      expect.objectContaining({
+        action: 'provider_scenario.request_failed',
+        resourceType: 'provider_scenario',
+        resourceId: 'web-search',
+        metadata: expect.objectContaining({
+          scenarioProfileId: 'teacher-differentiation-v1',
+          routeId: 'web-search',
+          method: 'POST',
+          path: '/api/web-search',
+          status: 500,
+          errorCode: 'INTERNAL_ERROR',
+          failureSource: 'provider_request',
+          providerId: 'tavily',
+          taskBucket: 'webSearch',
+          errorName: 'Error',
+          upstreamCode: 'E_SEARCH',
+          upstreamStatus: 503,
+        }),
+      }),
+    );
+    expect(JSON.stringify(failureAudit?.metadata)).not.toContain('private student query');
+    expect(JSON.stringify(failureAudit?.metadata)).not.toContain('confidential source text');
+    expect(JSON.stringify(failureAudit?.metadata)).not.toContain('client-search-secret');
+    expect(JSON.stringify(failureAudit?.metadata)).not.toContain('private-search.example');
+  });
+
+  it('records unmanaged fallback telemetry when a scenario profile has no web-search bucket', async () => {
+    getProviderScenarioProfileMock.mockReturnValue({
+      id: 'teacher-differentiation-v1',
+      description: 'Scenario-managed provider routing.',
+      buckets: {},
+    });
+    buildSearchQueryMock.mockResolvedValue({
+      query: 'renewable energy',
+      hasPdfContext: false,
+      rawRequirementLength: 16,
+      rewriteAttempted: false,
+      finalQueryLength: 16,
+    });
+    searchWebMock.mockResolvedValue({
+      answer: 'Search answer',
+      query: 'renewable energy',
+      responseTime: 123,
+      sources: [{ title: 'Source', url: 'https://example.com' }],
+    });
+    formatSearchResultsAsContextMock.mockReturnValue('formatted context');
+
+    const { POST } = await import('@/app/api/web-search/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/web-search', {
+        method: 'POST',
+        body: JSON.stringify({
+          query: 'renewable energy',
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(searchWebMock).toHaveBeenCalledWith({
+      providerId: 'tavily',
+      query: 'renewable energy',
+      apiKey: 'server-key',
+      baseUrl: 'https://provider.example.com',
+    });
+    expect(appendAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'provider_scenario.unmanaged_fallback',
+        resourceType: 'provider_scenario',
+        resourceId: 'web-search',
+        metadata: expect.objectContaining({
+          scenarioProfileId: 'teacher-differentiation-v1',
+          taskBucket: 'webSearch',
+          routeId: 'web-search',
+          selectedProviderId: null,
+          selectedModelId: null,
+          validationStatus: 'failed_closed',
+          fallbackReason: expect.stringContaining('has no candidates for task bucket "webSearch"'),
+          requestedProviderId: 'tavily',
+        }),
+      }),
+    );
   });
 
   it('fails closed for scenario-managed web search when no validated candidate remains', async () => {
