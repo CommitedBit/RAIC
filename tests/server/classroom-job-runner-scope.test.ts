@@ -7,6 +7,8 @@ const markClassroomGenerationJobSucceededMock = vi.fn();
 const markClassroomGenerationJobFailedMock = vi.fn();
 const updateClassroomGenerationJobProgressMock = vi.fn();
 const createScheduledClassForAccessMock = vi.fn();
+const summarizeProviderErrorMock = vi.fn();
+const logErrorMock = vi.fn();
 
 function createGenerationResult(id = 'classroom-1'): GenerateClassroomResult {
   return {
@@ -27,6 +29,10 @@ vi.mock('@/lib/server/classroom-generation', () => ({
   generateClassroom: generateClassroomMock,
 }));
 
+vi.mock('@/lib/ai/llm', () => ({
+  summarizeProviderError: summarizeProviderErrorMock,
+}));
+
 vi.mock('@/lib/server/classroom-job-store', () => ({
   markClassroomGenerationJobRunning: markClassroomGenerationJobRunningMock,
   markClassroomGenerationJobSucceeded: markClassroomGenerationJobSucceededMock,
@@ -42,7 +48,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn(),
+    error: logErrorMock,
     debug: vi.fn(),
   }),
 }));
@@ -56,6 +62,10 @@ describe('classroom job runner scope forwarding', () => {
     markClassroomGenerationJobFailedMock.mockReset();
     updateClassroomGenerationJobProgressMock.mockReset();
     createScheduledClassForAccessMock.mockReset();
+    summarizeProviderErrorMock.mockReset();
+    logErrorMock.mockReset();
+
+    summarizeProviderErrorMock.mockReturnValue({ errorName: 'Error' });
 
     generateClassroomMock.mockResolvedValue(createGenerationResult());
     markClassroomGenerationJobRunningMock.mockResolvedValue(undefined);
@@ -263,5 +273,36 @@ describe('classroom job runner scope forwarding', () => {
 
     expect(generateClassroomMock).toHaveBeenCalledTimes(2);
     expect(markClassroomGenerationJobRunningMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('redacts raw provider details from asynchronous failure logs', async () => {
+    const providerMessage =
+      'AI_RetryError: https://user:pass@provider.example/v1?api_key=secret#trace raw-response';
+    const providerError = new Error(providerMessage);
+    generateClassroomMock.mockRejectedValueOnce(providerError);
+
+    const { runClassroomGenerationJob } = await import('@/lib/server/classroom-job-runner');
+
+    await runClassroomGenerationJob(
+      'job-redaction',
+      { requirement: 'Teach gravity' },
+      'http://localhost:3000',
+      {
+        organizationId: 'org-1',
+        userId: 'teacher-1',
+      },
+    );
+
+    expect(markClassroomGenerationJobFailedMock).toHaveBeenCalledWith(
+      'job-redaction',
+      providerMessage,
+    );
+    expect(summarizeProviderErrorMock).toHaveBeenCalledWith(providerError);
+    expect(logErrorMock).toHaveBeenCalledWith('Classroom generation job job-redaction failed:', {
+      errorName: 'Error',
+    });
+    expect(JSON.stringify(logErrorMock.mock.calls)).not.toContain('provider.example');
+    expect(JSON.stringify(logErrorMock.mock.calls)).not.toContain('secret');
+    expect(JSON.stringify(logErrorMock.mock.calls)).not.toContain('raw-response');
   });
 });

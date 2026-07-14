@@ -1,4 +1,5 @@
 import { createLogger } from '@/lib/logger';
+import { summarizeProviderError } from '@/lib/ai/llm';
 import type { PlatformRole } from '@/lib/db/schema';
 import { generateClassroom, type GenerateClassroomInput } from '@/lib/server/classroom-generation';
 import {
@@ -77,7 +78,7 @@ export function runClassroomGenerationJob(
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      log.error(`Classroom generation job ${jobId} failed:`, error);
+      log.error(`Classroom generation job ${jobId} failed:`, summarizeProviderError(error));
       try {
         await markClassroomGenerationJobFailed(jobId, message);
       } catch (markFailedError) {
