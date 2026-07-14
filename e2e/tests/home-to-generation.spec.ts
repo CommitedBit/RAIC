@@ -214,6 +214,7 @@ test.describe('Home → Generation', () => {
     await home.governedCoThinkingPresetButton.click();
     await expect(home.governedCoThinkingPresetButton).toHaveAttribute('aria-pressed', 'true');
     await expect(home.historyVlogPresetButton).toHaveAttribute('aria-pressed', 'false');
+    await expect(home.textarea).toHaveAttribute('placeholder', /governing AI support/);
 
     await home.governedCoThinkingPresetButton.click();
     await expect(home.governedCoThinkingPresetButton).toHaveAttribute('aria-pressed', 'false');

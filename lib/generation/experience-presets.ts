@@ -9,10 +9,7 @@ export interface ExperiencePresetDefinition {
   id: ExperiencePreset;
   labelKey: string;
   hintKey: string;
-  composerTitleKey?: string;
-  composerHintKey?: string;
   composerPlaceholderKey?: string;
-  checkpointKeys?: string[];
   sourceRequirement: ExperiencePresetSourceRequirement;
   sourceRequiredMessage: string;
   sourceUnavailableMessage: string;
@@ -60,16 +57,7 @@ export const EXPERIENCE_PRESET_DEFINITIONS: Record<ExperiencePreset, ExperienceP
     id: GOVERNED_CO_THINKING_PRESET,
     labelKey: 'toolbar.governedCoThinkingPreset',
     hintKey: 'toolbar.governedCoThinkingPresetHint',
-    composerTitleKey: 'toolbar.governedCoThinkingActiveTitle',
-    composerHintKey: 'toolbar.governedCoThinkingActiveHint',
     composerPlaceholderKey: 'toolbar.governedCoThinkingPlaceholder',
-    checkpointKeys: [
-      'toolbar.governedCoThinkingCheckpointIntention',
-      'toolbar.governedCoThinkingCheckpointSteering',
-      'toolbar.governedCoThinkingCheckpointVerification',
-      'toolbar.governedCoThinkingCheckpointAuthorship',
-      'toolbar.governedCoThinkingCheckpointTransfer',
-    ],
     sourceRequirement: 'none',
     sourceRequiredMessage: '',
     sourceUnavailableMessage: '',
