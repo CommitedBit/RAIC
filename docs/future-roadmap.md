@@ -42,18 +42,18 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Production capability truth: auth, Discord, encryption, storage, and image generation are ready; web search, TTS, video, and MiroFish remain unavailable.
   - Evidence: [v0.7.0 Discord Scheduled-Class Beta Readiness](./release-evidence-v0.7.0.md).
 
-- Active patch: `v0.7.1` Reliability Hardening
-  - Goal: isolate generated `srcDoc` widgets, add bounded scene-generation retries tied to internal request-failure telemetry, and close networking/redaction regression gaps without changing public API contracts.
-  - Acceptance: focused and complete Node 24 release gates pass, preview and production smokes are recorded, capability reporting remains truthful, and `v0.7.1` is tagged and published.
+- Completed patch: `v0.7.1` Reliability Hardening
+  - Result: generated `srcDoc` widgets are isolated, scene generation has bounded retries with internal telemetry, networking and log-redaction regressions are covered, and public API contracts are unchanged.
+  - Release: clean Node 24 gates, preview and production smokes, truthful capability reporting, immutable tag, and GitHub release are complete.
   - Evidence: [v0.7.1 Reliability Hardening](./release-evidence-v0.7.1.md).
 
-- Next feature milestone: `v0.8.0` Governed Co-Thinking
+- Active feature milestone: `v0.8.0` Governed Co-Thinking
   - Goal: rebuild the Course-mode Co-Thinking preset on `v0.7.1` with focused prompt, i18n, reflection, and dialog-state behavior.
   - Acceptance: no database schema or research-scoring changes; reflection and analytics remain teacher/internal; preview generation and reflection save/reload smokes pass before tag and release.
   - Exclusions: unrelated model-registry, scenario-fallback, audit-date, and formatting-only changes from the earlier feature branch.
 
 - Post-v0.7.0 adaptive-student follow-up
-  - Goal: complete privacy/compliance readiness (consent, retention, leakage controls) before enabling any broader student-facing adaptation.
+  - Goal: complete privacy/compliance readiness for consent, retention, deletion, leakage controls, and rollback before enabling any broader student-facing adaptation.
   - Scoping: no public/student behavior changes before all beta gates pass.
   - Acceptance: student adaptation entrypoints remain feature-flagged, consent-guarded, rollback-safe, and covered by non-leakage replay tests.
   - Execution source: [post-v0.7.0 Adaptive Student Beta Follow-up](./execution-plans/2026-06-10-v0.5.0-adaptive-student-beta-readiness.md)
