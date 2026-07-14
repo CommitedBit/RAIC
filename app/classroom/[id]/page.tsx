@@ -876,7 +876,12 @@ export default function ClassroomDetailPage() {
             <div className="relative flex min-h-0 flex-1 overflow-hidden">
               {classroomSource === 'teacher-server' ? (
                 <div className="absolute right-4 top-4 z-30">
-                  <Button size="sm" variant="secondary" onClick={() => setReflectionOpen(true)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    data-testid="session-reflection-button"
+                    onClick={() => setReflectionOpen(true)}
+                  >
                     Session Reflection
                   </Button>
                 </div>

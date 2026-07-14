@@ -58,8 +58,8 @@ test('teacher saves the governed co-thinking agency reflection template', async 
   await page.goto(`${APP_BASE_URL}/classroom/${classroomId}`);
   await classroom.waitForLoaded();
 
-  const reflectionButton = page.getByRole('button', { name: 'Session Reflection' });
-  await expect(reflectionButton).toBeVisible();
+  const reflectionButton = page.getByTestId('session-reflection-button');
+  await expect(reflectionButton).toBeVisible({ timeout: 15_000 });
   await reflectionButton.click();
 
   await expect(
@@ -79,6 +79,22 @@ test('teacher saves the governed co-thinking agency reflection template', async 
 
   await page.getByRole('button', { name: 'Save Reflection' }).click();
   await expect(page.getByText('Session reflection saved.')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await page.reload();
+  await classroom.waitForLoaded();
+  await expect(reflectionButton).toBeVisible({ timeout: 15_000 });
+  await reflectionButton.click();
+  await expect(
+    page.getByRole('heading', { name: 'Governed Co-Thinking Reflection' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Reflection summary')).toHaveValue(
+    'Class-level agency evidence: learners named intentions, checked AI claims, and rewrote outputs in their own voice.',
+  );
+  await expect(page.getByText(/Reflection: Class-level agency evidence:/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   const store = await readPlatformStore();
   const reflection = store.classroomReflections.find((entry) => entry.classroomId === classroomId);
