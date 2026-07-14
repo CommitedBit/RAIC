@@ -96,6 +96,22 @@ function parseFetchUrl(input: string | URL): URL | null {
   }
 }
 
+function targetUrlForLog(targetUrl: URL | null): string {
+  if (!targetUrl) return '[invalid-url]';
+  const pathname = targetUrl.pathname === '/' ? '' : targetUrl.pathname;
+  return `${targetUrl.protocol}//${targetUrl.host}${pathname}`.slice(0, 160);
+}
+
+function proxyUrlForLog(proxyUrl: string | undefined): string {
+  if (!proxyUrl) return '[not-configured]';
+  try {
+    const parsed = new URL(proxyUrl);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return '[configured-invalid-url]';
+  }
+}
+
 function getProxyUrl(targetUrl: URL | null): string | undefined {
   if (targetUrl && shouldBypassProxy(targetUrl)) {
     return undefined;
@@ -142,14 +158,14 @@ function getProxyAgent(targetUrl: URL | null): ProxyAgent | undefined {
 export async function proxyFetch(input: string | URL, init?: RequestInit): Promise<Response> {
   const targetUrl = parseFetchUrl(input);
   const agent = getProxyAgent(targetUrl);
-  const url = typeof input === 'string' ? input : input.toString();
+  const safeTargetUrl = targetUrlForLog(targetUrl);
 
   if (!agent) {
-    log.info('No proxy configured, using direct fetch for:', url.slice(0, 80));
+    log.info('No proxy configured, using direct fetch for:', safeTargetUrl);
     return fetch(input, init);
   }
 
-  log.info('Using proxy', cachedProxyUrl, 'for:', url.slice(0, 80));
+  log.info('Using proxy', proxyUrlForLog(cachedProxyUrl), 'for:', safeTargetUrl);
   // Use undici's fetch with the proxy dispatcher
   const res = await undiciFetch(input, {
     ...(init as UndiciRequestInit),
