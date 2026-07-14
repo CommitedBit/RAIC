@@ -29,7 +29,7 @@ Evidence status: focused implementation, local Node 24 verification, protected p
 Clean temporary checkout: `/tmp/openraic-v071-main.LsCdzw/repo`.
 
 - Focused preset, prompt, route, generation, reflection, shared-dialog, classroom-share, and scheduled-class tests: 8 files, 60 tests passed.
-- Complete branch unit suite: 154 files passed, 1 skipped; 969 tests passed, 3 skipped.
+- Complete branch unit suite: 154 files passed, 1 skipped; 970 tests passed, 3 skipped.
 - `pnpm run check:i18n-keys`: passed for all four locales.
 - `pnpm run check`: passed.
 - `pnpm exec tsc --noEmit`: passed.
