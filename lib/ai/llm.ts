@@ -75,16 +75,60 @@ function createProviderCallMetric(
   };
 }
 
+const SAFE_ERROR_IDENTIFIER_RE = /^[a-zA-Z0-9_.:/-]+$/;
+const MAX_ERROR_IDENTIFIER_LENGTH = 160;
+
+function safeErrorIdentifier(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (
+    !normalized ||
+    normalized.length > MAX_ERROR_IDENTIFIER_LENGTH ||
+    !SAFE_ERROR_IDENTIFIER_RE.test(normalized)
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function safeErrorStatus(value: unknown): string | number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  return safeErrorIdentifier(value);
+}
+
 function _normalizeErrorCode(error: unknown): string {
   if (!error) return 'unknown';
-  if (error instanceof Error) {
-    return error.name || 'error';
-  }
-  if (typeof error === 'string') return error;
-  if (typeof error === 'object' && 'code' in error) {
-    return String((error as { code?: unknown }).code || 'error');
+  if (typeof error === 'string') return safeErrorIdentifier(error) ?? 'error';
+  if (typeof error === 'object') {
+    const candidate = error as { code?: unknown; name?: unknown };
+    return safeErrorIdentifier(candidate.code) ?? safeErrorIdentifier(candidate.name) ?? 'error';
   }
   return 'error';
+}
+
+function summarizeProviderError(error: unknown): Record<string, string | number | boolean> {
+  if (!error || typeof error !== 'object') {
+    return { errorCode: _normalizeErrorCode(error) };
+  }
+
+  const candidate = error as {
+    name?: unknown;
+    code?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+    isRetryable?: unknown;
+  };
+  const summary = {
+    errorName: safeErrorIdentifier(candidate.name),
+    errorCode: safeErrorIdentifier(candidate.code),
+    status: safeErrorStatus(candidate.status),
+    statusCode: safeErrorStatus(candidate.statusCode),
+    retryable: typeof candidate.isRetryable === 'boolean' ? candidate.isRetryable : null,
+  };
+
+  return Object.fromEntries(
+    Object.entries(summary).filter(([, value]) => value !== null),
+  ) as Record<string, string | number | boolean>;
 }
 
 function createStreamOnErrorHandler(
@@ -98,7 +142,7 @@ function createStreamOnErrorHandler(
       metrics.errorCode = _normalizeErrorCode(error);
     }
 
-    log.warn(`[${source}] Stream failed`, error);
+    log.warn(`[${source}] Stream failed`, summarizeProviderError(error));
     await callerOnError?.({ error });
   };
 }
@@ -448,7 +492,10 @@ export async function callLLM<T extends GenerateTextParams>(
       lastError = error;
 
       if (attempt < maxAttempts) {
-        log.warn(`[${source}] Call failed (attempt ${attempt}/${maxAttempts}), retrying...`, error);
+        log.warn(
+          `[${source}] Call failed (attempt ${attempt}/${maxAttempts}), retrying...`,
+          summarizeProviderError(error),
+        );
         continue;
       }
     }
