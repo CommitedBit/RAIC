@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLM, summarizeProviderError } from '@/lib/ai/llm';
 import { createStageAPI } from '@/lib/api/stage-api';
 import type { StageStore } from '@/lib/api/stage-api-types';
 import {
@@ -430,7 +430,7 @@ export async function generateClassroom(
   );
 
   if (!outlinesResult.success || !outlinesResult.data) {
-    log.error('Failed to generate outlines:', outlinesResult.error);
+    log.error('Failed to generate outlines:', summarizeProviderError(outlinesResult.error));
     throw new Error(outlinesResult.error || 'Failed to generate scene outlines');
   }
 

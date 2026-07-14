@@ -18,6 +18,8 @@ const resolveGovernedProviderConfigMock = vi.fn();
 const buildSearchQueryMock = vi.fn();
 const searchWithTavilyMock = vi.fn();
 const formatSearchResultsAsContextMock = vi.fn();
+const summarizeProviderErrorMock = vi.fn();
+const logErrorMock = vi.fn();
 
 vi.mock('@/lib/generation/outline-generator', () => ({
   applyOutlineFallbacks: <T>(outline: T) => outline,
@@ -53,6 +55,7 @@ vi.mock('@/lib/server/ai-governance', () => ({
 
 vi.mock('@/lib/ai/llm', () => ({
   callLLM: vi.fn(),
+  summarizeProviderError: summarizeProviderErrorMock,
 }));
 
 vi.mock('@/lib/ai/providers', async (importOriginal) => {
@@ -86,7 +89,7 @@ vi.mock('@/lib/web-search/tavily', () => ({
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
     debug: vi.fn(),
-    error: vi.fn(),
+    error: logErrorMock,
     info: vi.fn(),
     warn: vi.fn(),
   }),
@@ -107,6 +110,10 @@ describe('generateClassroom', () => {
     buildSearchQueryMock.mockReset();
     searchWithTavilyMock.mockReset();
     formatSearchResultsAsContextMock.mockReset();
+    summarizeProviderErrorMock.mockReset();
+    logErrorMock.mockReset();
+
+    summarizeProviderErrorMock.mockReturnValue({ errorCode: 'error' });
 
     resolveModelMock.mockResolvedValue({
       model: 'model-stub',
@@ -304,6 +311,36 @@ describe('generateClassroom', () => {
       }),
       'http://localhost:3000',
     );
+  });
+
+  it('redacts raw provider details from failed outline logs', async () => {
+    const providerMessage =
+      'AI_RetryError: https://user:pass@provider.example/v1?api_key=secret#trace raw-response';
+    generateSceneOutlinesFromRequirementsMock.mockResolvedValueOnce({
+      success: false,
+      error: providerMessage,
+    });
+
+    const { generateClassroom } = await import('@/lib/server/classroom-generation');
+
+    await expect(
+      generateClassroom(
+        { requirement: 'Teach gravity' },
+        {
+          baseUrl: 'http://localhost:3000',
+          organizationId: 'org-1',
+          userId: 'teacher-1',
+        },
+      ),
+    ).rejects.toThrow(providerMessage);
+
+    expect(summarizeProviderErrorMock).toHaveBeenCalledWith(providerMessage);
+    expect(logErrorMock).toHaveBeenCalledWith('Failed to generate outlines:', {
+      errorCode: 'error',
+    });
+    expect(JSON.stringify(logErrorMock.mock.calls)).not.toContain('provider.example');
+    expect(JSON.stringify(logErrorMock.mock.calls)).not.toContain('secret');
+    expect(JSON.stringify(logErrorMock.mock.calls)).not.toContain('raw-response');
   });
 
   it('stops historical-vlogger generation when no source context is available', async () => {
