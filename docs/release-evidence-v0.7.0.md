@@ -2,7 +2,11 @@
 
 Date: 2026-06-05
 Target release: `v0.7.0`
-Evidence status: release closeout complete. Clean-main gates, production deployment, automated production smoke evidence, source and deployed package metadata for `v0.7.0`, the Discord reminder-cron timestamp hotfix, the final reminder-send sign-off decision, the edit/re-sync/delete waiver, and the pushed `v0.7.0` tag are recorded.
+Evidence status: release closeout complete. Clean-main gates, production deployment, automated production smoke evidence, source and deployed package metadata for `v0.7.0`, the Discord reminder-cron timestamp hotfix, the final reminder-send sign-off decision, the edit/re-sync/delete waiver, the immutable `v0.7.0` tag, and the published GitHub release object are recorded.
+
+GitHub release: <https://github.com/CommitedBit/RAIC/releases/tag/v0.7.0> (published 2026-07-14 without moving or recreating the existing tag).
+
+Current production capability truth at closeout: auth, Discord, encryption, storage, and image generation are ready. Web search, TTS, video, and MiroFish remain unavailable and are not represented as enabled.
 
 ## Scope
 
