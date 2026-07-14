@@ -12,7 +12,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { streamLLM } from '@/lib/ai/llm';
+import { streamLLM, summarizeProviderError } from '@/lib/ai/llm';
 import { buildPrompt, PROMPT_IDS } from '@/lib/generation/prompts';
 import {
   formatImageDescription,
@@ -276,6 +276,9 @@ export async function POST(req: NextRequest) {
 
           let parsedOutlines: SceneOutline[] = [];
           let lastError: string | undefined;
+          let lastErrorSummary: Record<string, string | number | boolean> = {
+            errorCode: 'unknown',
+          };
           for (let attempt = 1; attempt <= MAX_STREAM_RETRIES + 1; attempt++) {
             try {
               const result = streamLLM(streamParams, 'scene-outlines-stream');
@@ -312,6 +315,9 @@ export async function POST(req: NextRequest) {
               lastError = fullText.trim()
                 ? 'LLM response could not be parsed into outlines'
                 : 'LLM returned empty response';
+              lastErrorSummary = {
+                errorCode: fullText.trim() ? 'invalid_outline_response' : 'empty_response',
+              };
 
               if (attempt <= MAX_STREAM_RETRIES) {
                 log.warn(
@@ -327,11 +333,12 @@ export async function POST(req: NextRequest) {
               }
             } catch (error) {
               lastError = error instanceof Error ? error.message : String(error);
+              lastErrorSummary = summarizeProviderError(error);
 
               if (attempt <= MAX_STREAM_RETRIES) {
                 log.warn(
                   `Stream error (attempt ${attempt}/${MAX_STREAM_RETRIES + 1}), retrying...`,
-                  error,
+                  lastErrorSummary,
                 );
                 const retryEvent = JSON.stringify({
                   type: 'retry',
@@ -357,7 +364,8 @@ export async function POST(req: NextRequest) {
           } else {
             // All retries exhausted, no outlines produced
             log.error(
-              `Outline generation failed after ${MAX_STREAM_RETRIES + 1} attempts: ${lastError}`,
+              `Outline generation failed after ${MAX_STREAM_RETRIES + 1} attempts`,
+              lastErrorSummary,
             );
             const errorEvent = JSON.stringify({
               type: 'error',
@@ -393,7 +401,7 @@ export async function POST(req: NextRequest) {
 
     log.error(
       `Outline streaming failed [requirement="${requirementSnippet ?? 'unknown'}...", model=${resolvedModelString ?? 'unknown'}]:`,
-      error,
+      summarizeProviderError(error),
     );
     return apiError('INTERNAL_ERROR', 500, error instanceof Error ? error.message : String(error));
   }
