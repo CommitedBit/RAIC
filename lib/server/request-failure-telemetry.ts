@@ -3,6 +3,7 @@ import 'server-only';
 import type { NextRequest } from 'next/server';
 import type { AuthContext } from '@/lib/auth/current-user';
 import { appendAuditLog } from '@/lib/db/repositories/audit-logs';
+import type { GenerationRetryCategory } from '@/lib/generation/generation-retry';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('RequestFailureTelemetry');
@@ -66,6 +67,50 @@ function compactMetadata(metadata: Record<string, unknown>): Record<string, unkn
   return Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined && value !== null),
   );
+}
+
+export async function recordGenerationRetryTelemetry(input: {
+  auth?: AuthContext | null;
+  request: NextRequest;
+  routeId: string;
+  label: string;
+  category: GenerationRetryCategory;
+  attempt: number;
+  maxAttempts: number;
+  nextDelayMs?: number;
+  outcome: 'scheduled' | 'recovered' | 'failed';
+  modelId?: string | null;
+}) {
+  const metadata = compactMetadata({
+    routeId: safeIdentifier(input.routeId),
+    method: input.request.method,
+    path: input.request.nextUrl.pathname,
+    label: safeIdentifier(input.label),
+    category: safeIdentifier(input.category),
+    attempt: input.attempt,
+    maxAttempts: input.maxAttempts,
+    nextDelayMs: input.nextDelayMs,
+    outcome: input.outcome,
+    modelId: safeIdentifier(input.modelId),
+  });
+
+  try {
+    await appendAuditLog({
+      organizationId: input.auth?.organization?.id ?? null,
+      userId: input.auth?.user?.id ?? null,
+      actorRole: input.auth?.session.role ?? null,
+      action: `generation.retry_${input.outcome}`,
+      resourceType: 'api_route',
+      resourceId: input.routeId,
+      metadata,
+    });
+  } catch (error) {
+    log.warn('Failed to record generation retry telemetry', {
+      routeId: input.routeId,
+      outcome: input.outcome,
+      auditError: summarizeError(error),
+    });
+  }
 }
 
 export async function recordRequestFailureTelemetry(input: {

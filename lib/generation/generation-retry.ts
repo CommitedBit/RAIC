@@ -1,9 +1,21 @@
+export type GenerationRetryCategory =
+  | 'empty_result'
+  | 'http_408'
+  | 'http_409'
+  | 'http_425'
+  | 'http_429'
+  | 'http_5xx'
+  | 'rate_limit'
+  | 'timeout'
+  | 'network'
+  | 'explicit_retryable';
+
 export interface GenerationRetryEvent {
   label: string;
   attempt: number;
   maxAttempts: number;
   nextDelayMs: number;
-  reason: string;
+  category: GenerationRetryCategory;
 }
 
 export interface GenerationRetryOptions<T> {
@@ -21,7 +33,6 @@ export interface GenerationRetryOptions<T> {
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_BASE_DELAY_MS = 1000;
 const DEFAULT_MAX_DELAY_MS = 16000;
-const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429]);
 const NON_RETRYABLE_STATUS_CODES = new Set([400, 401, 403, 404, 422]);
 
 const defaultSleep = (ms: number, signal?: AbortSignal) =>
@@ -101,11 +112,18 @@ function messageFrom(value: unknown): string {
   return message ?? '';
 }
 
-function retryableByMessage(value: unknown): boolean {
+function retryCategoryByMessage(value: unknown): GenerationRetryCategory | null {
   const message = messageFrom(value);
-  return /rate limit|too many requests|timeout|timed out|fetch failed|network|ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|ENOTFOUND|EPIPE|socket hang up/i.test(
-    message,
-  );
+  if (/rate limit|too many requests/i.test(message)) return 'rate_limit';
+  if (/timeout|timed out|ETIMEDOUT/i.test(message)) return 'timeout';
+  if (
+    /fetch failed|network|ECONNRESET|ECONNREFUSED|ECONNABORTED|ENOTFOUND|EPIPE|socket hang up/i.test(
+      message,
+    )
+  ) {
+    return 'network';
+  }
+  return null;
 }
 
 function unwrapErrors(value: unknown): unknown[] {
@@ -121,41 +139,58 @@ function unwrapErrors(value: unknown): unknown[] {
   return nested;
 }
 
-export function isRetryableGenerationError(error: unknown, seen = new Set<unknown>()): boolean {
-  if (!error || seen.has(error)) return false;
+function isGovernanceFailure(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.code === 'string' &&
+    typeof value.status === 'number' &&
+    typeof value.apiErrorCode === 'string'
+  );
+}
+
+export function getGenerationRetryCategory(
+  error: unknown,
+  seen = new Set<unknown>(),
+): GenerationRetryCategory | null {
+  if (!error || seen.has(error)) return null;
   seen.add(error);
 
-  if (isAbortError(error)) return false;
-
-  if (isRecord(error)) {
-    const explicitRetryable = booleanField(error, 'isRetryable');
-    if (explicitRetryable !== undefined) return explicitRetryable;
-  }
+  if (isAbortError(error) || isGovernanceFailure(error)) return null;
 
   const statusCode = statusCodeFrom(error);
   if (statusCode !== undefined) {
-    if (RETRYABLE_STATUS_CODES.has(statusCode) || statusCode >= 500) return true;
+    if (statusCode === 408) return 'http_408';
+    if (statusCode === 409) return 'http_409';
+    if (statusCode === 425) return 'http_425';
+    if (statusCode === 429) return 'http_429';
+    if (statusCode >= 500) return 'http_5xx';
     if (NON_RETRYABLE_STATUS_CODES.has(statusCode) || (statusCode >= 400 && statusCode < 500)) {
-      return false;
+      return null;
     }
+  }
+
+  if (isRecord(error)) {
+    const explicitRetryable = booleanField(error, 'isRetryable');
+    if (explicitRetryable === false) return null;
+    if (explicitRetryable === true) return 'explicit_retryable';
   }
 
   const nested = unwrapErrors(error);
   if (nested.length > 0) {
-    return nested.some((nestedError) => isRetryableGenerationError(nestedError, seen));
+    for (const nestedError of nested) {
+      const category = getGenerationRetryCategory(nestedError, seen);
+      if (category) return category;
+    }
   }
 
-  if (isRecord(error) && stringField(error, 'name') === 'TimeoutError') return true;
-  if (error instanceof Error && error.name === 'TimeoutError') return true;
+  if (isRecord(error) && stringField(error, 'name') === 'TimeoutError') return 'timeout';
+  if (error instanceof Error && error.name === 'TimeoutError') return 'timeout';
 
-  return retryableByMessage(error);
+  return retryCategoryByMessage(error);
 }
 
-function retryReason(error: unknown): string {
-  const statusCode = statusCodeFrom(error);
-  if (statusCode !== undefined) return `HTTP ${statusCode}`;
-  const message = messageFrom(error).trim();
-  return message || 'retryable error';
+export function isRetryableGenerationError(error: unknown): boolean {
+  return getGenerationRetryCategory(error) !== null;
 }
 
 function retryDelayMs(
@@ -197,7 +232,7 @@ export async function withGenerationRetry<T>(
         attempt,
         maxAttempts,
         nextDelayMs,
-        reason: 'empty result',
+        category: 'empty_result',
       });
       throwIfAborted(options.signal);
       await sleep(nextDelayMs, options.signal);
@@ -208,7 +243,8 @@ export async function withGenerationRetry<T>(
 
       throwIfAborted(options.signal);
 
-      if (attempt >= maxAttempts || !isRetryableGenerationError(error)) {
+      const category = getGenerationRetryCategory(error);
+      if (attempt >= maxAttempts || !category) {
         throw error;
       }
 
@@ -218,7 +254,7 @@ export async function withGenerationRetry<T>(
         attempt,
         maxAttempts,
         nextDelayMs,
-        reason: retryReason(error),
+        category,
       });
       throwIfAborted(options.signal);
       await sleep(nextDelayMs, options.signal);

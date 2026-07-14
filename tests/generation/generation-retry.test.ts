@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  getGenerationRetryCategory,
   isAbortError,
   isRetryableGenerationError,
   withGenerationRetry,
@@ -36,7 +37,7 @@ describe('generation retry', () => {
       attempt: 1,
       maxAttempts: 3,
       nextDelayMs: 110,
-      reason: 'HTTP 429',
+      category: 'http_429',
     });
   });
 
@@ -75,6 +76,21 @@ describe('generation retry', () => {
     expect(sleep).not.toHaveBeenCalled();
   });
 
+  it('gives terminal statuses and governance failures precedence over retry hints', () => {
+    expect(isRetryableGenerationError({ status: 401, isRetryable: true })).toBe(false);
+    expect(isRetryableGenerationError({ status: 503, isRetryable: false })).toBe(true);
+    expect(
+      isRetryableGenerationError({
+        name: 'GovernedProviderResolutionError',
+        code: 'PROVIDER_DISABLED',
+        status: 500,
+        apiErrorCode: 'FORBIDDEN',
+        isRetryable: true,
+        message: 'network policy unavailable',
+      }),
+    ).toBe(false);
+  });
+
   it('detects retryable nested provider failures', () => {
     expect(isRetryableGenerationError({ lastError: httpError(503) })).toBe(true);
     expect(isRetryableGenerationError({ cause: new Error('fetch failed') })).toBe(true);
@@ -103,9 +119,78 @@ describe('generation retry', () => {
     expect(operation).toHaveBeenCalledTimes(2);
     expect(onRetry).toHaveBeenCalledWith(
       expect.objectContaining({
-        reason: 'empty result',
+        category: 'empty_result',
       }),
     );
+  });
+
+  it('returns the final empty result after the configured retry budget is exhausted', async () => {
+    const operation = vi.fn<(attempt: number) => Promise<null>>().mockResolvedValue(null);
+    const sleep = vi.fn(async () => {});
+    const onRetry = vi.fn();
+
+    const result = await withGenerationRetry(operation, {
+      label: 'scene-content',
+      maxRetries: 2,
+      baseDelayMs: 0,
+      sleep,
+      onRetry,
+      shouldRetryResult: (value) => value === null,
+    });
+
+    expect(result).toBeNull();
+    expect(operation).toHaveBeenCalledTimes(3);
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(onRetry).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves aborts raised while waiting between attempts', async () => {
+    const controller = new AbortController();
+    const operation = vi
+      .fn<(attempt: number) => Promise<string>>()
+      .mockRejectedValue(httpError(503));
+    const sleep = vi.fn(async (_ms: number, signal?: AbortSignal) => {
+      controller.abort();
+      if (signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+    });
+
+    await expect(
+      withGenerationRetry(operation, {
+        label: 'scene-content',
+        maxRetries: 2,
+        signal: controller.signal,
+        sleep,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(sleep).toHaveBeenCalledTimes(1);
+  });
+
+  it('classifies retry telemetry without exposing raw provider messages', async () => {
+    const error = Object.assign(new Error('fetch failed for https://user:secret@example.test'), {
+      status: 503,
+    });
+    const onRetry = vi.fn();
+
+    await withGenerationRetry(
+      vi
+        .fn<(attempt: number) => Promise<string>>()
+        .mockRejectedValueOnce(error)
+        .mockResolvedValue('ok'),
+      {
+        label: 'scene-content',
+        maxRetries: 1,
+        baseDelayMs: 0,
+        sleep: async () => {},
+        onRetry,
+      },
+    );
+
+    expect(getGenerationRetryCategory(error)).toBe('http_5xx');
+    expect(JSON.stringify(onRetry.mock.calls)).not.toContain('secret');
   });
 
   it('preserves aborts without retrying', async () => {
