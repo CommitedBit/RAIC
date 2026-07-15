@@ -21,19 +21,21 @@ Evidence status: in progress. Do not tag or publish until every section below is
 - [x] i18n key alignment, TypeScript, formatting, and lint
 - [x] Full unit suite: 161 files passed, 1 skipped; 1,001 tests passed, 3 skipped
 - [x] Production build: all routes compiled, including private upload, extraction, and cleanup
-- [ ] MiroFish contract and E2E gates
-- [ ] Full Playwright
+- [x] MiroFish contract and E2E gates: PR #81 CI run `29458249716`
+- [x] Full Playwright: PR #81 E2E job passed in 3m29s
 - [ ] Milestone benchmark
 - [ ] `ops:verify`
 
 ## Preview Evidence
 
-- [ ] Protected preview deployment is Ready.
-- [ ] `/api/health` reports version `0.9.0` and truthful capability readiness.
-- [ ] A synthetic PDF larger than 4.5 MB uploads through the browser client-upload path.
-- [ ] The source-required classroom generation flow succeeds with the extracted artifact.
-- [ ] The raw private Blob is absent after extraction.
-- [ ] Disposable preview data is removed.
+- [x] Protected preview `dpl_GcQTuksBxnq3NasFv4JaKMUiojbT` is Ready.
+- [x] `/api/health` reports version `0.9.0`, `sourceDocumentsV2: true`, and keeps web search, TTS, video, and MiroFish false.
+- [x] A 5,504,721-byte synthetic PDF uploaded through the multipart browser client-upload protocol.
+- [x] The extracted one-page artifact generated a complete 10-scene source-required classroom.
+- [x] An exact private-store listing confirmed the raw Blob was absent after extraction.
+- [x] The preview smoke removed the classroom, generation job, session, membership, user, organization, audit rows, and branch-only smoke configuration.
+
+The first valid-provider run exposed the route's legacy 30-second function limit after nine outlines were generated. The merge candidate raises that limit to the project's existing 300-second ceiling and includes a regression test; the successful proof above ran on that corrected revision.
 
 ## Production And Release
 
