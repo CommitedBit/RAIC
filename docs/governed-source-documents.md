@@ -6,7 +6,7 @@ The `sourceDocumentsV2` path gives authenticated teachers a private, ephemeral P
 
 - Create a dedicated Vercel Blob store with private access.
 - Set its read-write token as `RAIC_SOURCE_BLOB_READ_WRITE_TOKEN` in each environment that should enable governed PDF sources.
-- Do not reuse the public `BLOB_READ_WRITE_TOKEN` used by classroom publishing.
+- Do not reuse the existing `BLOB_READ_WRITE_TOKEN` used by classroom publishing.
 - Keep `RAIC_SECRET_ENCRYPTION_KEY` configured. It signs one-hour upload capabilities bound to the teacher, organization, and server-issued pathname.
 - Keep `CRON_SECRET` configured so Vercel can invoke hourly abandoned-upload cleanup.
 
