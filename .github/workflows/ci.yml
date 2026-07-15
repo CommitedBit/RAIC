@@ -73,6 +73,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Dependency security audit
+        run: pnpm security:dependencies
+
       - name: Prettier
         run: pnpm check
 
