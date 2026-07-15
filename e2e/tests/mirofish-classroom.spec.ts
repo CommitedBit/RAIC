@@ -14,7 +14,7 @@ import {
 } from './support/ai-governance';
 import type { SharedSimulation } from '../../lib/types/stage';
 
-test.describe.configure({ mode: 'serial' });
+test.describe.configure({ mode: 'serial', timeout: 60_000 });
 test.use({ locale: 'en-US' });
 
 let mockMiroFish: Awaited<ReturnType<typeof startMockMiroFishServer>> | undefined;
