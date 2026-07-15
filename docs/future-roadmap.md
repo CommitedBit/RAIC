@@ -52,12 +52,12 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Release: clean Node 24 gates, preview generation, production health, and teacher reflection save/reload evidence are complete.
   - Evidence: [v0.8.0 Governed Co-Thinking](./release-evidence-v0.8.0.md).
 
-- Active patch milestone: `v0.8.1` Dependency Security
-  - Goal: close the current fixable dependency advisories without changing public behavior or persistence contracts.
-  - Acceptance: frozen Node 24 install, low-threshold dependency audit, zero open Dependabot alerts, complete release gates, and preview/production proof.
+- Completed patch milestone: `v0.8.1` Dependency Security
+  - Result: all 34 dependency alerts are closed, the locked graph audits clean at the low threshold, and CI plus a weekly workflow enforce the audit without changing public behavior or persistence contracts.
+  - Release: clean Node 24 gates, protected preview, production health/smokes, immutable tag, and GitHub release are complete.
   - Evidence: [v0.8.1 Dependency Security](./release-evidence-v0.8.1.md).
 
-- Planned feature milestone: `v0.9.0` Governed PDF Source Foundation
+- Active feature milestone: `v0.9.0` Governed PDF Source Foundation
   - Goal: add a PDF-first document artifact boundary, private direct uploads, bounded extraction, and truthful capability reporting.
   - Acceptance: raw source files are private and ephemeral, legacy PDF callers remain compatible, and a protected preview proves an upload larger than the Vercel Function request-body limit.
 
