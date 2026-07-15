@@ -8,7 +8,7 @@ const createWebSessionMock = vi.fn();
 const isPostgresConfiguredMock = vi.fn();
 const runTransactionMock = vi.fn();
 const requireBlobTokenMock = vi.fn();
-const headBlobMock = vi.fn();
+const listBlobsMock = vi.fn();
 const delBlobMock = vi.fn();
 const loggerWarnMock = vi.fn();
 const transactionUnsafeMock = vi.fn();
@@ -28,7 +28,7 @@ vi.mock('@/lib/db/client', () => ({
 vi.mock('@/lib/server/source-document-storage', () => ({
   requireSourceDocumentBlobToken: requireBlobTokenMock,
 }));
-vi.mock('@vercel/blob', () => ({ head: headBlobMock, del: delBlobMock }));
+vi.mock('@vercel/blob', () => ({ list: listBlobsMock, del: delBlobMock }));
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ warn: loggerWarnMock }),
 }));
@@ -62,7 +62,7 @@ describe('preview smoke session route', () => {
     createWebSessionMock.mockReset().mockResolvedValue({ token: 'session-secret' });
     isPostgresConfiguredMock.mockReset().mockReturnValue(true);
     requireBlobTokenMock.mockReset().mockReturnValue('private-blob-secret');
-    headBlobMock.mockReset();
+    listBlobsMock.mockReset().mockResolvedValue({ blobs: [], hasMore: false });
     delBlobMock.mockReset().mockResolvedValue(undefined);
     loggerWarnMock.mockReset();
     transactionUnsafeMock.mockReset().mockResolvedValue([]);
@@ -131,9 +131,6 @@ describe('preview smoke session route', () => {
   });
 
   it('independently verifies deletion and bounds emergency Blob cleanup paths', async () => {
-    const notFound = new Error('not found');
-    notFound.name = 'BlobNotFoundError';
-    headBlobMock.mockRejectedValue(notFound);
     const { POST } = await import('@/app/api/internal/preview-smoke-session/route');
 
     const verified = await POST(
@@ -143,6 +140,11 @@ describe('preview smoke session route', () => {
       }),
     );
     await expect(verified.json()).resolves.toMatchObject({ success: true, deleted: true });
+    expect(listBlobsMock).toHaveBeenCalledWith({
+      token: 'private-blob-secret',
+      prefix: 'source-documents/uploads/smoke.pdf',
+      limit: 2,
+    });
 
     const rejected = await POST(
       request({ action: 'delete-source-blob', pathname: '../classroom-assets/private.pdf' }),

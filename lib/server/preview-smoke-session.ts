@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { del, head } from '@vercel/blob';
+import { del, list } from '@vercel/blob';
 import { createWebSession } from '@/lib/auth/session';
 import { isPostgresConfigured, runPostgresTransaction } from '@/lib/db/client';
 import { ensureMembership } from '@/lib/db/repositories/memberships';
@@ -150,17 +150,8 @@ function validateSourcePathname(pathname: string) {
 export async function previewSourceBlobExists(pathname: string) {
   validateSourcePathname(pathname);
   const token = requireSourceDocumentBlobToken();
-  try {
-    await head(pathname, { token });
-    return true;
-  } catch (error) {
-    const name = error instanceof Error ? error.name : '';
-    const status =
-      (error as { status?: number; statusCode?: number } | null)?.status ??
-      (error as { statusCode?: number } | null)?.statusCode;
-    if (name === 'BlobNotFoundError' || status === 404) return false;
-    throw error;
-  }
+  const result = await list({ token, prefix: pathname, limit: 2 });
+  return result.blobs.some((blob) => blob.pathname === pathname);
 }
 
 export async function deletePreviewSourceBlob(pathname: string) {
