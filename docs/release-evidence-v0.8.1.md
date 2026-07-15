@@ -22,4 +22,7 @@ Evidence status: implementation in progress.
 - `pnpm test`: 155 files passed, 1 intentionally skipped; 977 tests passed, 3 skipped.
 - `pnpm build`: pass with all application routes compiled and 52 static pages generated.
 - `pnpm test:mirofish:gate`: 20 files passed; 97 tests passed, 2 skipped; TypeScript pass.
-- Strict clean-main gates, browser automation, benchmark, `ops:verify`, preview proof, production health proof, zero GitHub Dependabot alerts, immutable tag, and GitHub release evidence remain required before publication.
+- PR #79 hosted checks: Ops Drift, MiroFish Contract Gate, Lint/Typecheck/Unit Tests, E2E Tests, and Vercel all pass. The full hosted E2E gate completed in 3m38s.
+- Protected preview deployment `dpl_7xSviZD2qssmZUizqgf1o49WawqN` is Ready. Its `/api/health` response reports `success: true`, `status: ok`, and version `0.8.1`.
+- Preview capability truth remains explicit: image generation and storage are ready; web search, video, TTS, and MiroFish remain unavailable. Preview encryption is not ready because its isolated environment does not configure `RAIC_SECRET_ENCRYPTION_KEY`; production readiness remains a separate release gate.
+- Strict clean-main gates, benchmark, `ops:verify`, production health proof, zero GitHub Dependabot alerts, immutable tag, and GitHub release evidence remain required before publication.
