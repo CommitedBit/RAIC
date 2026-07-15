@@ -2,7 +2,7 @@
 
 This roadmap translates the current single-branch model into a dated execution sequence with one validated slice landing at a time.
 
-The completed v0.4.0 cycle plan is documented in [Execution Plan: v0.4.0 Reliable Adaptive Learning Platform (2026-05-17)](./execution-plans/2026-05-17-v0.4.0-reliable-adaptive-learning-platform.md). The v0.5.0 release evidence is captured in [Release Evidence: v0.5.0 Source-Grounded Experience Presets (2026-05-18)](./release-evidence-v0.5.0.md). The current release line is tracked in [v0.7.1 Reliability Hardening](./release-evidence-v0.7.1.md) and [v0.8.0 Governed Co-Thinking](./release-evidence-v0.8.0.md).
+The completed v0.4.0 cycle plan is documented in [Execution Plan: v0.4.0 Reliable Adaptive Learning Platform (2026-05-17)](./execution-plans/2026-05-17-v0.4.0-reliable-adaptive-learning-platform.md). The v0.5.0 release evidence is captured in [Release Evidence: v0.5.0 Source-Grounded Experience Presets (2026-05-18)](./release-evidence-v0.5.0.md). The completed release line is tracked in [v0.7.1 Reliability Hardening](./release-evidence-v0.7.1.md) and [v0.8.0 Governed Co-Thinking](./release-evidence-v0.8.0.md). The next release sequence is defined in [Execution Plan: v0.8.1-v0.11.0 Improvement Milestones (2026-07-15)](./execution-plans/2026-07-15-v0.8.1-v0.11.0-improvement-milestones.md).
 
 Current post-v0.7.0 hardening and adaptive-student follow-up notes are documented in:
 
@@ -47,11 +47,26 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Release: clean Node 24 gates, preview and production smokes, truthful capability reporting, immutable tag, and GitHub release are complete.
   - Evidence: [v0.7.1 Reliability Hardening](./release-evidence-v0.7.1.md).
 
-- Active feature milestone: `v0.8.0` Governed Co-Thinking
-  - Goal: rebuild the Course-mode Co-Thinking preset on `v0.7.1` with focused prompt, i18n, reflection, and dialog-state behavior.
-  - Acceptance: no database schema or research-scoring changes; reflection and analytics remain teacher/internal; preview generation and reflection save/reload smokes pass before tag and release.
-  - Exclusions: unrelated model-registry, scenario-fallback, audit-date, and formatting-only changes from the earlier feature branch.
+- Completed feature milestone: `v0.8.0` Governed Co-Thinking
+  - Result: the Course-mode Co-Thinking preset, focused prompt context, i18n, reflection template, and shared dialog close-state fix are live.
+  - Release: clean Node 24 gates, preview generation, production health, and teacher reflection save/reload evidence are complete.
   - Evidence: [v0.8.0 Governed Co-Thinking](./release-evidence-v0.8.0.md).
+
+- Active patch milestone: `v0.8.1` Dependency Security
+  - Goal: close the current fixable dependency advisories without changing public behavior or persistence contracts.
+  - Acceptance: frozen Node 24 install, low-threshold dependency audit, zero open Dependabot alerts, complete release gates, and preview/production proof.
+
+- Planned feature milestone: `v0.9.0` Governed PDF Source Foundation
+  - Goal: add a PDF-first document artifact boundary, private direct uploads, bounded extraction, and truthful capability reporting.
+  - Acceptance: raw source files are private and ephemeral, legacy PDF callers remain compatible, and a protected preview proves an upload larger than the Vercel Function request-body limit.
+
+- Planned feature milestone: `v0.10.0` Source-Grounded Authoring
+  - Goal: let teachers inspect source pages before generation and carry validated citation evidence into classrooms and scenes.
+  - Acceptance: source-required presets fail closed on unusable input, persisted excerpts are bounded and teacher-only, and public/student responses strip private source details.
+
+- Planned feature milestone: `v0.11.0` Governed Edit with AI
+  - Goal: provide teacher-only, preview-before-apply slide edits through a validated patch language and the existing undo history.
+  - Acceptance: the default-off feature flag is the rollback, stale or unsafe patches are rejected, and preview/production edit-apply-undo proof passes before enablement.
 
 - Post-v0.7.0 adaptive-student follow-up
   - Goal: complete privacy/compliance readiness for consent, retention, deletion, leakage controls, and rollback before enabling any broader student-facing adaptation.
@@ -83,17 +98,23 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
 
 Slice-level minimum acceptance:
 
-- `v0.7.1` hardening: retry and error observability coverage plus no behavior regressions in stable generation/presentation flows.
-- `v0.8.0` Co-Thinking: preset generation, shared dialog close-state, and teacher reflection save/reload coverage.
+- `v0.8.1`: patched dependency graph, reproducible dependency audit, and no runtime or API behavior changes.
+- `v0.9.0`: authenticated private upload, ownership/limit/redaction coverage, legacy compatibility, and raw-file cleanup.
+- `v0.10.0`: deterministic page selection, validated citations, teacher-only source evidence, and public/student sanitization.
+- `v0.11.0`: authorized structured patches, stale-state rejection, atomic apply, one-step undo, and feature-flag rollback.
 - Adaptive-student follow-up: privacy/retention tests plus confirmed student path disabled by default and fully rollback-safe via feature-flag disable.
 
 Required milestone merge checks:
 
 - `corepack pnpm run secrets:scan`
+- `corepack pnpm run security:dependencies`
 - `corepack pnpm run ops:drift`
-- `corepack pnpm run lint`
-- `corepack pnpm run build`
+- `corepack pnpm run check:i18n-keys`
+- `corepack pnpm exec tsc --noEmit`
 - `corepack pnpm run check`
+- `corepack pnpm run lint`
+- `corepack pnpm test`
+- `corepack pnpm run build`
 - `corepack pnpm run test:mirofish:gate`
 - `corepack pnpm run test:mirofish:e2e`
 - `CI=1 corepack pnpm run test:e2e`
