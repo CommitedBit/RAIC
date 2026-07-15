@@ -72,6 +72,7 @@ describe('GET /api/health', () => {
   it('returns distinct readiness details for auth, storage, encryption, Discord, and MiroFish', async () => {
     vi.stubEnv('NEXT_PUBLIC_GOOGLE_CLIENT_ID', 'google-client-id');
     vi.stubEnv('RAIC_SECRET_ENCRYPTION_KEY', 'encryption-key');
+    vi.stubEnv('RAIC_SOURCE_BLOB_READ_WRITE_TOKEN', 'private-blob-token');
     vi.stubEnv('DATABASE_URL', 'postgres://localhost/raic');
     vi.stubEnv('DISCORD_CLIENT_ID', 'discord-client-id');
     vi.stubEnv('DISCORD_CLIENT_SECRET', 'discord-client-secret');
@@ -105,6 +106,7 @@ describe('GET /api/health', () => {
       imageGeneration: true,
       videoGeneration: false,
       tts: true,
+      sourceDocumentsV2: true,
     });
     expect(body.readiness).toEqual({
       auth: {
@@ -141,6 +143,12 @@ describe('GET /api/health', () => {
         multiUserEnabled: true,
         authoringEnabled: true,
         authoringReady: true,
+      },
+      sourceDocumentsV2: {
+        ready: true,
+        reason: null,
+        privateBlobConfigured: true,
+        signingConfigured: true,
       },
     });
     expect(runPostgresQueryMock).toHaveBeenCalledWith('SELECT 1');
@@ -180,6 +188,13 @@ describe('GET /api/health', () => {
     expect(body.readiness.mirofish.embedSigningConfigured).toBe(false);
     expect(body.readiness.mirofish.authoringEnabled).toBe(false);
     expect(body.readiness.mirofish.authoringReady).toBe(false);
+    expect(body.capabilities.sourceDocumentsV2).toBe(false);
+    expect(body.readiness.sourceDocumentsV2).toEqual({
+      ready: false,
+      reason: 'Private source-document storage or upload signing is not configured',
+      privateBlobConfigured: false,
+      signingConfigured: false,
+    });
   });
 
   it('flags hosted JSON storage as non-durable when DATABASE_URL is unset', async () => {

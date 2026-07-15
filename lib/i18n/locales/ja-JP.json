@@ -95,6 +95,23 @@
     "ttsPreview": "プレビュー",
     "ttsPreviewing": "再生中..."
   },
+  "sourceDocuments": {
+    "uploadFailed": "PDF のアップロードに失敗しました",
+    "extractionFailed": "PDF の抽出に失敗しました",
+    "pdfOnly": "PDF ファイルのみ対応しています",
+    "governedSizeLimit": "PDF、最大 50 MB",
+    "legacySizeLimit": "PDF、最大 4 MB",
+    "current": "添付済みソース: {{name}}",
+    "pdf": "PDF ソース",
+    "pageCount": "{{count}} ページ",
+    "checkingAvailability": "非公開ソースストレージを確認中",
+    "unavailable": "非公開 PDF ソースは利用できません",
+    "uploading": "PDF をアップロード中",
+    "extracting": "ソースを抽出中",
+    "summary": "{{pages}} ページ、{{characters}} 文字",
+    "replace": "置き換え",
+    "remove": "削除"
+  },
   "export": {
     "pptx": "PPTXエクスポート",
     "resourcePack": "リソースパックをエクスポート",

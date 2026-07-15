@@ -246,12 +246,12 @@ async function parseWithUnpdf(pdfBuffer: Buffer): Promise<ParsedPdfContent> {
             width: imgData.width,
             height: imgData.height,
           });
-        } catch (sharpError) {
-          log.error(`Failed to convert image ${i + 1} from page ${pageNum}:`, sharpError);
+        } catch {
+          log.warn('PDF image conversion skipped', { pageNumber: pageNum, imageIndex: i + 1 });
         }
       }
-    } catch (pageError) {
-      log.error(`Failed to extract images from page ${pageNum}:`, pageError);
+    } catch {
+      log.warn('PDF page image extraction skipped', { pageNumber: pageNum });
     }
   }
 
@@ -290,7 +290,7 @@ async function parseWithMinerU(
     );
   }
 
-  log.info('[MinerU] Parsing PDF with MinerU server:', config.baseUrl);
+  log.info('[MinerU] Starting governed PDF extraction');
 
   const fileName = 'document.pdf';
 
@@ -330,8 +330,7 @@ async function parseWithMinerU(
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`MinerU API error (${response.status}): ${errorText}`);
+    throw new Error(`MinerU API request failed with status ${response.status}`);
   }
 
   const json = await response.json();
@@ -343,9 +342,9 @@ async function parseWithMinerU(
     // Try first available key in case filename doesn't match exactly
     const fallback = keys.length > 0 ? json.results[keys[0]] : null;
     if (!fallback) {
-      throw new Error(`MinerU returned no results. Response keys: ${JSON.stringify(keys)}`);
+      throw new Error('MinerU returned no document result');
     }
-    log.warn(`[MinerU] Filename mismatch, using key "${keys[0]}" instead of "${fileName}"`);
+    log.warn('[MinerU] Result used provider fallback key');
     return extractMinerUResult(fallback);
   }
 

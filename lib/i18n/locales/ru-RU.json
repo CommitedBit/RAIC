@@ -95,6 +95,23 @@
     "ttsPreview": "Прослушать",
     "ttsPreviewing": "Воспроизведение..."
   },
+  "sourceDocuments": {
+    "uploadFailed": "Не удалось загрузить PDF",
+    "extractionFailed": "Не удалось извлечь PDF",
+    "pdfOnly": "Поддерживаются только PDF-файлы",
+    "governedSizeLimit": "PDF, до 50 МБ",
+    "legacySizeLimit": "PDF, до 4 МБ",
+    "current": "Прикрепленный источник: {{name}}",
+    "pdf": "Источник PDF",
+    "pageCount": "Страниц: {{count}}",
+    "checkingAvailability": "Проверка закрытого хранилища источников",
+    "unavailable": "Закрытые PDF-источники недоступны",
+    "uploading": "Загрузка PDF",
+    "extracting": "Извлечение источника",
+    "summary": "Страниц: {{pages}}, символов: {{characters}}",
+    "replace": "Заменить",
+    "remove": "Удалить"
+  },
   "export": {
     "pptx": "Экспорт PPTX",
     "resourcePack": "Экспорт ресурсного пакета",

@@ -7,6 +7,7 @@ import { getDiscordConfig } from '@/lib/server/discord';
 import { hasEncryptionKeyConfigured } from '@/lib/server/encrypted-secrets';
 import { getMiroFishConfig, isMiroFishMultiUserEnabled } from '@/lib/server/mirofish';
 import { getMiroFishAuthoringReadiness } from '@/lib/server/mirofish-authoring';
+import { getSourceDocumentsV2Readiness } from '@/lib/server/source-document-storage';
 
 interface ReadinessCheck {
   ready: boolean;
@@ -43,12 +44,18 @@ interface HealthDiscordReadiness extends ReadinessCheck {
   cronSecretConfigured: boolean;
 }
 
+interface HealthSourceDocumentsV2Readiness extends ReadinessCheck {
+  privateBlobConfigured: boolean;
+  signingConfigured: boolean;
+}
+
 export interface HealthReadinessReport {
   auth: HealthAuthReadiness;
   discord: HealthDiscordReadiness;
   encryption: HealthEncryptionReadiness;
   storage: HealthStorageReadiness;
   mirofish: HealthMiroFishReadiness;
+  sourceDocumentsV2: HealthSourceDocumentsV2Readiness;
 }
 
 function hasConfiguredEnv(name: string) {
@@ -206,5 +213,6 @@ export async function getHealthReadiness(): Promise<HealthReadinessReport> {
     encryption,
     storage,
     mirofish: getMiroFishReadiness(),
+    sourceDocumentsV2: getSourceDocumentsV2Readiness(),
   };
 }

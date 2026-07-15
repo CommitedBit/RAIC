@@ -174,6 +174,8 @@ Authenticated `teacher` and `org_admin` flows can run on managed server-side pro
 
 Set `RAIC_SECRET_ENCRYPTION_KEY` to enable encrypted org-managed saves in `/admin` and server-backed teacher overrides in authenticated `/studio`.
 
+Set `RAIC_SOURCE_BLOB_READ_WRITE_TOKEN` from a separate private Vercel Blob store to enable authenticated governed PDF sources. Raw uploads are deleted after extraction and abandoned uploads are cleaned up hourly. See [Governed Source Documents](./docs/governed-source-documents.md).
+
 - Accepted key formats: 64-character hex, base64 that decodes to 32 bytes, or any passphrase hashed with SHA-256 on the server
 - Authenticated interactive precedence: personal override -> org config -> env / `server-providers.yml` bootstrap -> one-release legacy browser-key fallback
 - Background and async classroom jobs: org config -> env / `server-providers.yml` bootstrap only

@@ -47,19 +47,16 @@ function isRetryable(err: unknown): boolean {
 }
 
 async function fetchWithRetry<T>(fn: () => Promise<T>, context: string, attempts = 4): Promise<T> {
-  let lastErr: unknown;
   for (let i = 1; i <= attempts; i++) {
     try {
       return await fn();
     } catch (err) {
-      lastErr = err;
       if (!isRetryable(err) || i === attempts) break;
-      log.warn(`[MinerU Cloud] ${context} retry ${i}/${attempts}:`, err);
+      log.warn('[MinerU Cloud] Retrying transient request', { context, attempt: i, attempts });
       await sleep(400 * i);
     }
   }
-  const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
-  throw new Error(`MinerU Cloud ${context} failed: ${msg}`);
+  throw new Error(`MinerU Cloud ${context} failed after retry budget`);
 }
 
 interface MinerUEnvelope<T = unknown> {
@@ -74,17 +71,13 @@ async function readMinerUJson<T>(res: Response, context: string): Promise<T> {
   try {
     json = JSON.parse(text) as MinerUEnvelope<T>;
   } catch {
-    throw new Error(
-      `MinerU Cloud ${context}: invalid JSON (HTTP ${res.status}): ${text.slice(0, 500)}`,
-    );
+    throw new Error(`MinerU Cloud ${context} returned invalid JSON with status ${res.status}`);
   }
   if (!res.ok) {
-    throw new Error(
-      `MinerU Cloud ${context}: HTTP ${res.status} - ${json.msg || text.slice(0, 300)}`,
-    );
+    throw new Error(`MinerU Cloud ${context} failed with status ${res.status}`);
   }
   if (json.code !== 0) {
-    throw new Error(`MinerU Cloud ${context}: ${json.msg || 'unknown error'} (code ${json.code})`);
+    throw new Error(`MinerU Cloud ${context} failed with provider code ${json.code}`);
   }
   return json.data;
 }
@@ -113,18 +106,15 @@ async function parseMinerUZip(zipUrl: string): Promise<ParsedPdfContent> {
     'ZIP download',
   );
   if (!zipRes.ok) {
-    const text = await zipRes.text().catch(() => zipRes.statusText);
-    throw new Error(`MinerU Cloud ZIP download failed (${zipRes.status}): ${text.slice(0, 300)}`);
+    throw new Error(`MinerU Cloud ZIP download failed with status ${zipRes.status}`);
   }
 
   const zipBuf = Buffer.from(await zipRes.arrayBuffer());
   let zip: Awaited<ReturnType<typeof JSZip.loadAsync>>;
   try {
     zip = await JSZip.loadAsync(zipBuf);
-  } catch (error) {
-    throw new Error(
-      `MinerU Cloud ZIP parse failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
+  } catch {
+    throw new Error('MinerU Cloud ZIP parse failed');
   }
 
   const filePaths = Object.keys(zip.files).filter((path) => !zip.files[path].dir);
@@ -134,9 +124,7 @@ async function parseMinerUZip(zipUrl: string): Promise<ParsedPdfContent> {
   );
 
   if (!fullMdPath) {
-    throw new Error(
-      `MinerU Cloud ZIP: full.md not found. Files: ${filePaths.slice(0, 10).join(', ')}`,
-    );
+    throw new Error('MinerU Cloud ZIP did not contain extracted markdown');
   }
 
   const mdContent = await zip.file(fullMdPath)!.async('string');
@@ -209,7 +197,9 @@ export async function parseWithMinerUCloud(
   const apiRoot = (config.baseUrl || MINERU_CLOUD_DEFAULT_BASE).replace(/\/+$/, '');
   const uploadFileName = sanitizeFileName(sourceFileName);
 
-  log.info(`[MinerU Cloud] Starting parse: ${uploadFileName} (${pdfBuffer.byteLength} bytes)`);
+  log.info('[MinerU Cloud] Starting governed PDF extraction', {
+    byteLength: pdfBuffer.byteLength,
+  });
 
   const batchData = await fetchWithRetry(async () => {
     const res = await fetch(`${apiRoot}/file-urls/batch`, {
@@ -238,7 +228,7 @@ export async function parseWithMinerUCloud(
     throw new Error('MinerU Cloud batch response missing batch_id or upload URLs');
   }
 
-  log.info(`[MinerU Cloud] Batch ${batchData.batch_id} created, uploading PDF...`);
+  log.info('[MinerU Cloud] Uploading PDF to extraction provider');
 
   const putRes = await fetchWithRetry(
     () =>
@@ -256,8 +246,7 @@ export async function parseWithMinerUCloud(
     5,
   );
   if (!putRes.ok) {
-    const text = await putRes.text().catch(() => putRes.statusText);
-    throw new Error(`MinerU Cloud upload failed (${putRes.status}): ${text.slice(0, 400)}`);
+    throw new Error(`MinerU Cloud upload failed with status ${putRes.status}`);
   }
 
   await sleep(1_500);
@@ -296,11 +285,11 @@ export async function parseWithMinerUCloud(
 
     if (row.state !== lastState) {
       lastState = row.state;
-      log.info(`[MinerU Cloud] Batch ${batchData.batch_id} -> ${row.state}`);
+      log.info('[MinerU Cloud] Extraction state changed', { state: row.state });
     }
 
     if (row.state === 'failed') {
-      throw new Error(`MinerU Cloud parsing failed: ${row.err_msg || 'unknown error'}`);
+      throw new Error('MinerU Cloud parsing failed');
     }
 
     if (row.state === 'done' && row.full_zip_url) {
@@ -310,7 +299,5 @@ export async function parseWithMinerUCloud(
     await sleep(POLL_INTERVAL_MS);
   }
 
-  throw new Error(
-    `MinerU Cloud timed out after ${POLL_MAX_MS / 1000}s (batch: ${batchData.batch_id})`,
-  );
+  throw new Error(`MinerU Cloud timed out after ${POLL_MAX_MS / 1000}s`);
 }

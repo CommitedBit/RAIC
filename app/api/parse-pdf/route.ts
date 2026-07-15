@@ -14,20 +14,78 @@ import {
   toGovernedProviderApiErrorResponse,
 } from '@/lib/server/ai-governance';
 import { validateUrlForSSRF } from '@/lib/server/ssrf-guard';
+import {
+  LEGACY_PDF_IMAGE_BYTES_LIMIT,
+  LEGACY_PDF_IMAGE_LIMIT,
+  LEGACY_PDF_TOTAL_IMAGE_BYTES_LIMIT,
+  LEGACY_PDF_UPLOAD_LIMIT_BYTES,
+  SOURCE_DOCUMENT_ARTIFACT_CHARACTER_LIMIT,
+  SOURCE_DOCUMENT_PAGE_LIMIT,
+} from '@/lib/documents/constants';
+import { validatePdfInput } from '@/lib/documents/pdf-validation';
+import { toDocumentProcessingError } from '@/lib/documents/errors';
 const log = createLogger('Parse PDF');
 
+function boundedLegacyResult(result: ParsedPdfContent): ParsedPdfContent {
+  const allowedImages: string[] = [];
+  let totalImageBytes = 0;
+  const resultImages = Array.isArray(result.images) ? result.images : [];
+  for (const image of resultImages.slice(0, LEGACY_PDF_IMAGE_LIMIT)) {
+    const imageBytes = Buffer.byteLength(image, 'utf8');
+    if (
+      imageBytes > LEGACY_PDF_IMAGE_BYTES_LIMIT ||
+      totalImageBytes + imageBytes > LEGACY_PDF_TOTAL_IMAGE_BYTES_LIMIT
+    ) {
+      continue;
+    }
+    allowedImages.push(image);
+    totalImageBytes += imageBytes;
+  }
+  const allowedImageSet = new Set(allowedImages);
+  const pdfImages = result.metadata?.pdfImages
+    ?.filter((image) => allowedImageSet.has(image.src))
+    .slice(0, LEGACY_PDF_IMAGE_LIMIT);
+  const imageMapping = result.metadata?.imageMapping
+    ? Object.fromEntries(
+        Object.entries(result.metadata.imageMapping).filter(([, image]) =>
+          allowedImageSet.has(image),
+        ),
+      )
+    : undefined;
+
+  return {
+    ...result,
+    text: result.text.slice(0, SOURCE_DOCUMENT_ARTIFACT_CHARACTER_LIMIT),
+    images: allowedImages,
+    metadata: result.metadata
+      ? {
+          ...result.metadata,
+          ...(pdfImages ? { pdfImages } : {}),
+          ...(imageMapping ? { imageMapping } : {}),
+        }
+      : result.metadata,
+  };
+}
+
 export async function POST(req: NextRequest) {
-  let pdfFileName: string | undefined;
   let resolvedProviderId: string | undefined;
   try {
     const contentType = req.headers.get('content-type') || '';
     if (!contentType.includes('multipart/form-data')) {
-      log.error('Invalid Content-Type for PDF upload:', contentType);
       return apiErrorWithRequestSession(
         req,
         'INVALID_REQUEST',
         400,
         `Invalid Content-Type: expected multipart/form-data, got "${contentType}"`,
+      );
+    }
+    const contentLength = Number(req.headers.get('content-length'));
+    if (Number.isFinite(contentLength) && contentLength > LEGACY_PDF_UPLOAD_LIMIT_BYTES) {
+      return apiErrorWithRequestSession(
+        req,
+        'PAYLOAD_TOO_LARGE',
+        413,
+        'PDF uploads to this endpoint are limited to 4 MB',
       );
     }
 
@@ -43,7 +101,6 @@ export async function POST(req: NextRequest) {
 
     // providerId is required from the client — no server-side store to fall back to
     const effectiveProviderId = providerId || ('unpdf' as PDFProviderId);
-    pdfFileName = pdfFile?.name;
     resolvedProviderId = effectiveProviderId;
 
     const clientBaseUrl = baseUrl || undefined;
@@ -72,9 +129,22 @@ export async function POST(req: NextRequest) {
     // Convert PDF to buffer
     const arrayBuffer = await pdfFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    validatePdfInput({
+      buffer,
+      mimeType: pdfFile.type,
+      maximumSizeInBytes: LEGACY_PDF_UPLOAD_LIMIT_BYTES,
+    });
 
     // Parse PDF using the provider system
-    const result = await parsePDF(config, buffer);
+    const result = boundedLegacyResult(await parsePDF(config, buffer));
+    if ((result.metadata?.pageCount ?? 0) > SOURCE_DOCUMENT_PAGE_LIMIT) {
+      return apiErrorWithRequestSession(
+        req,
+        'PARSE_FAILED',
+        422,
+        'The PDF exceeds the 200-page limit',
+      );
+    }
 
     // Add file metadata
     const resultWithMetadata: ParsedPdfContent = {
@@ -94,15 +164,16 @@ export async function POST(req: NextRequest) {
       return withRequestWebSession(req, governanceError);
     }
 
-    log.error(
-      `PDF parsing failed [provider=${resolvedProviderId ?? 'unknown'}, file="${pdfFileName ?? 'unknown'}"]:`,
-      error,
-    );
+    const safeError = toDocumentProcessingError(error);
+    log.warn('PDF parsing failed', {
+      providerId: resolvedProviderId ?? 'unknown',
+      code: safeError.code,
+    });
     return apiErrorWithRequestSession(
       req,
-      'PARSE_FAILED',
-      500,
-      error instanceof Error ? error.message : 'Unknown error',
+      safeError.code === 'PDF_TOO_LARGE' ? 'PAYLOAD_TOO_LARGE' : 'PARSE_FAILED',
+      safeError.status,
+      safeError.message,
     );
   }
 }

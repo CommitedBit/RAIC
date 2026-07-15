@@ -1346,10 +1346,8 @@ describe('media generation routes', () => {
     });
 
     const formData = new FormData();
-    formData.set(
-      'pdf',
-      new File([new Uint8Array([1, 2, 3])], 'lesson.pdf', { type: 'application/pdf' }),
-    );
+    const pdfFixture = new TextEncoder().encode('%PDF-1.7\nfixture');
+    formData.set('pdf', new File([pdfFixture], 'lesson.pdf', { type: 'application/pdf' }));
 
     const { POST } = await import('@/app/api/parse-pdf/route');
     const response = await POST(
@@ -1366,7 +1364,7 @@ describe('media generation routes', () => {
       expect.objectContaining({
         fileName: 'lesson.pdf',
         pageCount: 2,
-        fileSize: 3,
+        fileSize: pdfFixture.byteLength,
       }),
     );
   });
