@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/discord-scheduled-class-reminders",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/source-document-cleanup",
+      "schedule": "0 * * * *"
     }
   ]
 }

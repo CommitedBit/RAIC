@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { SettingsDialog } from '@/components/settings';
 import { GenerationToolbar } from '@/components/generation/generation-toolbar';
+import type { SourceDocumentPickerMode } from '@/components/generation/source-document-picker';
 import { AgentBar } from '@/components/agent/agent-bar';
 import { useTheme } from '@/lib/hooks/use-theme';
 import { useDiscordStudioCallback } from '@/lib/hooks/use-discord-studio-callback';
@@ -102,6 +103,7 @@ import {
   GAME_TEMPLATE_DEFINITIONS,
   getGameTemplateDefinition,
 } from '@/lib/game-arcade/templates';
+import type { DocumentArtifact } from '@/lib/documents/types';
 
 const log = createLogger('Home');
 
@@ -112,6 +114,7 @@ const RECENT_OPEN_STORAGE_KEY = 'recentClassroomsOpen';
 
 interface FormState {
   pdfFile: File | null;
+  sourceDocument: DocumentArtifact | null;
   requirement: string;
   language: 'zh-CN' | 'en-US';
   webSearch: boolean;
@@ -146,6 +149,7 @@ interface DiscordIntegrationApiBody extends Partial<DiscordIntegrationSnapshot> 
 
 const initialFormState: FormState = {
   pdfFile: null,
+  sourceDocument: null,
   requirement: '',
   language: 'en-US',
   webSearch: false,
@@ -203,10 +207,38 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initialFormState);
+  const [sourceDocumentMode, setSourceDocumentMode] = useState<SourceDocumentPickerMode>(
+    launchMode === 'teacher-server' ? 'loading' : 'legacy',
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<
     import('@/lib/types/settings').SettingsSection | undefined
   >(undefined);
+
+  useEffect(() => {
+    if (launchMode !== 'teacher-server') {
+      setSourceDocumentMode('legacy');
+      return;
+    }
+
+    const controller = new AbortController();
+    setSourceDocumentMode('loading');
+    void fetch('/api/health', { cache: 'no-store', signal: controller.signal })
+      .then(async (response) => {
+        const body = (await response.json().catch(() => null)) as {
+          capabilities?: { sourceDocumentsV2?: boolean };
+        } | null;
+        if (!controller.signal.aborted) {
+          setSourceDocumentMode(
+            response.ok && body?.capabilities?.sourceDocumentsV2 ? 'governed' : 'unavailable',
+          );
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSourceDocumentMode('unavailable');
+      });
+    return () => controller.abort();
+  }, [launchMode]);
 
   // Draft cache for requirement text
   const { cachedValue: cachedRequirement, updateCache: updateRequirementCache } =
@@ -751,8 +783,11 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
   }, [form.webSearch]);
 
   const hasHistoricalVlogSourcePath = useCallback(
-    (allowPdf: boolean) => Boolean((allowPdf && form.pdfFile) || hasConfiguredWebSearchSource()),
-    [form.pdfFile, hasConfiguredWebSearchSource],
+    (allowPdf: boolean) =>
+      Boolean(
+        (allowPdf && (form.pdfFile || form.sourceDocument)) || hasConfiguredWebSearchSource(),
+      ),
+    [form.pdfFile, form.sourceDocument, hasConfiguredWebSearchSource],
   );
 
   const updateCreationMode = (creationMode: FormState['creationMode']) => {
@@ -908,13 +943,14 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
       const sessionState = {
         sessionId: nanoid(),
         requirements,
-        pdfText: '',
+        pdfText: form.sourceDocument?.context.text ?? '',
         pdfImages: [],
         imageStorageIds: [],
         pdfStorageKey,
         pdfFileName,
         pdfProviderId,
         pdfProviderConfig,
+        ...(form.sourceDocument ? { sourceDocument: form.sourceDocument } : {}),
         sceneOutlines: null,
         currentStep: 'generating' as const,
         launchMode,
@@ -1405,6 +1441,11 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
                   pdfFile={form.pdfFile}
                   onPdfFileChange={(f) => updateForm('pdfFile', f)}
                   onPdfError={setError}
+                  sourceDocumentMode={sourceDocumentMode}
+                  sourceDocument={form.sourceDocument}
+                  onSourceDocumentChange={(sourceDocument) =>
+                    updateForm('sourceDocument', sourceDocument)
+                  }
                 />
               </div>
 

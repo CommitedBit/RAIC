@@ -21,6 +21,7 @@ export async function GET() {
       imageGeneration: Object.keys(getServerImageProviders()).length > 0,
       videoGeneration: Object.keys(getServerVideoProviders()).length > 0,
       tts: Object.keys(getServerTTSProviders()).length > 0,
+      sourceDocumentsV2: readiness.sourceDocumentsV2.ready,
     },
     readiness,
   });

@@ -95,6 +95,23 @@
     "ttsPreview": "试听",
     "ttsPreviewing": "播放中..."
   },
+  "sourceDocuments": {
+    "uploadFailed": "PDF 上传失败",
+    "extractionFailed": "PDF 解析失败",
+    "pdfOnly": "仅支持 PDF 文件",
+    "governedSizeLimit": "PDF，最大 50 MB",
+    "legacySizeLimit": "PDF，最大 4 MB",
+    "current": "已附加来源：{{name}}",
+    "pdf": "PDF 来源",
+    "pageCount": "{{count}} 页",
+    "checkingAvailability": "正在检查私有来源存储",
+    "unavailable": "私有 PDF 来源暂不可用",
+    "uploading": "正在上传 PDF",
+    "extracting": "正在解析来源",
+    "summary": "{{pages}} 页，{{characters}} 个字符",
+    "replace": "替换",
+    "remove": "移除"
+  },
   "export": {
     "pptx": "导出 PPTX",
     "resourcePack": "导出教学资源包",

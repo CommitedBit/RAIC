@@ -28,7 +28,7 @@ import type { ScheduledClassGenerationInput } from '@/lib/types/scheduled-classe
 
 const log = createLogger('GenerateClassroom API');
 
-export const maxDuration = 30;
+export const maxDuration = 300;
 
 type ImageProviderOverride = {
   providerId: string;

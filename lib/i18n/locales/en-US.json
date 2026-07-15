@@ -95,6 +95,23 @@
     "ttsPreview": "Preview",
     "ttsPreviewing": "Playing..."
   },
+  "sourceDocuments": {
+    "uploadFailed": "PDF upload failed",
+    "extractionFailed": "PDF extraction failed",
+    "pdfOnly": "Only PDF files are supported",
+    "governedSizeLimit": "PDF, up to 50 MB",
+    "legacySizeLimit": "PDF, up to 4 MB",
+    "current": "Attached source: {{name}}",
+    "pdf": "PDF source",
+    "pageCount": "{{count}} pages",
+    "checkingAvailability": "Checking private source storage",
+    "unavailable": "Private PDF sources are unavailable",
+    "uploading": "Uploading PDF",
+    "extracting": "Extracting source",
+    "summary": "{{pages}} pages, {{characters}} characters",
+    "replace": "Replace",
+    "remove": "Remove"
+  },
   "export": {
     "pptx": "Export PPTX",
     "resourcePack": "Export Resource Pack",

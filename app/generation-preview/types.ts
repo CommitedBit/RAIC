@@ -9,6 +9,7 @@ import type {
 } from '@/lib/types/generation';
 import type { ScheduledClassGenerationInput } from '@/lib/types/scheduled-classes';
 import type { ClassroomLaunchMode } from '@/lib/utils/classroom-launch';
+import type { DocumentArtifact } from '@/lib/documents/types';
 
 export interface ClassroomGenerationPollResult {
   readonly id: string;
@@ -69,6 +70,7 @@ export interface GenerationSessionState {
   pdfFileName?: string;
   pdfProviderId?: string;
   pdfProviderConfig?: { apiKey?: string; baseUrl?: string };
+  sourceDocument?: DocumentArtifact;
   // Web search context
   researchContext?: string;
   researchSources?: Array<{ title: string; url: string }>;
