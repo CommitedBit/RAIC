@@ -219,7 +219,21 @@ async function generateSourceRequiredClassroom({ baseUrl, cookie, artifact, runI
     });
     if (!job.done) continue;
     if (job.status !== 'succeeded' || typeof job.result?.id !== 'string') {
-      throw new Error(`Source-required classroom generation ended with ${job.status || 'failure'}`);
+      const errorText = typeof job.error === 'string' ? job.error.toLowerCase() : '';
+      const failureCategory = /401|api.?key|authenticat|unauthoriz|credential/.test(errorText)
+        ? 'authentication'
+        : /404|model.{0,24}(not found|does not exist|unknown|invalid)|unsupported.model/.test(
+              errorText,
+            )
+          ? 'model_unavailable'
+          : /408|425|429|rate.?limit|quota/.test(errorText)
+            ? 'capacity'
+            : /timeout|timed out|network|fetch failed|econn|socket/.test(errorText)
+              ? 'network'
+              : 'generation';
+      throw new Error(
+        `Source-required classroom generation ended with ${job.status || 'failure'} (${failureCategory})`,
+      );
     }
     return {
       jobId: queued.jobId,

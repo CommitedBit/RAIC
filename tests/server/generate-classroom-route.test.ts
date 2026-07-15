@@ -115,6 +115,11 @@ describe('POST /api/generate-classroom', () => {
     runClassroomGenerationJobMock.mockResolvedValue(undefined);
   });
 
+  it('reserves the project function budget for background classroom generation', async () => {
+    const { maxDuration } = await import('@/app/api/generate-classroom/route');
+    expect(maxDuration).toBe(300);
+  });
+
   it('rejects classroom-generation requests without a requirement', async () => {
     const { POST } = await import('@/app/api/generate-classroom/route');
     const response = await POST(
