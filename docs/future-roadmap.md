@@ -62,9 +62,9 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Release: legacy PDF callers remain compatible, a protected preview proved a 5.5 MB upload and source-required classroom generation with no raw Blob left behind, and production health/smokes, the immutable tag, and GitHub release are complete.
   - Evidence: [v0.9.0 Governed PDF Source Foundation](./release-evidence-v0.9.0.md).
 
-- Active patch milestone: `v0.9.1` Homepage Simplification
-  - Goal: move the public composer into the first mobile viewport by replacing the duplicate demo and empty schedule surfaces with compact actions and constraining the agent selector.
-  - Acceptance: demo seeding, scheduling, teacher Discord controls, and populated events remain available; desktop and mobile have no horizontal overflow.
+- Completed patch milestone: `v0.9.1` Homepage Simplification
+  - Result: the public homepage now uses one demo link, a compact empty schedule action, flat populated schedules, and a mobile-width agent selector while preserving demo seeding, scheduling, and teacher Discord controls.
+  - Release: the clean Node 24 gate, protected preview, production viewport checks, production smokes, immutable tag, and GitHub release are complete.
   - Evidence: [v0.9.1 Homepage Simplification](./release-evidence-v0.9.1.md).
 
 - Active feature milestone: `v0.10.0` Source-Grounded Authoring
