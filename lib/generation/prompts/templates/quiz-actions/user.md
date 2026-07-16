@@ -1,9 +1,7 @@
-Questions: {{questions}}
 Title: {{title}}
-Key Points: {{keyPoints}}
-Description: {{description}}
+Quiz Metadata (contains no question or answer text):
+{{questions}}
 {{courseContext}}
-{{agents}}
 
 {{#if experiencePresetContext}}
 {{experiencePresetContext}}
@@ -15,5 +13,5 @@ Description: {{description}}
 
 **Language Requirement**: Generated speech content must follow the Language Directive above.
 
-Output as a JSON array directly (no explanation, no code fences, 3-6 segments):
+Output one JSON array directly (no explanation, no code fences, 1-2 short text segments only). Do not emit discussion or any other action type:
 [{"type":"text","content":"Let's test your understanding"}]

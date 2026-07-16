@@ -1632,8 +1632,9 @@ export async function generateSceneActions(
   }
 
   if (outline.type === 'quiz' && 'questions' in content) {
-    // Format question list for AI reference
-    const questionsText = formatQuestionsForPrompt(content.questions);
+    // Quiz openings run before submission. Give the model metadata only so it
+    // cannot preview stems, options, answers, or explanations in narration.
+    const questionsText = formatQuizMetadataForPrompt(content.questions);
 
     const prompts = buildPrompt(PROMPT_IDS.QUIZ_ACTIONS, {
       title: outline.title,
@@ -1654,7 +1655,10 @@ export async function generateSceneActions(
       withAdaptivePrompt(prompts.system, options.adaptivePrompt),
       prompts.user,
     );
-    const actions = parseActionsFromStructuredOutput(response, outline.type);
+    const actions = parseActionsFromStructuredOutput(response, outline.type, ['speech']).slice(
+      0,
+      2,
+    );
 
     if (actions.length > 0) {
       return processActions(actions, [], options.agents);
@@ -1771,17 +1775,17 @@ function formatElementsForPrompt(elements: PPTElement[]): string {
 }
 
 /**
- * Format question list for AI reference
+ * Format non-sensitive quiz metadata for pre-submission narration.
  */
-function formatQuestionsForPrompt(questions: QuizQuestion[]): string {
-  return questions
-    .map((q, i) => {
-      const optionsText = q.options
-        ? `Options: ${q.options.map((o) => `${o.value}. ${o.label}`).join(', ')}`
-        : '';
-      return `Q${i + 1} (${q.type}): ${q.question}\n${optionsText}`;
-    })
-    .join('\n\n');
+function formatQuizMetadataForPrompt(questions: QuizQuestion[]): string {
+  const counts = new Map<QuizQuestion['type'], number>();
+  for (const question of questions) {
+    counts.set(question.type, (counts.get(question.type) ?? 0) + 1);
+  }
+
+  const types = [...counts.entries()].map(([type, count]) => `${type}: ${count}`).join(', ');
+
+  return [`Question count: ${questions.length}`, `Question types: ${types || 'none'}`].join('\n');
 }
 
 /**
