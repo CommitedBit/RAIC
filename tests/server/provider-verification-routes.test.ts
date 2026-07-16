@@ -822,6 +822,39 @@ describe('provider and verification routes', () => {
       message: 'Connection successful',
       status: 404,
     });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://provider.example.com',
+      expect.objectContaining({ redirect: 'manual' }),
+    );
+  });
+
+  it('rejects MinerU Cloud redirects without forwarding credentials', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('redirect blocked', {
+        status: 302,
+        headers: { Location: 'http://127.0.0.1/internal' },
+      }),
+    );
+
+    const { POST } = await import('@/app/api/verify-pdf-provider/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/verify-pdf-provider', {
+        method: 'POST',
+        body: JSON.stringify({ providerId: 'mineru-cloud' }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.errorCode).toBe('REDIRECT_NOT_ALLOWED');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://provider.example.com/extract-results/batch/test-connection',
+      expect.objectContaining({
+        redirect: 'manual',
+        headers: expect.objectContaining({ Authorization: 'Bearer server-key' }),
+      }),
+    );
   });
 
   it('fails MinerU Cloud verification on non-success responses', async () => {

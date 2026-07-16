@@ -1,0 +1,35 @@
+export type ConnectivityResult = {
+  success: boolean;
+  message: string;
+};
+
+interface ProbeAuthOptions {
+  providerName: string;
+  request: () => Promise<Response>;
+}
+
+/** Preserve auth-only probe semantics while rejecting credential-bearing redirects. */
+export async function probeAuth({
+  providerName,
+  request,
+}: ProbeAuthOptions): Promise<ConnectivityResult> {
+  try {
+    const response = await request();
+    if (response.status >= 300 && response.status < 400) {
+      return {
+        success: false,
+        message: `${providerName} connectivity error: Redirects are not allowed`,
+      };
+    }
+    if (response.status === 401 || response.status === 403) {
+      const text = await response.text();
+      return {
+        success: false,
+        message: `${providerName} auth failed (${response.status}): ${text}`,
+      };
+    }
+    return { success: true, message: `Connected to ${providerName}` };
+  } catch (error) {
+    return { success: false, message: `${providerName} connectivity error: ${error}` };
+  }
+}
