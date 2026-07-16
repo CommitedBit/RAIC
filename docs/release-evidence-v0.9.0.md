@@ -3,7 +3,7 @@
 Date: 2026-07-15
 Target release: `v0.9.0`
 
-Evidence status: release-ready. The merged-main gate, protected preview, production deployment, health checks, and production smokes are complete. The immutable tag and GitHub release remain the final open step.
+Evidence status: complete. The merged-main gate, protected preview, production deployment, health checks, production smokes, immutable tag, and GitHub release are verified.
 
 ## Scope
 
@@ -43,7 +43,7 @@ The first valid-provider run exposed the route's legacy 30-second function limit
 - [x] `https://open-raic.com` resolves to the new production deployment and `/api/health` returns HTTP 200 with version `0.9.0`.
 - [x] Production capability reporting is truthful: source documents, image generation, auth, Discord, encryption, and Postgres storage are ready; web search, TTS, video, and MiroFish remain unavailable.
 - [x] Production milestone smoke: 12 passed, 0 failed, 0 blocked, and 4 optional unavailable capabilities skipped. Classroom smoke: 3 automated guards passed, 0 failed, and 5 signed-in manual checks were listed without production mutation.
-- [ ] Immutable `v0.9.0` tag pushed and GitHub release published.
+- [x] Immutable `v0.9.0` tag pushed and [GitHub release published](https://github.com/CommitedBit/RAIC/releases/tag/v0.9.0).
 
 ## Rollback
 
