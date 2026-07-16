@@ -62,6 +62,11 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Release: legacy PDF callers remain compatible, a protected preview proved a 5.5 MB upload and source-required classroom generation with no raw Blob left behind, and production health/smokes, the immutable tag, and GitHub release are complete.
   - Evidence: [v0.9.0 Governed PDF Source Foundation](./release-evidence-v0.9.0.md).
 
+- Active patch milestone: `v0.9.1` Homepage Simplification
+  - Goal: move the public composer into the first mobile viewport by replacing the duplicate demo and empty schedule surfaces with compact actions and constraining the agent selector.
+  - Acceptance: demo seeding, scheduling, teacher Discord controls, and populated events remain available; desktop and mobile have no horizontal overflow.
+  - Evidence: [v0.9.1 Homepage Simplification](./release-evidence-v0.9.1.md).
+
 - Active feature milestone: `v0.10.0` Source-Grounded Authoring
   - Goal: let teachers inspect source pages before generation and carry validated citation evidence into classrooms and scenes.
   - Acceptance: source-required presets fail closed on unusable input, persisted excerpts are bounded and teacher-only, and public/student responses strip private source details.

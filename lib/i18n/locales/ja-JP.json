@@ -11,9 +11,12 @@
   "home": {
     "slogan": "応答支援の対話型教室",
     "greetingWithName": "こんにちは、{{name}}さん",
+    "demoShortcut": "個別学習デモを見る",
     "schedule": {
       "title": "クラスを予定",
       "add": "追加",
+      "shortcut": "クラスを予定",
+      "upcomingTitle": "今後のクラス",
       "empty": "予定されたクラスはありません",
       "addTitle": "予定クラスを追加",
       "editTitle": "予定クラスを編集",

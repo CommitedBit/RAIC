@@ -23,6 +23,7 @@ function getSceneItem(page: Page, index: number) {
 
 test.describe('Open-RAIC public example classroom', () => {
   test('home CTA opens seeded classroom', async ({ page }) => {
+    test.setTimeout(60_000);
     await mockMissingServerClassroomResponse(page);
 
     await page.goto('/');

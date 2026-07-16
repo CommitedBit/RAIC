@@ -11,9 +11,12 @@
   "home": {
     "slogan": "Responsive Assistance Interactive Classroom",
     "greetingWithName": "Hi, {{name}}",
+    "demoShortcut": "Explore differentiated demo",
     "schedule": {
       "title": "Schedule Classes",
       "add": "Add",
+      "shortcut": "Schedule class",
+      "upcomingTitle": "Upcoming classes",
       "empty": "No classes scheduled",
       "addTitle": "Add scheduled class",
       "editTitle": "Edit scheduled class",

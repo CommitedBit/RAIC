@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  CalendarClock,
+  CalendarPlus,
   Check,
   Clock3,
   Copy,
@@ -81,6 +81,7 @@ interface ScheduleClassesBoxProps {
   readonly onDelete: (id: string) => Promise<void>;
   readonly onOpenClassroom: (classroomId: string) => void;
   readonly gameModeActive?: boolean;
+  readonly compactWhenEmpty?: boolean;
   readonly discordIntegration?: ScheduleDiscordIntegrationState;
 }
 
@@ -185,6 +186,7 @@ export function ScheduleClassesBox({
   onDelete,
   onOpenClassroom,
   gameModeActive = false,
+  compactWhenEmpty = false,
   discordIntegration,
 }: ScheduleClassesBoxProps) {
   const { t } = useI18n();
@@ -351,35 +353,43 @@ export function ScheduleClassesBox({
     gameModeActive ||
     selectedClassroom?.creationMode === 'game-arcade' ||
     Boolean(editingEvent?.multiplayerGame?.enabled);
+  const showCompactAction = compactWhenEmpty && upcomingEvents.length === 0 && !discordIntegration;
 
   return (
     <>
+      {showCompactAction ? (
+        <div data-testid="schedule-classes-box" className="inline-flex">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-9 px-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+            onClick={openCreateDialog}
+          >
+            <CalendarPlus className="size-3.5" aria-hidden="true" />
+            {t('home.schedule.shortcut')}
+          </Button>
+        </div>
+      ) : null}
       <section
+        hidden={showCompactAction}
         aria-labelledby="schedule-classes-heading"
-        data-testid="schedule-classes-box"
-        className="mb-5 w-full max-w-[800px] px-1"
+        data-testid={showCompactAction ? undefined : 'schedule-classes-box'}
+        className="mt-2 w-full max-w-[800px] basis-full px-1"
       >
-        <div className="relative overflow-hidden rounded-2xl border border-violet-200/60 bg-white/82 p-3 shadow-[0_18px_44px_rgba(88,28,135,0.10)] backdrop-blur-xl dark:border-violet-500/20 dark:bg-slate-950/72">
-          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-violet-400 via-fuchsia-400 to-indigo-400" />
-          <div className="flex items-center justify-between gap-3 pl-2">
-            <div className="min-w-0">
-              <h2
-                id="schedule-classes-heading"
-                className="relative inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-50"
-              >
-                <span className="absolute -inset-x-2 -inset-y-1 rounded-full bg-violet-400/15 blur-md" />
-                <Sparkles className="relative size-3.5 text-violet-500" />
-                <span className="relative">{t('home.schedule.title')}</span>
-              </h2>
-            </div>
+        <div className="border-t border-border/50 pt-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="schedule-classes-heading" className="text-sm font-semibold text-foreground">
+              {t('home.schedule.upcomingTitle')}
+            </h2>
             <Button
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 rounded-full border border-violet-200/70 bg-violet-50/90 px-3 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
+              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
               onClick={openCreateDialog}
             >
-              <Plus className="size-3.5" />
+              <Plus className="size-3.5" aria-hidden="true" />
               {t('home.schedule.add')}
             </Button>
           </div>
@@ -387,7 +397,7 @@ export function ScheduleClassesBox({
           {discordIntegration ? (
             <div
               data-testid="schedule-discord-panel"
-              className="mt-3 flex flex-col gap-2 border-t border-violet-100/80 pt-3 pl-2 dark:border-violet-500/15"
+              className="mt-3 flex flex-col gap-2 border-t border-border/40 pt-3"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-2 text-xs">
@@ -537,14 +547,11 @@ export function ScheduleClassesBox({
             </div>
           ) : null}
 
-          <div className="mt-3 overflow-hidden rounded-xl border border-violet-100/70 bg-violet-50/40 dark:border-violet-500/15 dark:bg-violet-500/5">
+          <div className="mt-2">
             {upcomingEvents.length === 0 ? (
-              <div className="flex items-center justify-between gap-3 px-3 py-3 text-sm text-muted-foreground">
-                <span>{t('home.schedule.empty')}</span>
-                <CalendarClock className="size-4 text-violet-400" />
-              </div>
+              <p className="py-2 text-sm text-muted-foreground">{t('home.schedule.empty')}</p>
             ) : (
-              <ul className="divide-y divide-violet-100/80 dark:divide-violet-500/15">
+              <ul className="divide-y divide-border/40">
                 {upcomingEvents.map((event) => {
                   const classroom = event.classroomId
                     ? classroomById.get(event.classroomId)
@@ -574,7 +581,7 @@ export function ScheduleClassesBox({
                   );
 
                   return (
-                    <li key={event.id} className="group flex items-center gap-2 px-2 py-2">
+                    <li key={event.id} className="group flex items-center gap-2 py-2">
                       <button
                         type="button"
                         disabled={!canOpen}
@@ -585,13 +592,13 @@ export function ScheduleClassesBox({
                           }
                         }}
                         className={cn(
-                          'min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left transition-colors',
-                          canOpen ? 'hover:bg-white/80 dark:hover:bg-white/5' : 'cursor-default',
+                          'min-w-0 flex-1 rounded-md px-1 py-1.5 text-left transition-colors',
+                          canOpen ? 'hover:bg-muted/40' : 'cursor-default',
                         )}
                       >
                         <div className="flex min-w-0 items-center gap-2">
-                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-violet-600 shadow-sm ring-1 ring-violet-100 dark:bg-slate-950 dark:text-violet-200 dark:ring-violet-500/20">
-                            <Clock3 className="size-3.5" />
+                          <div className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
+                            <Clock3 className="size-3.5" aria-hidden="true" />
                           </div>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-50">

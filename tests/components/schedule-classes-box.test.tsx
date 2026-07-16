@@ -138,6 +138,8 @@ vi.mock('@/lib/hooks/use-i18n', () => ({
       const labels: Record<string, string> = {
         'home.schedule.title': 'Schedule Classes',
         'home.schedule.add': 'Add',
+        'home.schedule.shortcut': 'Schedule class',
+        'home.schedule.upcomingTitle': 'Upcoming classes',
         'home.schedule.empty': 'No classes scheduled',
         'home.schedule.addTitle': 'Add scheduled class',
         'home.schedule.editTitle': 'Edit scheduled class',
@@ -190,6 +192,7 @@ interface ScheduleClassesBoxTestProps {
   onDelete: (id: string) => Promise<void>;
   onOpenClassroom: (classroomId: string) => void;
   gameModeActive?: boolean;
+  compactWhenEmpty?: boolean;
   discordIntegration?: ScheduleDiscordIntegrationState;
 }
 
@@ -302,15 +305,15 @@ describe('ScheduleClassesBox', () => {
     }
   });
 
-  it('renders an empty state and creates a scheduled class from the dialog', async () => {
+  it('renders a compact empty action and creates a scheduled class from the dialog', async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
-    const { container } = await mountBox({ onCreate });
+    const { container } = await mountBox({ compactWhenEmpty: true, onCreate });
 
-    expect(container.textContent).toContain('Schedule Classes');
-    expect(container.textContent).toContain('No classes scheduled');
+    expect(container.textContent).toContain('Schedule class');
+    expect(container.querySelector('section')?.hidden).toBe(true);
 
     await act(async () => {
-      findButton(container, 'Add')?.click();
+      findButton(container, 'Schedule class')?.click();
     });
     const titleInput = container.querySelector<HTMLInputElement>('#scheduled-class-title');
     const dateInput = container.querySelector<HTMLInputElement>('#scheduled-class-date');
@@ -336,6 +339,19 @@ describe('ScheduleClassesBox', () => {
         startsAt: expect.any(String),
       }),
     );
+  });
+
+  it('renders populated compact schedules as an upcoming classes section', async () => {
+    const { container } = await mountBox({
+      compactWhenEmpty: true,
+      classrooms: [{ id: 'room-1', name: 'Physics room' }],
+      events: [makeEvent('1', '2099-05-12T17:00:00.000Z', 'room-1')],
+    });
+
+    expect(container.querySelector('section')?.hidden).toBe(false);
+    expect(container.textContent).toContain('Upcoming classes');
+    expect(container.textContent).toContain('Physics room');
+    expect(container.textContent).not.toContain('No classes scheduled');
   });
 
   it('creates and opens a selected classroom from the dialog', async () => {
@@ -389,8 +405,9 @@ describe('ScheduleClassesBox', () => {
       connection: null,
       channels: [],
     });
-    const { container } = await mountBox({ discordIntegration });
+    const { container } = await mountBox({ compactWhenEmpty: true, discordIntegration });
 
+    expect(container.textContent).toContain('Upcoming classes');
     expect(container.textContent).toContain('Discord is not configured');
     expect(findButton(container, 'Connect Discord')?.disabled).toBe(true);
     expect(discordIntegration.onConnect).not.toHaveBeenCalled();

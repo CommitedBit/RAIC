@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useState, useEffect, useRef, useDeferredValue, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
+  ArrowUpRight,
   ArrowUp,
   Check,
   ChevronDown,
@@ -64,7 +66,6 @@ import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDraftCache } from '@/lib/hooks/use-draft-cache';
 import { SpeechButton } from '@/components/audio/speech-button';
-import { EXAMPLE_COURSE_ID, ensureOpenRaicExampleSeeded } from '@/lib/utils/example-classroom-seed';
 import {
   clearClassroomLaunchContext,
   getHomePathForLaunchMode,
@@ -704,22 +705,6 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
     [launchMode, router],
   );
 
-  const handleOpenExampleClassroom = useCallback(async () => {
-    try {
-      await ensureOpenRaicExampleSeeded();
-      clearClassroomLaunchContext();
-      writeClassroomLaunchContext({
-        classroomId: EXAMPLE_COURSE_ID,
-        launchMode: 'public-demo',
-        homePath: getHomePathForLaunchMode('public-demo'),
-      });
-      router.push(`/classroom/${EXAMPLE_COURSE_ID}`);
-    } catch (err) {
-      log.error('Failed to seed example classroom:', err);
-      setError('Unable to open the example classroom.');
-    }
-  }, [router]);
-
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setPendingDeleteId(id);
@@ -1176,74 +1161,51 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mb-5 w-full max-w-[800px] rounded-2xl border border-border/50 bg-background/80 px-4 py-3 shadow-sm"
+          className="mb-5 flex w-full max-w-[800px] flex-wrap items-center justify-center gap-x-1 gap-y-2 px-2"
         >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Public demo classroom:</span> Open an
-              example course that shows student-by-student differentiation by NWEA MAP RIT score.
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                data-testid="open-example-classroom-button"
-                onClick={() => void handleOpenExampleClassroom()}
-              >
-                Open demo classroom
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => router.push('/example')}
-              >
-                Open /example
-              </Button>
-            </div>
-          </div>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="h-9 px-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            <Link href="/example" data-testid="open-example-classroom-button">
+              {t('home.demoShortcut')}
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </Button>
+
+          <ScheduleClassesBox
+            compactWhenEmpty
+            events={scheduledClassEvents}
+            classrooms={classrooms.map((classroom) => ({
+              id: classroom.id,
+              name: classroom.name,
+              creationMode: classroom.creationMode,
+            }))}
+            gameModeActive={form.creationMode === 'game-arcade'}
+            onCreate={handleCreateScheduledClass}
+            onUpdate={handleUpdateScheduledClass}
+            onDelete={handleDeleteScheduledClass}
+            onOpenClassroom={openClassroom}
+            discordIntegration={
+              launchMode === 'teacher-server'
+                ? {
+                    ...discordIntegration,
+                    loading: discordIntegrationLoading,
+                    busy: discordIntegrationBusy,
+                    error: discordIntegrationError,
+                    syncingEventId: discordSyncingEventId,
+                    onConnect: handleDiscordConnect,
+                    onSelectConnection: handleDiscordSelectConnection,
+                    onSaveChannel: handleDiscordSaveChannel,
+                    onDisconnect: handleDiscordDisconnect,
+                    onSyncEvent: handleDiscordSyncScheduledClass,
+                  }
+                : undefined
+            }
+          />
         </motion.div>
-
-        <ScheduleClassesBox
-          events={scheduledClassEvents}
-          classrooms={classrooms.map((classroom) => ({
-            id: classroom.id,
-            name: classroom.name,
-            creationMode: classroom.creationMode,
-          }))}
-          gameModeActive={form.creationMode === 'game-arcade'}
-          onCreate={handleCreateScheduledClass}
-          onUpdate={handleUpdateScheduledClass}
-          onDelete={handleDeleteScheduledClass}
-          onOpenClassroom={openClassroom}
-          discordIntegration={
-            launchMode === 'teacher-server'
-              ? {
-                  ...discordIntegration,
-                  loading: discordIntegrationLoading,
-                  busy: discordIntegrationBusy,
-                  error: discordIntegrationError,
-                  syncingEventId: discordSyncingEventId,
-                  onConnect: handleDiscordConnect,
-                  onSelectConnection: handleDiscordSelectConnection,
-                  onSaveChannel: handleDiscordSaveChannel,
-                  onDisconnect: handleDiscordDisconnect,
-                  onSyncEvent: handleDiscordSyncScheduledClass,
-                }
-              : undefined
-          }
-        />
-
-        {/* ── Slogan ── */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25 }}
-          className="text-sm text-muted-foreground/60 mb-8"
-        >
-          {t('home.slogan')}
-        </motion.p>
 
         {/* ── Unified input area ── */}
         <motion.div
@@ -1254,9 +1216,9 @@ export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
         >
           <div className="w-full rounded-2xl border border-border/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl shadow-black/[0.03] dark:shadow-black/20 transition-shadow focus-within:shadow-2xl focus-within:shadow-violet-500/[0.06]">
             {/* ── Greeting + Profile + Agents ── */}
-            <div className="relative z-20 flex items-start justify-between">
+            <div className="relative z-20 flex min-w-0 items-start justify-between gap-2">
               <GreetingBar />
-              <div className="pr-3 pt-3.5 shrink-0">
+              <div className="flex min-w-0 flex-1 justify-end pr-3 pt-3.5">
                 <AgentBar />
               </div>
             </div>
