@@ -37,7 +37,8 @@ export type SnippetId =
   | 'media-safety-guidelines'
   | 'slide-image-instructions'
   | 'slide-generated-image-instructions'
-  | 'slide-video-instructions';
+  | 'slide-video-instructions'
+  | 'widget-action-listener';
 
 /**
  * Loaded prompt template

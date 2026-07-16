@@ -50,6 +50,10 @@ function getEdgePoints(from, to) {
 }
 ```
 
+{{#if widgetActionSyncEnabled}}
+{{snippet:widget-action-listener}}
+{{/if}}
+
 ## Output
 
 Return exactly ONE complete HTML document. No markdown fences, no duplication.
