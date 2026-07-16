@@ -57,11 +57,12 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Release: clean Node 24 gates, protected preview, production health/smokes, immutable tag, and GitHub release are complete.
   - Evidence: [v0.8.1 Dependency Security](./release-evidence-v0.8.1.md).
 
-- Active feature milestone: `v0.9.0` Governed PDF Source Foundation
-  - Goal: add a PDF-first document artifact boundary, private direct uploads, bounded extraction, and truthful capability reporting.
-  - Acceptance: raw source files are private and ephemeral, legacy PDF callers remain compatible, and a protected preview proves an upload larger than the Vercel Function request-body limit.
+- Completed feature milestone: `v0.9.0` Governed PDF Source Foundation
+  - Result: PDF sources use a governed internal artifact boundary, teacher-authenticated private direct uploads, bounded extraction, immediate raw-file deletion, and truthful capability reporting.
+  - Release: legacy PDF callers remain compatible, a protected preview proved a 5.5 MB upload and source-required classroom generation with no raw Blob left behind, and production health/smokes, the immutable tag, and GitHub release are complete.
+  - Evidence: [v0.9.0 Governed PDF Source Foundation](./release-evidence-v0.9.0.md).
 
-- Planned feature milestone: `v0.10.0` Source-Grounded Authoring
+- Active feature milestone: `v0.10.0` Source-Grounded Authoring
   - Goal: let teachers inspect source pages before generation and carry validated citation evidence into classrooms and scenes.
   - Acceptance: source-required presets fail closed on unusable input, persisted excerpts are bounded and teacher-only, and public/student responses strip private source details.
 
