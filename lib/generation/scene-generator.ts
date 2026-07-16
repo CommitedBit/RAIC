@@ -1190,7 +1190,8 @@ function buildWidgetPrompt(
         },
       };
 
-    case 'diagram':
+    case 'diagram': {
+      const prescribedNodes = widgetOutline.nodes ?? [];
       return {
         promptId: PROMPT_IDS.DIAGRAM_CONTENT,
         variables: {
@@ -1198,11 +1199,15 @@ function buildWidgetPrompt(
           diagramType: widgetOutline.diagramType || 'flowchart',
           description: outline.description,
           keyPoints,
-          nodeCount: widgetOutline.nodeCount || '',
+          nodeCount: widgetOutline.nodeCount ?? prescribedNodes.length,
+          prescribedNodes,
+          hasNodeCount: typeof widgetOutline.nodeCount === 'number' && widgetOutline.nodeCount > 0,
+          hasPrescribedNodes: prescribedNodes.length > 0,
           widgetActionSyncEnabled,
           languageDirective: languageDirective || '',
         },
       };
+    }
 
     case 'code':
       return {

@@ -114,6 +114,13 @@ export interface WidgetOutline {
   challenge?: string; // game
   playerControls?: string[]; // game
   nodeCount?: number; // diagram
+  nodes?: Array<{
+    id: string;
+    label: string;
+    parentId?: string;
+    icon?: string;
+    details?: string;
+  }>; // diagram - prescribed nodes and optional hierarchy
   challengeType?: string; // code
 }
 

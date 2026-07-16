@@ -9,6 +9,25 @@ Create an interactive diagram for: {{title}}
 ## Key Points
 {{keyPoints}}
 
+{{#if hasNodeCount}}
+## Node Count Constraint
+
+- Maximum node count: {{nodeCount}}
+- Without a prescribed node list, the `widget-config.nodes` array MUST NOT exceed this limit.
+- With prescribed nodes, that list is authoritative.
+{{/if}}
+
+{{#if hasPrescribedNodes}}
+## Prescribed Nodes
+
+{{prescribedNodes}}
+
+- Use every prescribed node exactly once.
+- Preserve each node's `id`, `label`, `icon`, and `details` when present.
+- Do not add, remove, or replace prescribed nodes.
+- Derive hierarchy edges from `parentId` when present.
+{{/if}}
+
 ## Language
 {{languageDirective}}
 
