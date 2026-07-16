@@ -294,10 +294,10 @@ test.describe('Home → Generation', () => {
 
     const schedule = page.getByTestId('schedule-classes-box');
     await expect(schedule).toBeVisible();
-    await expect(schedule.getByText('No classes scheduled')).toBeVisible();
+    await expect(schedule.getByText('No classes scheduled')).toHaveCount(0);
 
     const scheduleStart = getTomorrowScheduleParts();
-    await schedule.getByRole('button', { name: 'Add' }).click();
+    await schedule.getByRole('button', { name: 'Schedule class' }).click();
     await page.getByLabel('Class title').fill('Design critique');
     await page.getByLabel('Date').fill(scheduleStart.date);
     await page.getByLabel('Time').fill(scheduleStart.time);

@@ -594,54 +594,56 @@ export function AgentBar() {
         </div>
       )}
 
-      {agentMode === 'auto' ? (
-        <>
-          <div className="flex -space-x-2">
-            {agents.find((a) => a.role === 'assistant') && (
-              <div className="size-6 rounded-full overflow-hidden ring-[1.5px] ring-background">
-                <img
-                  src={agents.find((a) => a.role === 'assistant')!.avatar}
-                  alt=""
-                  className="size-full object-cover"
-                />
-              </div>
-            )}
-          </div>
-          <Shuffle className="size-4 text-violet-400 dark:text-violet-500" />
-        </>
-      ) : (
-        <>
-          {nonTeacherSelected.length > 0 && (
+      <div data-testid="agent-bar-desktop-summary" className="hidden items-center gap-1.5 sm:flex">
+        {agentMode === 'auto' ? (
+          <>
             <div className="flex -space-x-2">
-              {nonTeacherSelected.slice(0, 4).map((agent) => (
-                <div
-                  key={agent.id}
-                  className="size-6 rounded-full overflow-hidden ring-[1.5px] ring-background"
-                >
+              {agents.find((a) => a.role === 'assistant') && (
+                <div className="size-6 rounded-full overflow-hidden ring-[1.5px] ring-background">
                   <img
-                    src={agent.avatar}
-                    alt={getAgentName(agent)}
+                    src={agents.find((a) => a.role === 'assistant')!.avatar}
+                    alt=""
                     className="size-full object-cover"
                   />
                 </div>
-              ))}
-              {nonTeacherSelected.length > 4 && (
-                <div className="size-6 rounded-full bg-muted ring-[1.5px] ring-background flex items-center justify-center">
-                  <span className="text-[9px] font-bold text-muted-foreground">
-                    +{nonTeacherSelected.length - 4}
-                  </span>
-                </div>
               )}
             </div>
-          )}
-        </>
-      )}
-      {showVoice &&
-        (ttsEnabled ? (
-          <Volume2 className="size-3.5 text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors" />
+            <Shuffle className="size-4 text-violet-400 dark:text-violet-500" />
+          </>
         ) : (
-          <VolumeX className="size-3.5 text-muted-foreground/30" />
-        ))}
+          <>
+            {nonTeacherSelected.length > 0 && (
+              <div className="flex -space-x-2">
+                {nonTeacherSelected.slice(0, 4).map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="size-6 rounded-full overflow-hidden ring-[1.5px] ring-background"
+                  >
+                    <img
+                      src={agent.avatar}
+                      alt={getAgentName(agent)}
+                      className="size-full object-cover"
+                    />
+                  </div>
+                ))}
+                {nonTeacherSelected.length > 4 && (
+                  <div className="size-6 rounded-full bg-muted ring-[1.5px] ring-background flex items-center justify-center">
+                    <span className="text-[9px] font-bold text-muted-foreground">
+                      +{nonTeacherSelected.length - 4}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        {showVoice &&
+          (ttsEnabled ? (
+            <Volume2 className="size-3.5 text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors" />
+          ) : (
+            <VolumeX className="size-3.5 text-muted-foreground/30" />
+          ))}
+      </div>
     </div>
   );
 
@@ -688,12 +690,16 @@ export function AgentBar() {
   };
 
   return (
-    <div ref={containerRef} className="relative w-96">
+    <div ref={containerRef} className="relative w-fit max-w-full sm:w-96">
       <Tooltip>
         <TooltipTrigger asChild>
           <button
+            data-testid="agent-bar-trigger"
+            aria-label={t('agentBar.configTooltip')}
+            aria-expanded={open}
+            aria-controls="agent-bar-panel"
             className={cn(
-              'group flex items-center gap-2 cursor-pointer rounded-full px-2.5 py-2 transition-all w-full',
+              'group flex w-auto max-w-full items-center gap-2 rounded-full px-2.5 py-2 transition-all sm:w-full',
               'border border-border/50 text-muted-foreground/70 hover:text-foreground hover:bg-muted/60',
             )}
             onClick={() => setOpen(!open)}
@@ -719,11 +725,13 @@ export function AgentBar() {
       <AnimatePresence>
         {open && (
           <motion.div
+            id="agent-bar-panel"
+            data-testid="agent-bar-panel"
             initial={{ opacity: 0, y: -4, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            className="absolute right-0 top-full mt-1 z-50 w-96"
+            className="absolute right-0 top-full z-50 mt-1 w-[calc(100vw-3rem)] max-w-96 sm:w-96"
           >
             <div className="rounded-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] shadow-[0_1px_8px_-2px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_8px_-2px_rgba(0,0,0,0.3)] px-2 py-1.5">
               {/* Teacher — always visible */}

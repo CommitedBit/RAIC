@@ -11,9 +11,12 @@
   "home": {
     "slogan": "Responsive Assistance Interactive Classroom",
     "greetingWithName": "嗨，{{name}}",
+    "demoShortcut": "查看差异化教学演示",
     "schedule": {
       "title": "安排课程",
       "add": "添加",
+      "shortcut": "安排课程",
+      "upcomingTitle": "即将开始的课程",
       "empty": "暂无已安排课程",
       "addTitle": "添加课程安排",
       "editTitle": "编辑课程安排",

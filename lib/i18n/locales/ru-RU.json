@@ -11,9 +11,12 @@
   "home": {
     "slogan": "Responsive Assistance Interactive Classroom",
     "greetingWithName": "Привет, {{name}}",
+    "demoShortcut": "Открыть демо с дифференциацией",
     "schedule": {
       "title": "Расписание занятий",
       "add": "Добавить",
+      "shortcut": "Запланировать занятие",
+      "upcomingTitle": "Предстоящие занятия",
       "empty": "Нет запланированных занятий",
       "addTitle": "Добавить занятие",
       "editTitle": "Изменить занятие",
