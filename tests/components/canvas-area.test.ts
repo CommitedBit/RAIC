@@ -2,11 +2,12 @@
 
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Scene, SharedSimulation } from '@/lib/types/stage';
 
 let miroFishMountCount = 0;
 let miroFishUnmountCount = 0;
+let CanvasArea: typeof import('@/components/canvas/canvas-area').CanvasArea;
 
 vi.mock('motion/react', async () => {
   const React = await import('react');
@@ -141,7 +142,6 @@ async function mountCanvasArea(initialOverrides: Partial<CanvasAreaTestProps> = 
   readonly container: HTMLDivElement;
   readonly rerender: (nextProps?: Partial<CanvasAreaTestProps>) => Promise<void>;
 }> {
-  const { CanvasArea } = await import('@/components/canvas/canvas-area');
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -218,6 +218,10 @@ async function mountCanvasArea(initialOverrides: Partial<CanvasAreaTestProps> = 
 }
 
 describe('CanvasArea', () => {
+  beforeAll(async () => {
+    ({ CanvasArea } = await import('@/components/canvas/canvas-area'));
+  });
+
   beforeEach(() => {
     (
       globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
