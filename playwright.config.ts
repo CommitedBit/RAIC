@@ -5,10 +5,8 @@ process.env.RAIC_SECRET_ENCRYPTION_KEY ??=
   '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 const nodeBinDir = path.dirname(process.execPath);
 const webServerPath = `${nodeBinDir}${path.delimiter}${process.env.PATH ?? ''}`;
-const useStandaloneServer = process.env.PLAYWRIGHT_USE_STANDALONE === 'true';
-const ciWebServerCommand = useStandaloneServer
-  ? 'corepack pnpm build && node .next/standalone/server.js'
-  : 'corepack pnpm build && corepack pnpm exec next start';
+const ciWebServerCommand =
+  'corepack pnpm build && node scripts/prepare-standalone-assets.mjs && node .next/standalone/server.js';
 const useDevServer = process.env.PLAYWRIGHT_USE_DEV_SERVER === 'true';
 const webServerCommand = useDevServer ? 'corepack pnpm dev' : ciWebServerCommand;
 const useSystemChrome = process.env.PLAYWRIGHT_USE_SYSTEM_CHROME === 'true';
