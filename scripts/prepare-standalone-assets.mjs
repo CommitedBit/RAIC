@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { cp, mkdir, stat } from 'node:fs/promises';
+import { cp, mkdir, rm, stat, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -39,6 +39,15 @@ export async function prepareStandaloneAssets(root = process.cwd()) {
       force: true,
     });
   }
+
+  const dataSource = path.join(root, 'data');
+  if (!(await isDirectory(dataSource))) {
+    throw new Error(`Playwright data directory not found: ${dataSource}`);
+  }
+
+  const standaloneData = path.join(standaloneDir, 'data');
+  await rm(standaloneData, { recursive: true, force: true });
+  await symlink(dataSource, standaloneData, process.platform === 'win32' ? 'junction' : 'dir');
 }
 
 const isDirectExecution =
@@ -48,5 +57,5 @@ const isDirectExecution =
 
 if (isDirectExecution) {
   await prepareStandaloneAssets();
-  console.log('[standalone-assets] Copied Next.js static and public assets.');
+  console.log('[standalone-assets] Copied client assets and linked Playwright fixture data.');
 }

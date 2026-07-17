@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -23,8 +23,12 @@ describe('prepareStandaloneAssets', () => {
     await mkdir(path.join(root, '.next', 'standalone'), { recursive: true });
     await mkdir(path.join(root, '.next', 'static', 'chunks'), { recursive: true });
     await mkdir(path.join(root, 'public'), { recursive: true });
+    await mkdir(path.join(root, 'data', 'platform'), { recursive: true });
+    await mkdir(path.join(root, '.next', 'standalone', 'data'), { recursive: true });
     await writeFile(path.join(root, '.next', 'static', 'chunks', 'app.js'), 'app');
     await writeFile(path.join(root, 'public', 'icon.svg'), '<svg />');
+    await writeFile(path.join(root, 'data', 'platform', 'store.json'), '{}');
+    await writeFile(path.join(root, '.next', 'standalone', 'data', 'stale.json'), 'stale');
 
     await prepareStandaloneAssets(root);
 
@@ -37,6 +41,12 @@ describe('prepareStandaloneAssets', () => {
     await expect(
       readFile(path.join(root, '.next', 'standalone', 'public', 'icon.svg'), 'utf8'),
     ).resolves.toBe('<svg />');
+    await expect(realpath(path.join(root, '.next', 'standalone', 'data'))).resolves.toBe(
+      await realpath(path.join(root, 'data')),
+    );
+    await expect(
+      readFile(path.join(root, '.next', 'standalone', 'data', 'platform', 'store.json'), 'utf8'),
+    ).resolves.toBe('{}');
   });
 
   it('fails clearly when standalone output has not been built', async () => {
