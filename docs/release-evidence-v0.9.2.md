@@ -46,9 +46,11 @@ The release candidate uses `pnpm` overrides only where the newest compatible par
 
 ## Release Gates
 
-- [ ] Dependency audit, secrets, drift, i18n, formatting, and lint.
-- [ ] Complete unit suite, TypeScript, and production build.
-- [ ] MiroFish contract and browser gates, complete Playwright, milestone benchmark, and `ops:verify` on the exact tree in a temporary branch literally named `main`.
+- [x] Dependency audit reported zero low-or-higher advisories; built-in secrets scan, drift, four-locale i18n alignment, formatting, and lint passed.
+- [x] TypeScript, all 1,082 unit tests with 3 intentional skips, and the Next.js 16.2.12 production build passed.
+- [x] MiroFish contract gate passed 97 tests with 2 intentional skips; its browser gate passed 3 flows; complete Playwright passed 40 flows with 1 intentional skip.
+- [x] Milestone benchmark passed with first meaningful paint 273 ms, classroom start 599 ms, provider p95 20 ms, and classroom reconnect 124 ms.
+- [x] Consolidated `ops:verify` passed on the exact clean candidate in a temporary branch literally named `main` using Node 24.14.0 and pnpm 10.28.0.
 - [ ] Protected preview against an isolated destination branch.
 - [ ] Current GitHub and Vercel checks green. Initial PR previews failed before build logs with `BUILD_FAILED: Resource provisioning failed`; this is an unresolved platform gate, not passing preview evidence.
 
