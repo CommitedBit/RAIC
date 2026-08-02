@@ -62,14 +62,20 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Release: legacy PDF callers remain compatible, a protected preview proved a 5.5 MB upload and source-required classroom generation with no raw Blob left behind, and production health/smokes, the immutable tag, and GitHub release are complete.
   - Evidence: [v0.9.0 Governed PDF Source Foundation](./release-evidence-v0.9.0.md).
 
-- Active patch milestone: `v0.9.1` Homepage Simplification
-  - Goal: move the public composer into the first mobile viewport by replacing the duplicate demo and empty schedule surfaces with compact actions and constraining the agent selector.
-  - Acceptance: demo seeding, scheduling, teacher Discord controls, and populated events remain available; desktop and mobile have no horizontal overflow.
+- Completed patch milestone: `v0.9.1` Homepage Simplification
+  - Result: the public homepage now uses one demo link, a compact empty schedule action, flat populated schedules, and a mobile-width agent selector while preserving demo seeding, scheduling, and teacher Discord controls.
+  - Release: the clean Node 24 gate, protected preview, production viewport checks, production smokes, immutable tag, and GitHub release are complete.
   - Evidence: [v0.9.1 Homepage Simplification](./release-evidence-v0.9.1.md).
+
+- Active patch milestone: `v0.9.2` Cohesive Stabilization
+  - Goal: migrate durable storage to paid Vercel Marketplace Neon, harden Google identity and logout, report core health truthfully, and selectively adopt compatible OpenMAIC security and correctness fixes.
+  - Acceptance: verified database export/import and rollback evidence, protected preview, canonical-domain Google sign-in/logout proof, complete Node 24 gates, and at least 24 hours of stable production observation.
+  - Evidence: [v0.9.2 Cohesive Stabilization](./release-evidence-v0.9.2.md).
 
 - Active feature milestone: `v0.10.0` Source-Grounded Authoring
   - Goal: let teachers inspect source pages before generation and carry validated citation evidence into classrooms and scenes.
   - Acceptance: source-required presets fail closed on unusable input, persisted excerpts are bounded and teacher-only, and public/student responses strip private source details.
+  - Start gate: begin from fresh post-`v0.9.2` `main` only after the stabilization release has remained healthy for at least 24 hours.
 
 - Planned feature milestone: `v0.11.0` Governed Edit with AI
   - Goal: provide teacher-only, preview-before-apply slide edits through a validated patch language and the existing undo history.
@@ -107,6 +113,7 @@ Slice-level minimum acceptance:
 
 - `v0.8.1`: patched dependency graph, reproducible dependency audit, and no runtime or API behavior changes.
 - `v0.9.0`: authenticated private upload, ownership/limit/redaction coverage, legacy compatibility, and raw-file cleanup.
+- `v0.9.2`: verified Neon migration, immutable Google account linking, dual-session logout, redacted degraded health, and corrected selective backports.
 - `v0.10.0`: deterministic page selection, validated citations, teacher-only source evidence, and public/student sanitization.
 - `v0.11.0`: authorized structured patches, stale-state rejection, atomic apply, one-step undo, and feature-flag rollback.
 - Adaptive-student follow-up: privacy/retention tests plus confirmed student path disabled by default and fully rollback-safe via feature-flag disable.
