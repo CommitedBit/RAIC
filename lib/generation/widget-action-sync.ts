@@ -52,8 +52,12 @@ function isStableValue(value: string | undefined, allowNumericStart = true): val
   return pattern.test(value);
 }
 
+function escapeCssIdentifier(value: string): string {
+  return value.replace(/[.:]/g, (character) => `\\${character}`);
+}
+
 function buildSelector(attributes: Record<string, string>): string | null {
-  if (isStableValue(attributes.id, false)) return `#${attributes.id}`;
+  if (isStableValue(attributes.id, false)) return `#${escapeCssIdentifier(attributes.id)}`;
 
   for (const attribute of SELECTOR_ATTRIBUTES) {
     const value = attributes[attribute];
@@ -69,8 +73,8 @@ function buildSelector(attributes: Record<string, string>): string | null {
  * never enter the result.
  */
 export function extractWidgetElementInventory(html: string): WidgetInventoryEntry[] {
-  const entries: WidgetInventoryEntry[] = [];
-  const seenSelectors = new Set<string>();
+  const entriesBySelector = new Map<string, WidgetInventoryEntry>();
+  const duplicateSelectors = new Set<string>();
 
   try {
     sanitizeHtml(html.slice(0, MAX_HTML_CHARS), {
@@ -79,23 +83,29 @@ export function extractWidgetElementInventory(html: string): WidgetInventoryEntr
       allowVulnerableTags: true,
       transformTags: {
         '*': (tagName, attributes) => {
-          if (
-            entries.length < MAX_WIDGET_INVENTORY_ENTRIES &&
-            !NON_TARGET_TAGS.has(tagName.toLowerCase())
-          ) {
+          if (!NON_TARGET_TAGS.has(tagName.toLowerCase())) {
             const selector = buildSelector(attributes);
-            if (selector && !seenSelectors.has(selector)) {
+            if (selector && !duplicateSelectors.has(selector)) {
+              if (entriesBySelector.has(selector)) {
+                entriesBySelector.delete(selector);
+                duplicateSelectors.add(selector);
+                return { tagName, attribs: attributes };
+              }
+
+              if (entriesBySelector.size >= MAX_WIDGET_INVENTORY_ENTRIES) {
+                return { tagName, attribs: attributes };
+              }
+
               const semanticAttributes: WidgetInventoryEntry['attributes'] = {};
               for (const attribute of SEMANTIC_ATTRIBUTES) {
                 const value = attributes[attribute];
                 if (isStableValue(value)) semanticAttributes[attribute] = value;
               }
-              entries.push({
+              entriesBySelector.set(selector, {
                 selector,
                 tagName: tagName.toLowerCase(),
                 attributes: semanticAttributes,
               });
-              seenSelectors.add(selector);
             }
           }
 
@@ -107,7 +117,7 @@ export function extractWidgetElementInventory(html: string): WidgetInventoryEntr
     return [];
   }
 
-  return entries;
+  return Array.from(entriesBySelector.values());
 }
 
 export function formatWidgetElementInventory(entries: WidgetInventoryEntry[]): string {

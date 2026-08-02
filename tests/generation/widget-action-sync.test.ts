@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildFallbackGameWidget } from '@/lib/game-arcade/fallback';
@@ -98,6 +100,35 @@ describe('widget action synchronization', () => {
     );
 
     expect(filtered.map((action) => action.id)).toEqual(['intro', 'valid', 'state']);
+  });
+
+  it('escapes punctuation and excludes ambiguous or unstable ID selectors', () => {
+    const html = `
+      <button id="step.one">Dot</button>
+      <button id="step:two">Colon</button>
+      <button id="duplicate">First</button>
+      <button id="duplicate">Second</button>
+      <button id="with space">Space</button>
+      <button id="with\\escape">Escape</button>
+    `;
+    const entries = extractWidgetElementInventory(html);
+
+    expect(entries.map((entry) => entry.selector)).toEqual(['#step\\.one', '#step\\:two']);
+    document.body.innerHTML = html;
+    for (const entry of entries) {
+      expect(document.querySelector(entry.selector)).not.toBeNull();
+    }
+
+    const filtered = filterWidgetTeacherActions(
+      [
+        { id: 'escaped-dot', type: 'highlight', target: '#step\\.one' },
+        { id: 'escaped-colon', type: 'reveal', target: '#step\\:two' },
+        { id: 'raw-dot', type: 'highlight', target: '#step.one' },
+        { id: 'duplicate', type: 'highlight', target: '#duplicate' },
+      ],
+      entries,
+    );
+    expect(filtered.map((action) => action.id)).toEqual(['escaped-dot', 'escaped-colon']);
   });
 
   it('adds the listener contract and privacy-safe inventory only when enabled', async () => {
