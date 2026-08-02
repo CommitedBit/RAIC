@@ -17,7 +17,7 @@ Evidence status: in progress and blocked from production. Code slices are prepar
 - [x] PR [#86](https://github.com/CommitedBit/RAIC/pull/86): Google identity, logout, session, and health hardening; 43 focused tests and TypeScript passed locally.
 - [x] PR [#87](https://github.com/CommitedBit/RAIC/pull/87): SSRF, reasoning JSON, and quiz-safety backports; 81 focused tests and TypeScript passed locally.
 - [x] PR [#88](https://github.com/CommitedBit/RAIC/pull/88): export, rendering, storage, Playwright fixture, and default-off widget corrections; 36 focused tests and TypeScript passed locally.
-- [x] Dependency refresh candidate: patched direct dependencies and narrowly pinned unresolved transitive advisories; the low-threshold audit, TypeScript, lint, 1,082 unit tests, and production build passed locally on Node 24.14.0.
+- [x] PR [#90](https://github.com/CommitedBit/RAIC/pull/90): patched direct dependencies and narrowly pinned unresolved transitive advisories; the low-threshold audit, TypeScript, lint, 1,082 unit tests, and production build passed locally on Node 24.14.0.
 - [x] Fresh frozen install completed with Node 24.14.0 and pnpm 10.28.0 in a temporary non-iCloud release worktree.
 - [ ] Serial slice PRs merged into `release/v0.9.2` after required checks.
 
