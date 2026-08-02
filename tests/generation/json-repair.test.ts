@@ -44,6 +44,30 @@ describe('parseJsonResponse', () => {
     });
   });
 
+  it('does not split on a reasoning close tag inside final JSON content', () => {
+    const raw = `Final response:
+{
+  "text": "literal </think> content",
+  "ok": true
+}`;
+
+    expect(parseJsonResponse<{ text: string; ok: boolean }>(raw)).toEqual({
+      text: 'literal </think> content',
+      ok: true,
+    });
+  });
+
+  it('uses the first leading reasoning terminator instead of tags in final content', () => {
+    const raw = `draft explanation
+</reasoning>
+{"text":"final </reasoning> content","ok":true}`;
+
+    expect(parseJsonResponse<{ text: string; ok: boolean }>(raw)).toEqual({
+      text: 'final </reasoning> content',
+      ok: true,
+    });
+  });
+
   it('retains markdown extraction fallback', () => {
     expect(parseJsonResponse<{ ok: boolean }>('result:\n```json\n{"ok":true}\n```')).toEqual({
       ok: true,

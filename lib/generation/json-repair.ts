@@ -39,12 +39,23 @@ function tryParseExactJson<T>(response: string): T | null {
 
 function stripReasoningPrefix(response: string): string {
   const trimmed = response.trim();
-  const matches = [...trimmed.matchAll(/<\/(?:think|thinking|reasoning)>\s*/gi)];
-  const lastMatch = matches.at(-1);
+  const openingMatch = trimmed.match(/^<(think|thinking|reasoning)>\s*/i);
+  if (openingMatch) {
+    const closingTag = new RegExp(`<\\/${openingMatch[1]}>\\s*`, 'i');
+    const closingMatch = closingTag.exec(trimmed.slice(openingMatch[0].length));
+    if (!closingMatch || closingMatch.index === undefined) return trimmed;
 
-  if (!lastMatch || lastMatch.index === undefined) return trimmed;
+    return trimmed
+      .slice(openingMatch[0].length + closingMatch.index + closingMatch[0].length)
+      .trim();
+  }
 
-  return trimmed.slice(lastMatch.index + lastMatch[0].length).trim();
+  const standaloneClosingMatch =
+    /(?:^|\r?\n)[ \t]*<\/(?:think|thinking|reasoning)>[ \t]*(?:\r?\n|$)/i.exec(trimmed);
+
+  if (!standaloneClosingMatch || standaloneClosingMatch.index === undefined) return trimmed;
+
+  return trimmed.slice(standaloneClosingMatch.index + standaloneClosingMatch[0].length).trim();
 }
 
 function parseJsonResponseCandidate<T>(response: string): T | null {
