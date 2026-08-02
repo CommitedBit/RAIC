@@ -1,7 +1,12 @@
 import 'server-only';
 
 import { randomUUID } from 'crypto';
-import { readPlatformStore, runPostgresQuery, updatePlatformStore } from '@/lib/db/client';
+import {
+  readPlatformStore,
+  runPostgresQuery,
+  runPostgresTransaction,
+  updatePlatformStore,
+} from '@/lib/db/client';
 import type { UserRecord } from '@/lib/db/schema';
 
 interface UpsertGoogleUserInput {
@@ -25,6 +30,31 @@ interface UserRow {
   created_at: string;
   updated_at: string;
   last_login_at: string | null;
+}
+
+export class GoogleAccountLinkConflictError extends Error {
+  readonly code = 'ACCOUNT_LINK_CONFLICT';
+
+  constructor() {
+    super('Google identity conflicts with an existing account');
+    this.name = 'GoogleAccountLinkConflictError';
+  }
+}
+
+export function isGoogleAccountLinkConflictError(
+  error: unknown,
+): error is GoogleAccountLinkConflictError {
+  return (
+    error instanceof GoogleAccountLinkConflictError ||
+    (typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'ACCOUNT_LINK_CONFLICT')
+  );
+}
+
+function isPostgresUniqueConstraintViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
 }
 
 function mapUserRow(row: UserRow): UserRecord {
@@ -97,55 +127,126 @@ export async function upsertGoogleUser(input: UpsertGoogleUserInput): Promise<Us
   const normalizedEmail = input.email.trim().toLowerCase();
   const displayName = input.displayName.trim() || normalizedEmail;
   const avatarUrl = input.avatarUrl?.trim() || null;
-  const existing =
-    (await findUserByGoogleSub(input.googleSub)) ?? (await findUserByEmail(normalizedEmail));
+  const postgresUser = await runPostgresTransaction(async (executor) => {
+    const bySubject = await executor.unsafe<UserRow>(
+      `SELECT id, google_sub, email, display_name, avatar_url, created_at, updated_at, last_login_at
+       FROM users
+       WHERE google_sub = $1
+       LIMIT 1
+       FOR UPDATE`,
+      [input.googleSub],
+    );
 
-  const rows = existing
-    ? await runPostgresQuery<UserRow>(
+    if (bySubject[0]) {
+      const emailOwner = await executor.unsafe<UserRow>(
+        `SELECT id, google_sub, email, display_name, avatar_url, created_at, updated_at, last_login_at
+         FROM users
+         WHERE lower(email) = $1
+         LIMIT 1
+         FOR UPDATE`,
+        [normalizedEmail],
+      );
+      if (emailOwner[0] && emailOwner[0].id !== bySubject[0].id) {
+        throw new GoogleAccountLinkConflictError();
+      }
+
+      const updated = await executor.unsafe<UserRow>(
         `UPDATE users
-         SET google_sub = $2,
-             email = $3,
-             display_name = $4,
-             avatar_url = $5,
-             updated_at = $6,
-             last_login_at = $6
+         SET email = $2,
+             display_name = $3,
+             avatar_url = $4,
+             updated_at = $5,
+             last_login_at = $5
          WHERE id = $1
          RETURNING id, google_sub, email, display_name, avatar_url, created_at, updated_at, last_login_at`,
-        [existing.id, input.googleSub, normalizedEmail, displayName, avatarUrl, now],
-      )
-    : await runPostgresQuery<UserRow>(
-        `INSERT INTO users (
-            id,
-            google_sub,
-            email,
-            display_name,
-            avatar_url,
-            created_at,
-            updated_at,
-            last_login_at
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $6, $6)
-          RETURNING id, google_sub, email, display_name, avatar_url, created_at, updated_at, last_login_at`,
-        [randomUUID(), input.googleSub, normalizedEmail, displayName, avatarUrl, now],
+        [bySubject[0].id, normalizedEmail, displayName, avatarUrl, now],
       );
+      return mapUserRow(updated[0]);
+    }
 
-  if (rows) {
-    return mapUserRow(rows[0]);
-  }
+    const byEmail = await executor.unsafe<UserRow>(
+      `SELECT id, google_sub, email, display_name, avatar_url, created_at, updated_at, last_login_at
+       FROM users
+       WHERE lower(email) = $1
+       LIMIT 1
+       FOR UPDATE`,
+      [normalizedEmail],
+    );
+
+    if (byEmail[0]) {
+      if (byEmail[0].google_sub !== null) {
+        throw new GoogleAccountLinkConflictError();
+      }
+
+      const linked = await executor.unsafe<UserRow>(
+        `UPDATE users
+         SET google_sub = $2,
+             display_name = $3,
+             avatar_url = $4,
+             updated_at = $5,
+             last_login_at = $5
+         WHERE id = $1
+           AND google_sub IS NULL
+         RETURNING id, google_sub, email, display_name, avatar_url, created_at, updated_at, last_login_at`,
+        [byEmail[0].id, input.googleSub, displayName, avatarUrl, now],
+      );
+      if (!linked[0]) {
+        throw new GoogleAccountLinkConflictError();
+      }
+      return mapUserRow(linked[0]);
+    }
+
+    const inserted = await executor.unsafe<UserRow>(
+      `INSERT INTO users (
+          id,
+          google_sub,
+          email,
+          display_name,
+          avatar_url,
+          created_at,
+          updated_at,
+          last_login_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $6, $6)
+        RETURNING id, google_sub, email, display_name, avatar_url, created_at, updated_at, last_login_at`,
+      [randomUUID(), input.googleSub, normalizedEmail, displayName, avatarUrl, now],
+    );
+    return mapUserRow(inserted[0]);
+  }).catch((error: unknown) => {
+    if (isPostgresUniqueConstraintViolation(error)) {
+      throw new GoogleAccountLinkConflictError();
+    }
+    throw error;
+  });
+
+  if (postgresUser) return postgresUser;
 
   return updatePlatformStore((store) => {
-    const current =
-      store.users.find((user) => user.googleSub === input.googleSub) ??
-      store.users.find((user) => user.email.toLowerCase() === normalizedEmail);
+    const bySubject = store.users.find((user) => user.googleSub === input.googleSub);
+    const byEmail = store.users.find((user) => user.email.toLowerCase() === normalizedEmail);
 
-    if (current) {
-      current.googleSub = input.googleSub;
-      current.email = normalizedEmail;
-      current.displayName = displayName;
-      current.avatarUrl = avatarUrl;
-      current.updatedAt = now;
-      current.lastLoginAt = now;
-      return current;
+    if (bySubject) {
+      if (byEmail && byEmail.id !== bySubject.id) {
+        throw new GoogleAccountLinkConflictError();
+      }
+      bySubject.email = normalizedEmail;
+      bySubject.displayName = displayName;
+      bySubject.avatarUrl = avatarUrl;
+      bySubject.updatedAt = now;
+      bySubject.lastLoginAt = now;
+      return bySubject;
+    }
+
+    if (byEmail) {
+      if (byEmail.googleSub !== null) {
+        throw new GoogleAccountLinkConflictError();
+      }
+      byEmail.googleSub = input.googleSub;
+      byEmail.displayName = displayName;
+      byEmail.avatarUrl = avatarUrl;
+      byEmail.updatedAt = now;
+      byEmail.lastLoginAt = now;
+      return byEmail;
     }
 
     const user: UserRecord = {

@@ -11,6 +11,7 @@ const getServerWebSearchProvidersMock = vi.fn();
 const getServerImageProvidersMock = vi.fn();
 const getServerVideoProvidersMock = vi.fn();
 const getServerTTSProvidersMock = vi.fn();
+const warnLogMock = vi.fn();
 
 vi.mock('@/lib/db/client', () => ({
   getPersistenceMode: getPersistenceModeMock,
@@ -37,6 +38,10 @@ vi.mock('@/lib/server/provider-config', () => ({
   getServerTTSProviders: getServerTTSProvidersMock,
 }));
 
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ warn: warnLogMock }),
+}));
+
 describe('GET /api/health', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -51,6 +56,7 @@ describe('GET /api/health', () => {
     getServerImageProvidersMock.mockReset();
     getServerVideoProvidersMock.mockReset();
     getServerTTSProvidersMock.mockReset();
+    warnLogMock.mockReset();
 
     getPersistenceModeMock.mockResolvedValue('json');
     runPostgresQueryMock.mockResolvedValue([]);
@@ -100,6 +106,7 @@ describe('GET /api/health', () => {
 
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
+    expect(body.status).toBe('ok');
     expect(body.version).toBe(packageJson.version);
     expect(body.capabilities).toEqual({
       webSearch: true,
@@ -155,10 +162,13 @@ describe('GET /api/health', () => {
   });
 
   it('reports readiness failures without exposing secrets', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://admin:secret@db.example/raic?sslmode=require');
     vi.stubEnv('MIROFISH_BASE_URL', 'https://mirofish.example');
-    getPersistenceModeMock.mockRejectedValue(new Error('schema init failed'));
+    getPersistenceModeMock.mockRejectedValue(
+      new Error('postgres://admin:secret@db.example/raic?sslmode=require'),
+    );
     getMiroFishConfigMock.mockImplementation(() => {
-      throw new Error('MIROFISH_API_BASE_URL must use http or https');
+      throw new Error('MiroFish raw provider configuration detail');
     });
 
     const { GET } = await import('@/app/api/health/route');
@@ -177,13 +187,14 @@ describe('GET /api/health', () => {
       botTokenConfigured: false,
       cronSecretConfigured: false,
     });
+    expect(body.status).toBe('degraded');
     expect(body.readiness.storage).toEqual({
       ready: false,
-      reason: 'schema init failed',
-      mode: 'json',
+      reason: 'Platform storage readiness check failed',
+      mode: 'postgres',
     });
     expect(body.readiness.mirofish.ready).toBe(false);
-    expect(body.readiness.mirofish.reason).toBe('MIROFISH_API_BASE_URL must use http or https');
+    expect(body.readiness.mirofish.reason).toBe('MiroFish configuration is invalid');
     expect(body.readiness.mirofish.apiAccessConfigured).toBe(false);
     expect(body.readiness.mirofish.embedSigningConfigured).toBe(false);
     expect(body.readiness.mirofish.authoringEnabled).toBe(false);
@@ -195,6 +206,9 @@ describe('GET /api/health', () => {
       privateBlobConfigured: false,
       signingConfigured: false,
     });
+    expect(JSON.stringify(body)).not.toContain('db.example');
+    expect(JSON.stringify(body)).not.toContain('raw provider');
+    expect(JSON.stringify(warnLogMock.mock.calls)).not.toContain('db.example');
   });
 
   it('flags hosted JSON storage as non-durable when DATABASE_URL is unset', async () => {
@@ -205,11 +219,31 @@ describe('GET /api/health', () => {
     const response = await GET();
     const body = await response.json();
 
+    expect(body.status).toBe('degraded');
     expect(body.readiness.storage).toEqual({
       ready: false,
       reason:
         'DATABASE_URL is required for durable hosted storage; JSON fallback uses temporary runtime storage only',
       mode: 'json',
     });
+  });
+
+  it('keeps overall status ok when only optional capabilities are unavailable', async () => {
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_CLIENT_ID', 'google-client-id');
+    vi.stubEnv('RAIC_SECRET_ENCRYPTION_KEY', 'encryption-key');
+    vi.stubEnv('DATABASE_URL', 'postgres://localhost/raic');
+    getPersistenceModeMock.mockResolvedValue('postgres');
+    hasEncryptionKeyConfiguredMock.mockReturnValue(true);
+
+    const { GET } = await import('@/app/api/health/route');
+    const response = await GET();
+    const body = await response.json();
+
+    expect(body.status).toBe('ok');
+    expect(body.readiness.storage.ready).toBe(true);
+    expect(body.readiness.mirofish.ready).toBe(false);
+    expect(body.capabilities.webSearch).toBe(false);
+    expect(body.capabilities.videoGeneration).toBe(false);
+    expect(body.capabilities.tts).toBe(false);
   });
 });

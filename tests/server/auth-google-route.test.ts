@@ -9,6 +9,7 @@ const ensureMembershipMock = vi.fn();
 const listMembershipsForUserMock = vi.fn();
 const createWebSessionMock = vi.fn();
 const recordAuditEventMock = vi.fn();
+const warnLogMock = vi.fn();
 
 vi.mock('@/lib/auth/google', () => ({
   verifyGoogleIdToken: verifyGoogleIdTokenMock,
@@ -16,6 +17,11 @@ vi.mock('@/lib/auth/google', () => ({
 
 vi.mock('@/lib/db/repositories/users', () => ({
   upsertGoogleUser: upsertGoogleUserMock,
+  isGoogleAccountLinkConflictError: (error: unknown) =>
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'ACCOUNT_LINK_CONFLICT',
 }));
 
 vi.mock('@/lib/db/repositories/organizations', () => ({
@@ -40,6 +46,12 @@ vi.mock('@/lib/server/audit-log', () => ({
   recordAuditEvent: recordAuditEventMock,
 }));
 
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({
+    warn: warnLogMock,
+  }),
+}));
+
 describe('POST /api/auth/google', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -50,6 +62,7 @@ describe('POST /api/auth/google', () => {
     listMembershipsForUserMock.mockReset();
     createWebSessionMock.mockReset();
     recordAuditEventMock.mockReset();
+    warnLogMock.mockReset();
   });
 
   it('rejects sign-in when the nonce cookie is missing', async () => {
@@ -90,8 +103,75 @@ describe('POST /api/auth/google', () => {
 
     expect(response.status).toBe(401);
     expect(json.errorCode).toBe('GOOGLE_AUTH_FAILED');
+    expect(json.error).toBe('Google sign-in failed. Please try again.');
+    expect(JSON.stringify(json)).not.toContain('nonce mismatch');
+    expect(JSON.stringify(warnLogMock.mock.calls)).not.toContain('nonce mismatch');
     expect(response.cookies.get(AUTH_NONCE_COOKIE_NAME)?.value).toBe('');
     expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBe('');
+  });
+
+  it('fails closed when the verified email belongs to another Google subject', async () => {
+    verifyGoogleIdTokenMock.mockResolvedValue({
+      googleSub: 'new-google-sub',
+      email: 'teacher@example.com',
+      displayName: 'Teacher',
+      avatarUrl: null,
+    });
+    upsertGoogleUserMock.mockRejectedValue(
+      Object.assign(new Error('existing subject must not be replaced'), {
+        code: 'ACCOUNT_LINK_CONFLICT',
+      }),
+    );
+
+    const { POST } = await import('@/app/api/auth/google/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/auth/google', {
+        method: 'POST',
+        headers: {
+          cookie: `${AUTH_NONCE_COOKIE_NAME}=nonce-123`,
+          'x-vercel-id': 'iad1::request-123',
+        },
+        body: JSON.stringify({ credential: 'credential-token' }),
+      }),
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(json).toEqual({
+      success: false,
+      errorCode: 'ACCOUNT_LINK_CONFLICT',
+      error: 'This email is already linked to another Google account.',
+    });
+    expect(findOrCreatePersonalOrganizationMock).not.toHaveBeenCalled();
+    expect(createWebSessionMock).not.toHaveBeenCalled();
+    expect(JSON.stringify(warnLogMock.mock.calls)).not.toContain('existing subject');
+  });
+
+  it('does not expose persistence failures in the response or logs', async () => {
+    verifyGoogleIdTokenMock.mockResolvedValue({
+      googleSub: 'google-sub-1',
+      email: 'teacher@example.com',
+      displayName: 'Teacher',
+      avatarUrl: null,
+    });
+    upsertGoogleUserMock.mockRejectedValue(
+      new Error('postgres://admin:secret@db.example/raic?sslmode=require'),
+    );
+
+    const { POST } = await import('@/app/api/auth/google/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/auth/google', {
+        method: 'POST',
+        headers: { cookie: `${AUTH_NONCE_COOKIE_NAME}=nonce-123` },
+        body: JSON.stringify({ credential: 'credential-token' }),
+      }),
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(json.error).toBe('Google sign-in failed. Please try again.');
+    expect(JSON.stringify(json)).not.toContain('db.example');
+    expect(JSON.stringify(warnLogMock.mock.calls)).not.toContain('db.example');
   });
 
   it('creates a session when nonce validation and identity resolution succeed', async () => {
