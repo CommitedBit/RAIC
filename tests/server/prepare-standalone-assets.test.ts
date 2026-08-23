@@ -56,4 +56,16 @@ describe('prepareStandaloneAssets', () => {
       'Standalone build output not found',
     );
   });
+
+  it('creates an empty runtime data directory for clean checkouts', async () => {
+    const root = await makeRoot();
+    await mkdir(path.join(root, '.next', 'standalone'), { recursive: true });
+    await mkdir(path.join(root, '.next', 'static'), { recursive: true });
+
+    await prepareStandaloneAssets(root);
+
+    await expect(realpath(path.join(root, '.next', 'standalone', 'data'))).resolves.toBe(
+      await realpath(path.join(root, 'data')),
+    );
+  });
 });

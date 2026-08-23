@@ -41,9 +41,7 @@ export async function prepareStandaloneAssets(root = process.cwd()) {
   }
 
   const dataSource = path.join(root, 'data');
-  if (!(await isDirectory(dataSource))) {
-    throw new Error(`Playwright data directory not found: ${dataSource}`);
-  }
+  await mkdir(dataSource, { recursive: true });
 
   const standaloneData = path.join(standaloneDir, 'data');
   await rm(standaloneData, { recursive: true, force: true });
