@@ -1,7 +1,12 @@
 import 'server-only';
 
 import { randomUUID } from 'crypto';
-import { readPlatformStore, runPostgresQuery, updatePlatformStore } from '@/lib/db/client';
+import {
+  readPlatformStore,
+  runPostgresQuery,
+  runPostgresTransaction,
+  updatePlatformStore,
+} from '@/lib/db/client';
 import type { PlatformRole, SessionKind, SessionRecord } from '@/lib/db/schema';
 
 interface SessionRow {
@@ -227,24 +232,34 @@ export async function touchSession(
   });
 }
 
-export async function revokeSessionById(sessionId: string): Promise<void> {
+export async function revokeSessionsById(sessionIds: string[]): Promise<void> {
+  const uniqueSessionIds = Array.from(new Set(sessionIds.filter(Boolean)));
+  if (uniqueSessionIds.length === 0) return;
+
   const now = new Date().toISOString();
+  const updatedInPostgres = await runPostgresTransaction(async (executor) => {
+    await executor.unsafe(
+      `UPDATE sessions
+       SET revoked_at = $2,
+           updated_at = $2
+       WHERE id = ANY($1::text[])`,
+      [uniqueSessionIds, now],
+    );
+    return true;
+  });
 
-  const rows = await runPostgresQuery<SessionRow>(
-    `UPDATE sessions
-     SET revoked_at = $2,
-         updated_at = $2
-     WHERE id = $1
-     RETURNING id, user_id`,
-    [sessionId, now],
-  );
-
-  if (rows) return;
+  if (updatedInPostgres) return;
 
   await updatePlatformStore((store) => {
-    const session = store.sessions.find((candidate) => candidate.id === sessionId);
-    if (!session) return;
-    session.revokedAt = now;
-    session.updatedAt = now;
+    const targetIds = new Set(uniqueSessionIds);
+    for (const session of store.sessions) {
+      if (!targetIds.has(session.id)) continue;
+      session.revokedAt = now;
+      session.updatedAt = now;
+    }
   });
+}
+
+export async function revokeSessionById(sessionId: string): Promise<void> {
+  return revokeSessionsById([sessionId]);
 }

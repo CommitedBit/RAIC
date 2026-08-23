@@ -8,6 +8,9 @@ import { hasEncryptionKeyConfigured } from '@/lib/server/encrypted-secrets';
 import { getMiroFishConfig, isMiroFishMultiUserEnabled } from '@/lib/server/mirofish';
 import { getMiroFishAuthoringReadiness } from '@/lib/server/mirofish-authoring';
 import { getSourceDocumentsV2Readiness } from '@/lib/server/source-document-storage';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('HealthReadiness');
 
 interface ReadinessCheck {
   ready: boolean;
@@ -90,13 +93,15 @@ async function getStorageReadiness(): Promise<HealthStorageReadiness> {
       mode,
       ...createReadyCheck(true),
     };
-  } catch (error) {
+  } catch {
+    const mode = hasConfiguredEnv('DATABASE_URL') ? 'postgres' : 'json';
+    log.warn('Storage readiness failed', {
+      category: 'storage_readiness_failed',
+      mode,
+    });
     return {
-      mode: hasConfiguredEnv('DATABASE_URL') ? 'postgres' : 'json',
-      ...createReadyCheck(
-        false,
-        error instanceof Error ? error.message : 'Platform storage readiness check failed',
-      ),
+      mode,
+      ...createReadyCheck(false, 'Platform storage readiness check failed'),
     };
   }
 }
@@ -150,7 +155,7 @@ function getMiroFishReadiness(): HealthMiroFishReadiness {
 
   try {
     getMiroFishConfig();
-  } catch (error) {
+  } catch {
     return {
       baseUrlConfigured,
       apiBaseUrlConfigured,
@@ -159,10 +164,7 @@ function getMiroFishReadiness(): HealthMiroFishReadiness {
       multiUserEnabled,
       authoringEnabled,
       authoringReady,
-      ...createReadyCheck(
-        false,
-        error instanceof Error ? error.message : 'MiroFish configuration is invalid',
-      ),
+      ...createReadyCheck(false, 'MiroFish configuration is invalid'),
     };
   }
 
@@ -215,4 +217,8 @@ export async function getHealthReadiness(): Promise<HealthReadinessReport> {
     mirofish: getMiroFishReadiness(),
     sourceDocumentsV2: getSourceDocumentsV2Readiness(),
   };
+}
+
+export function isCoreHealthReady(readiness: HealthReadinessReport): boolean {
+  return readiness.auth.ready && readiness.encryption.ready && readiness.storage.ready;
 }

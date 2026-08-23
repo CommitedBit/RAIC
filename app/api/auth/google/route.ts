@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyGoogleIdToken } from '@/lib/auth/google';
 import { resolvePostAuthRedirectPath } from '@/lib/auth/authorize';
@@ -11,8 +12,11 @@ import {
 } from '@/lib/auth/session';
 import { ensureMembership, listMembershipsForUser } from '@/lib/db/repositories/memberships';
 import { findOrCreatePersonalOrganization } from '@/lib/db/repositories/organizations';
-import { upsertGoogleUser } from '@/lib/db/repositories/users';
+import { isGoogleAccountLinkConflictError, upsertGoogleUser } from '@/lib/db/repositories/users';
 import { recordAuditEvent } from '@/lib/server/audit-log';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('GoogleAuth');
 
 function resolveTeacherRole(email: string) {
   const adminEmails =
@@ -24,6 +28,9 @@ function resolveTeacherRole(email: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = request.headers.get('x-vercel-id')?.trim() || randomUUID();
+  let failureStage = 'request';
+
   try {
     const body = (await request.json()) as {
       credential?: string;
@@ -56,12 +63,15 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
+    failureStage = 'credential_verification';
     const identity = await verifyGoogleIdToken({
       idToken: body.credential,
       expectedNonce: nonce,
     });
 
+    failureStage = 'identity_resolution';
     const user = await upsertGoogleUser(identity);
+    failureStage = 'membership_resolution';
     const organization = await findOrCreatePersonalOrganization(user);
     const role = resolveTeacherRole(user.email);
     const membership = await ensureMembership({
@@ -69,6 +79,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       role,
     });
+    failureStage = 'session_creation';
     const session = await createWebSession({
       userId: user.id,
       organizationId: organization.id,
@@ -77,6 +88,7 @@ export async function POST(request: NextRequest) {
       ipAddress: getRequestIpAddress(request),
     });
 
+    failureStage = 'audit';
     await recordAuditEvent({
       organizationId: organization.id,
       userId: user.id,
@@ -102,13 +114,22 @@ export async function POST(request: NextRequest) {
     attachSessionCookie(response, session.token, session.session.absoluteExpiresAt);
     return response;
   } catch (error) {
+    const accountLinkConflict = isGoogleAccountLinkConflictError(error);
+    log.warn('Google sign-in failed', {
+      requestId,
+      category: accountLinkConflict ? 'account_link_conflict' : 'google_auth_failed',
+      stage: failureStage,
+    });
+
     const response = NextResponse.json(
       {
         success: false,
-        errorCode: 'GOOGLE_AUTH_FAILED',
-        error: error instanceof Error ? error.message : 'Google sign-in failed',
+        errorCode: accountLinkConflict ? 'ACCOUNT_LINK_CONFLICT' : 'GOOGLE_AUTH_FAILED',
+        error: accountLinkConflict
+          ? 'This email is already linked to another Google account.'
+          : 'Google sign-in failed. Please try again.',
       },
-      { status: 401 },
+      { status: accountLinkConflict ? 409 : 401 },
     );
     clearNonceCookie(response);
     clearSessionCookie(response);
