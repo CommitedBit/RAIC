@@ -17,8 +17,20 @@ Evidence status: in progress and blocked from production. Code slices are prepar
 - [x] PR [#86](https://github.com/CommitedBit/RAIC/pull/86): Google identity, logout, session, and health hardening; 43 focused tests and TypeScript passed locally.
 - [x] PR [#87](https://github.com/CommitedBit/RAIC/pull/87): SSRF, reasoning JSON, and quiz-safety backports; 81 focused tests and TypeScript passed locally.
 - [x] PR [#88](https://github.com/CommitedBit/RAIC/pull/88): export, rendering, storage, Playwright fixture, and default-off widget corrections; 36 focused tests and TypeScript passed locally.
+- [x] PR [#90](https://github.com/CommitedBit/RAIC/pull/90): patched direct dependencies and narrowly pinned unresolved transitive advisories; the low-threshold audit, TypeScript, lint, 1,082 unit tests, and production build passed locally on Node 24.14.0.
 - [x] Fresh frozen install completed with Node 24.14.0 and pnpm 10.28.0 in a temporary non-iCloud release worktree.
 - [ ] Serial slice PRs merged into `release/v0.9.2` after required checks.
+
+### Dependency Override Rationale
+
+The release candidate uses `pnpm` overrides only where the newest compatible parent packages still resolve an advisory-affected transitive version:
+
+- `@hono/node-server@2.0.12` stays within the MCP SDK's supported range and replaces its older server resolution.
+- `body-parser@2.3.0` stays within Express 5's accepted range.
+- `brace-expansion@1.1.17` and `brace-expansion@5.0.8` cover the independent ESLint and shadcn dependency paths.
+- `fast-uri@3.1.5` covers the schema-validation dependency path.
+- `postcss@8.5.25` covers Next.js, Vite, and sanitize-html paths.
+- `sharp@0.35.3` replaces Next.js's still-vulnerable optional resolution and matches the direct runtime dependency.
 
 ## Infrastructure And Migration
 
