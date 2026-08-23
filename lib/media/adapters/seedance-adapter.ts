@@ -29,6 +29,7 @@ import type {
   VideoGenerationOptions,
   VideoGenerationResult,
 } from '../types';
+import { probeAuth } from '../probe-auth';
 
 const DEFAULT_MODEL = 'doubao-seedance-1-5-pro-251215';
 const DEFAULT_BASE_URL = 'https://ark.cn-beijing.volces.com';
@@ -109,26 +110,15 @@ export async function testSeedanceConnectivity(
   config: VideoGenerationConfig,
 ): Promise<{ success: boolean; message: string }> {
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
-  try {
-    const response = await fetch(
-      `${baseUrl}/api/v3/contents/generations/tasks/connectivity-test-nonexistent`,
-      {
+  return probeAuth({
+    providerName: 'Seedance',
+    request: () =>
+      fetch(`${baseUrl}/api/v3/contents/generations/tasks/connectivity-test-nonexistent`, {
         method: 'GET',
+        redirect: 'manual',
         headers: { Authorization: `Bearer ${config.apiKey}` },
-      },
-    );
-    // 401/403 means key invalid; anything else (404, 400, 200) means key works
-    if (response.status === 401 || response.status === 403) {
-      const text = await response.text();
-      return {
-        success: false,
-        message: `Seedance auth failed (${response.status}): ${text}`,
-      };
-    }
-    return { success: true, message: 'Connected to Seedance' };
-  } catch (err) {
-    return { success: false, message: `Seedance connectivity error: ${err}` };
-  }
+      }),
+  });
 }
 
 export async function submitSeedanceTask(

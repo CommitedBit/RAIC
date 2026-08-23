@@ -65,7 +65,17 @@ export async function POST(req: NextRequest) {
           Accept: 'application/json',
         },
         signal: AbortSignal.timeout(10000),
+        redirect: 'manual',
       });
+
+      if (response.status >= 300 && response.status < 400) {
+        return apiErrorWithRequestSession(
+          req,
+          'REDIRECT_NOT_ALLOWED',
+          403,
+          'Redirects are not allowed',
+        );
+      }
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');

@@ -158,6 +158,7 @@ export async function testSoraConnectivity(
   try {
     const response = await fetch(`${baseUrl}/models`, {
       method: 'GET',
+      redirect: 'manual',
       headers: authHeaders(config.apiKey),
     });
 
