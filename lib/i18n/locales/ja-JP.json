@@ -121,7 +121,10 @@
     "resourcePackDesc": "PPTX＋インタラクティブページ",
     "exporting": "エクスポート中...",
     "exportSuccess": "エクスポートが完了しました",
-    "exportFailed": "エクスポートに失敗しました"
+    "exportFailed": "エクスポートに失敗しました",
+    "noSlides": "エクスポート可能なスライドがありません",
+    "noSlidesSkipped": "この教室にスライドがないため、PPTX をスキップしました",
+    "nothingToExport": "エクスポートできるものがありません"
   },
   "chat": {
     "lecture": "講義",

@@ -121,7 +121,10 @@
     "resourcePackDesc": "PPTX + 交互式页面",
     "exporting": "正在导出...",
     "exportSuccess": "导出成功",
-    "exportFailed": "导出失败"
+    "exportFailed": "导出失败",
+    "noSlides": "无可导出的幻灯片",
+    "noSlidesSkipped": "本课堂无幻灯片，已跳过 PPTX",
+    "nothingToExport": "没有可导出的内容"
   },
   "chat": {
     "lecture": "授课",

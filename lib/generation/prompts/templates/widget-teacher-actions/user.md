@@ -16,6 +16,14 @@ Generate teacher actions for this widget.
 
 {{widgetConfig}}
 
+{{#if hasElementInventory}}
+## Element Inventory
+
+{{elementInventory}}
+
+Use only the exact selectors above for highlight, annotation, and reveal targets. Do not infer selectors from labels, text, URLs, or class names.
+{{/if}}
+
 ## Course Language
 
 {{languageDirective}}

@@ -5,7 +5,7 @@ import {
   getServerVideoProviders,
   getServerTTSProviders,
 } from '@/lib/server/provider-config';
-import { getHealthReadiness } from '@/lib/server/health-readiness';
+import { getHealthReadiness, isCoreHealthReady } from '@/lib/server/health-readiness';
 import packageJson from '@/package.json';
 
 const version = process.env.npm_package_version || packageJson.version || '0.1.0';
@@ -14,7 +14,7 @@ export async function GET() {
   const readiness = await getHealthReadiness();
 
   return apiSuccess({
-    status: 'ok',
+    status: isCoreHealthReady(readiness) ? 'ok' : 'degraded',
     version,
     capabilities: {
       webSearch: Object.keys(getServerWebSearchProviders()).length > 0,

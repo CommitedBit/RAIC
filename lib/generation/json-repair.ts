@@ -7,8 +7,62 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('Generation');
 
 export function parseJsonResponse<T>(response: string): T | null {
+  const exactParsed = tryParseExactJson<T>(response);
+  if (exactParsed !== null) return exactParsed;
+
+  const cleanedResponse = stripReasoningPrefix(response);
+  const reasoningPrefixStripped = cleanedResponse !== response.trim();
+  if (reasoningPrefixStripped) {
+    const parsedCleaned = parseJsonResponseCandidate<T>(cleanedResponse);
+    if (parsedCleaned !== null) return parsedCleaned;
+  }
+
+  const parsed = parseJsonResponseCandidate<T>(response);
+  if (parsed !== null) return parsed;
+
+  log.error('Failed to parse generated JSON', {
+    failureCategory: 'invalid_json',
+    responseLength: response.length,
+    reasoningPrefixStripped,
+  });
+
+  return null;
+}
+
+function tryParseExactJson<T>(response: string): T | null {
+  try {
+    return JSON.parse(response.trim()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function stripReasoningPrefix(response: string): string {
+  const trimmed = response.trim();
+  const openingMatch = trimmed.match(/^<(think|thinking|reasoning)>\s*/i);
+  if (openingMatch) {
+    const closingTag = new RegExp(`<\\/${openingMatch[1]}>\\s*`, 'i');
+    const closingMatch = closingTag.exec(trimmed.slice(openingMatch[0].length));
+    if (!closingMatch || closingMatch.index === undefined) return trimmed;
+
+    return trimmed
+      .slice(openingMatch[0].length + closingMatch.index + closingMatch[0].length)
+      .trim();
+  }
+
+  const standaloneClosingMatch =
+    /(?:^|\r?\n)[ \t]*<\/(?:think|thinking|reasoning)>[ \t]*(?:\r?\n|$)/i.exec(trimmed);
+
+  if (!standaloneClosingMatch || standaloneClosingMatch.index === undefined) return trimmed;
+
+  return trimmed.slice(standaloneClosingMatch.index + standaloneClosingMatch[0].length).trim();
+}
+
+function parseJsonResponseCandidate<T>(response: string): T | null {
+  const cleanedResponse = response.trim();
+
   // Strategy 1: Try to extract JSON from markdown code blocks (may have multiple)
-  const codeBlockMatches = response.matchAll(/```(?:json)?\s*([\s\S]*?)```/g);
+  const codeBlockMatches = cleanedResponse.matchAll(/```(?:json)?\s*([\s\S]*?)```/g);
   for (const match of codeBlockMatches) {
     const extracted = match[1].trim();
     // Only try if it looks like JSON (starts with { or [)
@@ -23,8 +77,8 @@ export function parseJsonResponse<T>(response: string): T | null {
 
   // Strategy 2: Try to find JSON structure directly in response (no code block)
   // Look for array or object start
-  const jsonStartArray = response.indexOf('[');
-  const jsonStartObject = response.indexOf('{');
+  const jsonStartArray = cleanedResponse.indexOf('[');
+  const jsonStartObject = cleanedResponse.indexOf('{');
 
   if (jsonStartArray !== -1 || jsonStartObject !== -1) {
     // Prefer the structure that appears first
@@ -41,8 +95,8 @@ export function parseJsonResponse<T>(response: string): T | null {
     let inString = false;
     let escapeNext = false;
 
-    for (let i = startIndex; i < response.length; i++) {
-      const char = response[i];
+    for (let i = startIndex; i < cleanedResponse.length; i++) {
+      const char = cleanedResponse[i];
 
       if (escapeNext) {
         escapeNext = false;
@@ -72,7 +126,7 @@ export function parseJsonResponse<T>(response: string): T | null {
     }
 
     if (endIndex !== -1) {
-      const jsonStr = response.substring(startIndex, endIndex + 1);
+      const jsonStr = cleanedResponse.substring(startIndex, endIndex + 1);
       const result = tryParseJson<T>(jsonStr);
       if (result !== null) {
         log.debug('Successfully parsed JSON from response body');
@@ -82,14 +136,11 @@ export function parseJsonResponse<T>(response: string): T | null {
   }
 
   // Strategy 3: Last resort - try the whole response
-  const result = tryParseJson<T>(response.trim());
+  const result = tryParseJson<T>(cleanedResponse);
   if (result !== null) {
     log.debug('Successfully parsed raw response as JSON');
     return result;
   }
-
-  log.error('Failed to parse JSON from response');
-  log.error('Raw response (first 500 chars):', response.substring(0, 500));
 
   return null;
 }

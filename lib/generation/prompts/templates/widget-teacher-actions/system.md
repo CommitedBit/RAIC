@@ -45,6 +45,12 @@ Generate teacher action sequences for interactive widgets.
 
 ## Target Element ID Conventions
 
+{{#if hasElementInventory}}
+## Generated Element Inventory
+
+When an inventory is provided in the user prompt, every `highlight`, `annotation`, and `reveal` target MUST exactly match one selector from that inventory. The inventory overrides the conventions below. If no stable target is available, generate speech or setState instead of guessing.
+{{/if}}
+
 For **simulation** widgets, use these selectors:
 - Sliders: `#{variable_name}-slider` (e.g., `#angle-slider`, `#velocity-slider`, `#mass-slider`)
 - Value displays: `#{variable_name}-display`

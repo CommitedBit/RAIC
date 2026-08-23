@@ -97,4 +97,44 @@ describe('buildStructuredPrompt', () => {
       unexpected: [],
     });
   });
+
+  it('withholds quiz content until authenticated submission results are available', () => {
+    const prompt = buildStructuredPrompt(teacherAgent, {
+      ...storeState,
+      scenes: [
+        {
+          id: 'quiz-1',
+          stageId: 'class-1',
+          type: 'quiz',
+          title: 'Checkpoint',
+          order: 1,
+          content: {
+            type: 'quiz',
+            questions: [
+              {
+                id: 'q1',
+                type: 'single',
+                question: 'DISTINCTIVE_SECRET_STEM',
+                options: [
+                  { value: 'A', label: 'DISTINCTIVE_WRONG_OPTION' },
+                  { value: 'B', label: 'DISTINCTIVE_CORRECT_OPTION' },
+                ],
+                answer: ['B'],
+                analysis: 'DISTINCTIVE_ANSWER_EXPLANATION',
+              },
+            ],
+          },
+        },
+      ],
+      currentSceneId: 'quiz-1',
+    });
+
+    expect(prompt).toContain('Quiz status: awaiting authoritative submission');
+    expect(prompt).toContain('single: 1');
+    expect(prompt).toContain('Only server-verified classroom/session results');
+    expect(prompt).not.toContain('DISTINCTIVE_SECRET_STEM');
+    expect(prompt).not.toContain('DISTINCTIVE_WRONG_OPTION');
+    expect(prompt).not.toContain('DISTINCTIVE_CORRECT_OPTION');
+    expect(prompt).not.toContain('DISTINCTIVE_ANSWER_EXPLANATION');
+  });
 });

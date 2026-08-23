@@ -121,7 +121,10 @@
     "resourcePackDesc": "PPTX + interactive pages",
     "exporting": "Exporting...",
     "exportSuccess": "Export successful",
-    "exportFailed": "Export failed"
+    "exportFailed": "Export failed",
+    "noSlides": "No slides to export",
+    "noSlidesSkipped": "No slides in this classroom; PPTX was skipped",
+    "nothingToExport": "Nothing to export"
   },
   "chat": {
     "lecture": "Lecture",

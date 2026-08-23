@@ -137,7 +137,8 @@ export function TextElement({ elementInfo, selectElement }: TextElementProps) {
   const checkEmptyText = useCallback(() => {
     const debouncedCheck = debounce(
       () => {
-        const pureText = elementInfo.content.replace(/<[^>]+>/g, '');
+        const content = typeof elementInfo.content === 'string' ? elementInfo.content : '';
+        const pureText = content.replace(/<[^>]+>/g, '');
         if (!pureText) deleteElement(elementInfo.id);
       },
       300,
@@ -199,7 +200,7 @@ export function TextElement({ elementInfo, selectElement }: TextElementProps) {
               defaultColor={elementInfo.defaultColor}
               defaultFontName={elementInfo.defaultFontName}
               editable={!elementInfo.lock}
-              value={elementInfo.content}
+              value={typeof elementInfo.content === 'string' ? elementInfo.content : ''}
               onUpdate={({ value, ignore }) => updateContent(value, ignore)}
               onMouseDown={(e) => handleSelectElement(e as React.MouseEvent, false)}
             />

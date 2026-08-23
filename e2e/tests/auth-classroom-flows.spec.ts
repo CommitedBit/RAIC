@@ -424,7 +424,9 @@ test('logout clears both web and classroom cookies', async ({ browser }) => {
     ]);
 
     await teacher.page.goto(`${APP_BASE_URL}/studio`);
-    const logoutResponse = await teacher.page.request.post(`${APP_BASE_URL}/api/auth/logout`);
+    const logoutResponse = await teacher.page.request.post(`${APP_BASE_URL}/api/auth/logout`, {
+      headers: { Origin: APP_BASE_URL },
+    });
     expect(logoutResponse.ok()).toBeTruthy();
 
     await expect
