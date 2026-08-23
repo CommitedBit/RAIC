@@ -253,7 +253,7 @@ function formatPoints(points: SvgPoints, ratioPx2Inch: number, scale = { x: 1, y
 
 // ── Shadow config ──
 
-function getShadowOption(shadow: PPTElementShadow, ratioPx2Pt: number): pptxgen.ShadowProps {
+export function getShadowOption(shadow: PPTElementShadow, ratioPx2Pt: number): pptxgen.ShadowProps {
   const c = formatColor(shadow.color);
   const { h, v } = shadow;
 
@@ -298,7 +298,7 @@ function getShadowOption(shadow: PPTElementShadow, ratioPx2Pt: number): pptxgen.
     color: c.color.replace('#', ''),
     opacity: c.alpha,
     blur: shadow.blur / ratioPx2Pt,
-    offset,
+    offset: offset / ratioPx2Pt,
     angle,
   };
 }
@@ -1068,6 +1068,60 @@ async function buildPptxBlob(
   return (await pptx.write({ outputType: 'blob' })) as Blob;
 }
 
+export interface ResourcePackResult {
+  blob: Blob | null;
+  skippedPptx: boolean;
+  empty: boolean;
+}
+
+/** Build a resource pack without requiring slide scenes to exist. */
+export async function buildResourcePackZip(
+  scenes: Scene[],
+  slides: Slide[],
+  options: {
+    fileName: string;
+    miroFishNotice?: string;
+    getPptxBlob: () => Promise<Blob>;
+  },
+): Promise<ResourcePackResult> {
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+  let entryCount = 0;
+  let interactiveIndex = 0;
+
+  for (const scene of scenes) {
+    if (scene.content.type !== 'interactive' || !scene.content.html) continue;
+
+    interactiveIndex++;
+    entryCount++;
+    const safeName = scene.title.replace(/[\\/:*?"<>|]/g, '_');
+    const htmlFileName = `interactive/${String(interactiveIndex).padStart(2, '0')}_${safeName}.html`;
+    zip.file(htmlFileName, scene.content.html);
+  }
+
+  if (options.miroFishNotice) {
+    zip.file('README-MiroFish.txt', options.miroFishNotice);
+    entryCount++;
+  }
+
+  const skippedPptx = slides.length === 0;
+  if (!skippedPptx) {
+    const pptxBlob = await options.getPptxBlob();
+    zip.file(`${options.fileName}.pptx`, await pptxBlob.arrayBuffer());
+    entryCount++;
+  }
+
+  if (entryCount === 0) {
+    return { blob: null, skippedPptx, empty: true };
+  }
+
+  return {
+    blob: await zip.generateAsync({ type: 'blob' }),
+    skippedPptx,
+    empty: false,
+  };
+}
+
 // ── Hook ──
 
 export function useExportPPTX() {
@@ -1086,10 +1140,14 @@ export function useExportPPTX() {
   const slideScenes = scenes.filter((s) => s.content.type === 'slide');
   const slides = slideScenes.map((s) => (s.content as SlideContent).canvas);
 
-  // Shared guard + state wrapper for export actions
+  // Shared guard + state wrapper for export actions.
   const withExportGuard = useCallback(
-    (action: () => Promise<void>) => {
-      if (exportingRef.current || slides.length === 0) return;
+    (action: () => Promise<void>, requireSlides = true) => {
+      if (exportingRef.current) return;
+      if (requireSlides && slides.length === 0) {
+        toast.warning(t('export.noSlides'));
+        return;
+      }
       exportingRef.current = true;
       setExporting(true);
       setTimeout(async () => {
@@ -1137,42 +1195,25 @@ export function useExportPPTX() {
   // ── Export Resource Pack (PPTX + interactive HTML pages as ZIP) ──
   const exportResourcePack = useCallback(() => {
     withExportGuard(async () => {
-      const JSZip = (await import('jszip')).default;
-      const zip = new JSZip();
       const fileName = stage?.name || 'slides';
-
-      // 1. Generate PPTX
-      const pptxBlob = await buildPptxBlob(
-        slides,
-        slideScenes,
-        viewportRatio,
-        viewportSize,
-        ratioPx2Inch,
-        ratioPx2Pt,
-      );
-      zip.file(`${fileName}.pptx`, pptxBlob);
-
-      // 2. Add interactive HTML pages
-      let interactiveIndex = 0;
-      for (const scene of scenes) {
-        if (scene.content.type === 'interactive' && scene.content.html) {
-          interactiveIndex++;
-          const safeName = scene.title.replace(/[\\/:*?"<>|]/g, '_');
-          const htmlFileName = `interactive/${String(interactiveIndex).padStart(2, '0')}_${safeName}.html`;
-          zip.file(htmlFileName, scene.content.html);
-        }
-      }
-
       const miroFishNotice = buildMiroFishExportNotice(getStageSharedSimulation(stage));
-      if (miroFishNotice) {
-        zip.file('README-MiroFish.txt', miroFishNotice);
-      }
+      const result = await buildResourcePackZip(scenes, slides, {
+        fileName,
+        miroFishNotice: miroFishNotice || undefined,
+        getPptxBlob: () =>
+          buildPptxBlob(slides, slideScenes, viewportRatio, viewportSize, ratioPx2Inch, ratioPx2Pt),
+      });
 
-      // 3. Download ZIP
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      saveAs(zipBlob, `${fileName}.zip`);
+      if (result.empty || !result.blob) {
+        toast.warning(t('export.nothingToExport'));
+        return;
+      }
+      if (result.skippedPptx) {
+        toast.info(t('export.noSlidesSkipped'));
+      }
+      saveAs(result.blob, `${fileName}.zip`);
       toast.success(t('export.exportSuccess'));
-    });
+    }, false);
   }, [
     withExportGuard,
     slides,

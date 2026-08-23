@@ -62,6 +62,13 @@ import { promptGameWidgetAdapter } from '@/lib/game-arcade/adapter';
 import { buildFallbackGameWidget } from '@/lib/game-arcade/fallback';
 import { validateGameWidgetHtml } from '@/lib/game-arcade/qa';
 import { buildExperiencePresetPromptContext } from './experience-presets';
+import {
+  extractWidgetElementInventory,
+  filterWidgetTeacherActions,
+  formatWidgetElementInventory,
+  isWidgetActionSyncEnabled,
+  supportsDomWidgetActionSync,
+} from './widget-action-sync';
 import { createLogger } from '@/lib/logger';
 const log = createLogger('Generation');
 
@@ -1164,6 +1171,7 @@ function buildWidgetPrompt(
   outline: SceneOutline,
   widgetType: WidgetType,
   widgetOutline: WidgetOutline,
+  widgetActionSyncEnabled: boolean,
   languageDirective?: string,
 ): { promptId: PromptId; variables: Record<string, unknown> } | null {
   const keyPoints = (outline.keyPoints || []).join('\n');
@@ -1182,7 +1190,8 @@ function buildWidgetPrompt(
         },
       };
 
-    case 'diagram':
+    case 'diagram': {
+      const prescribedNodes = widgetOutline.nodes ?? [];
       return {
         promptId: PROMPT_IDS.DIAGRAM_CONTENT,
         variables: {
@@ -1190,10 +1199,15 @@ function buildWidgetPrompt(
           diagramType: widgetOutline.diagramType || 'flowchart',
           description: outline.description,
           keyPoints,
-          nodeCount: widgetOutline.nodeCount || '',
+          nodeCount: widgetOutline.nodeCount ?? prescribedNodes.length,
+          prescribedNodes,
+          hasNodeCount: typeof widgetOutline.nodeCount === 'number' && widgetOutline.nodeCount > 0,
+          hasPrescribedNodes: prescribedNodes.length > 0,
+          widgetActionSyncEnabled,
           languageDirective: languageDirective || '',
         },
       };
+    }
 
     case 'code':
       return {
@@ -1207,6 +1221,7 @@ function buildWidgetPrompt(
           testCases: '',
           hints: '',
           challengeType: widgetOutline.challengeType || '',
+          widgetActionSyncEnabled,
           languageDirective: languageDirective || '',
         },
       };
@@ -1214,11 +1229,14 @@ function buildWidgetPrompt(
     case 'game':
       return {
         promptId: PROMPT_IDS.GAME_CONTENT,
-        variables: promptGameWidgetAdapter.buildPromptVariables({
-          outline,
-          widgetOutline,
-          languageDirective,
-        }),
+        variables: {
+          ...promptGameWidgetAdapter.buildPromptVariables({
+            outline,
+            widgetOutline,
+            languageDirective,
+          }),
+          widgetActionSyncEnabled,
+        },
       };
 
     case 'visualization3d':
@@ -1254,7 +1272,14 @@ async function generateWidgetContent(
     return null;
   }
 
-  const promptSpec = buildWidgetPrompt(outline, widgetType, widgetOutline, languageDirective);
+  const widgetActionSyncEnabled = isWidgetActionSyncEnabled();
+  const promptSpec = buildWidgetPrompt(
+    outline,
+    widgetType,
+    widgetOutline,
+    widgetActionSyncEnabled,
+    languageDirective,
+  );
   if (!promptSpec) {
     log.warn(`Unknown widget type: ${widgetType}`);
     return null;
@@ -1277,18 +1302,21 @@ async function generateWidgetContent(
     return null;
   }
 
-  const widgetConfig = extractWidgetConfig(rawHtml);
+  const processedHtml = postProcessInteractiveHtml(rawHtml);
+  const widgetConfig = extractWidgetConfig(processedHtml);
   const teacherActions = await generateWidgetTeacherActions(
     widgetType,
     outline,
     widgetConfig,
+    processedHtml,
+    widgetActionSyncEnabled,
     aiCall,
     adaptivePrompt,
     languageDirective,
   );
 
   if (widgetType === 'game') {
-    const validation = validateGameWidgetHtml(rawHtml, widgetConfig, teacherActions);
+    const validation = validateGameWidgetHtml(processedHtml, widgetConfig, teacherActions);
     for (const warning of validation.warnings) {
       log.warn(`Game widget QA warning for "${outline.title}": ${warning}`);
     }
@@ -1299,7 +1327,7 @@ async function generateWidgetContent(
   }
 
   return {
-    html: postProcessInteractiveHtml(rawHtml),
+    html: processedHtml,
     widgetType,
     widgetConfig,
     teacherActions,
@@ -1343,15 +1371,21 @@ async function generateWidgetTeacherActions(
   widgetType: WidgetType,
   outline: SceneOutline,
   widgetConfig: WidgetConfig | undefined,
+  html: string,
+  widgetActionSyncEnabled: boolean,
   aiCall: AICallFn,
   adaptivePrompt?: string,
   languageDirective?: string,
 ): Promise<TeacherAction[] | undefined> {
+  const useElementInventory = widgetActionSyncEnabled && supportsDomWidgetActionSync(widgetType);
+  const inventory = useElementInventory ? extractWidgetElementInventory(html) : [];
   const prompts = buildPrompt(PROMPT_IDS.WIDGET_TEACHER_ACTIONS, {
     widgetType,
     description: outline.description,
     keyPoints: (outline.keyPoints || []).join('\n'),
     widgetConfig: JSON.stringify(widgetConfig || {}),
+    hasElementInventory: useElementInventory,
+    elementInventory: useElementInventory ? formatWidgetElementInventory(inventory) : '',
     languageDirective: languageDirective || '',
   });
 
@@ -1360,7 +1394,10 @@ async function generateWidgetTeacherActions(
   try {
     const response = await aiCall(withAdaptivePrompt(prompts.system, adaptivePrompt), prompts.user);
     const parsed = parseJsonResponse<{ actions?: TeacherAction[] }>(response);
-    return Array.isArray(parsed?.actions) ? parsed.actions : undefined;
+    if (!Array.isArray(parsed?.actions)) return undefined;
+    return useElementInventory
+      ? filterWidgetTeacherActions(parsed.actions, inventory)
+      : parsed.actions;
   } catch (error) {
     log.warn(`Failed to generate widget teacher actions for "${outline.title}": ${error}`);
     return undefined;
@@ -1592,9 +1629,37 @@ export async function generateSceneActions(
     outline.languageNote,
   );
   const agentsText = formatAgentsForPrompt(options.agents);
+  const widgetActionSyncEnabled = isWidgetActionSyncEnabled();
 
   if (outline.type === 'interactive' && 'html' in content && content.teacherActions?.length) {
-    return convertTeacherActionsToActions(content.teacherActions);
+    const widgetType = content.widgetType ?? content.widgetConfig?.type;
+    const teacherActions =
+      widgetActionSyncEnabled && widgetType && supportsDomWidgetActionSync(widgetType)
+        ? filterWidgetTeacherActions(
+            content.teacherActions,
+            extractWidgetElementInventory(content.html),
+          )
+        : content.teacherActions;
+    if (teacherActions.length > 0) return convertTeacherActionsToActions(teacherActions);
+  }
+
+  if (outline.type === 'interactive' && 'html' in content && widgetActionSyncEnabled) {
+    const widgetType = content.widgetType ?? content.widgetConfig?.type;
+    if (widgetType && supportsDomWidgetActionSync(widgetType)) {
+      const generatedTeacherActions = await generateWidgetTeacherActions(
+        widgetType,
+        outline,
+        content.widgetConfig,
+        content.html,
+        true,
+        aiCall,
+        options.adaptivePrompt,
+        langText,
+      );
+      if (generatedTeacherActions?.length) {
+        return convertTeacherActionsToActions(generatedTeacherActions);
+      }
+    }
   }
 
   if (outline.type === 'slide' && 'elements' in content) {

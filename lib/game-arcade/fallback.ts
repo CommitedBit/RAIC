@@ -542,9 +542,10 @@ export function buildFallbackGameWidget(
       window.revealHint = revealHint;
 
       window.addEventListener('message', function (event) {
+        if (event.source !== window.parent) return;
         const message = event.data || {};
         const type = message.type;
-        const payload = message.payload || {};
+        const payload = message.payload || message;
 
         if (type === 'HIGHLIGHT_ELEMENT') {
           const target = document.querySelector(payload.target || '#challenge-target');

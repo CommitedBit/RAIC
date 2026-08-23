@@ -126,6 +126,10 @@ async function runCode() {
 - Ensure editor has minimum height of 200px on mobile
 - Test cases should be collapsible on small screens
 
+{{#if widgetActionSyncEnabled}}
+{{snippet:widget-action-listener}}
+{{/if}}
+
 ## Output Format
 
 Return ONLY the HTML document, no markdown fences or explanations.
