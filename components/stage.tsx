@@ -10,6 +10,7 @@ import { useClassroomGameSessionState } from '@/lib/hooks/use-classroom-game-ses
 import { useClassroomCollaborationState } from '@/lib/hooks/use-classroom-collaboration-state';
 import { useClassroomPresentationState } from '@/lib/hooks/use-classroom-presentation-state';
 import { useI18n } from '@/lib/hooks/use-i18n';
+import { useNarrowClassroom } from '@/lib/hooks/use-narrow-classroom';
 import { SceneSidebar } from './stage/scene-sidebar';
 import { LiveClassroomCockpit } from './stage/live-classroom-cockpit';
 import { BoardNotesPanel } from './stage/board-notes-panel';
@@ -185,13 +186,32 @@ export function Stage({
 
   const currentScene = getCurrentScene();
 
-  // Layout state from settings store (persisted via localStorage)
-  const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
-  const setSidebarCollapsed = useSettingsStore((s) => s.setSidebarCollapsed);
+  // Desktop layout persists; phone overlays start closed and keep their own toggles.
+  const narrowClassroom = useNarrowClassroom();
+  const desktopSidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
+  const setDesktopSidebarCollapsed = useSettingsStore((s) => s.setSidebarCollapsed);
+  const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(true);
+  const sidebarCollapsed = narrowClassroom ? mobileSidebarCollapsed : desktopSidebarCollapsed;
+  const setSidebarCollapsed = useCallback(
+    (collapsed: boolean) => {
+      if (narrowClassroom) setMobileSidebarCollapsed(collapsed);
+      else setDesktopSidebarCollapsed(collapsed);
+    },
+    [narrowClassroom, setDesktopSidebarCollapsed],
+  );
   const chatAreaWidth = useSettingsStore((s) => s.chatAreaWidth);
   const setChatAreaWidth = useSettingsStore((s) => s.setChatAreaWidth);
-  const chatAreaCollapsed = useSettingsStore((s) => s.chatAreaCollapsed);
-  const setChatAreaCollapsed = useSettingsStore((s) => s.setChatAreaCollapsed);
+  const desktopChatAreaCollapsed = useSettingsStore((s) => s.chatAreaCollapsed);
+  const setDesktopChatAreaCollapsed = useSettingsStore((s) => s.setChatAreaCollapsed);
+  const [mobileChatAreaCollapsed, setMobileChatAreaCollapsed] = useState(true);
+  const chatAreaCollapsed = narrowClassroom ? mobileChatAreaCollapsed : desktopChatAreaCollapsed;
+  const setChatAreaCollapsed = useCallback(
+    (collapsed: boolean) => {
+      if (narrowClassroom) setMobileChatAreaCollapsed(collapsed);
+      else setDesktopChatAreaCollapsed(collapsed);
+    },
+    [narrowClassroom, setDesktopChatAreaCollapsed],
+  );
   const selectedModelFallback = useSettingsStore((s) => `${s.providerId}:${s.modelId}`);
   const setTTSMuted = useSettingsStore((s) => s.setTTSMuted);
   const setTTSVolume = useSettingsStore((s) => s.setTTSVolume);
@@ -2237,7 +2257,7 @@ export function Stage({
             scenesCount={totalScenesCount}
             hasNextScene={hasNextScene}
             nextSceneIsCompletion={nextSceneIsCompletion}
-            canPlay={currentScene?.type === 'slide' && (currentScene.actions?.length ?? 0) > 0}
+            canPlay={(currentScene?.actions?.length ?? 0) > 0}
             onReviewScene={gatedSceneSwitch}
             mode={mode}
             engineState={canvasEngineState}
@@ -2451,7 +2471,7 @@ export function Stage({
               hasNextScene={hasNextScene}
               nextSceneIsCompletion={nextSceneIsCompletion}
               isCourseComplete={isCourseComplete}
-              canPlay={currentScene?.type === 'slide' && (currentScene.actions?.length ?? 0) > 0}
+              canPlay={(currentScene?.actions?.length ?? 0) > 0}
               whiteboardOpen={whiteboardOpen}
               sidebarCollapsed={sidebarCollapsed}
               chatCollapsed={chatAreaCollapsed}
