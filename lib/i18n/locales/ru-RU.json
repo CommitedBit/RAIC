@@ -11,7 +11,7 @@
   "home": {
     "slogan": "Responsive Assistance Interactive Classroom",
     "greetingWithName": "Привет, {{name}}",
-    "demoShortcut": "Открыть демо с дифференциацией",
+    "demoShortcut": "Попробовать демо без API-ключа",
     "schedule": {
       "title": "Расписание занятий",
       "add": "Добавить",
@@ -311,7 +311,9 @@
     "voiceInputDisabled": "Голосовой ввод отключён",
     "textInput": "Текстовый ввод",
     "stopRecording": "Остановить запись",
-    "startRecording": "Начать запись"
+    "startRecording": "Начать запись",
+    "play": "Воспроизвести",
+    "pause": "Пауза"
   },
   "pbl": {
     "legacyFormat": "Эта PBL-сцена использует устаревший формат. Пожалуйста, перегенерируйте курс.",
@@ -473,7 +475,8 @@
         "practice": "Practice",
         "check": "Check",
         "recap": "Recap"
-      }
+      },
+      "guideToggle": "План урока и заметки"
     },
     "boardNotes": {
       "ariaLabel": "Board notes",
@@ -589,7 +592,57 @@
       "multiUserFootnote": "Multi-user classrooms keep the teacher in charge of pane switching while students collaborate live inside the shared simulation.",
       "closeButton": "Close"
     },
-    "partialGenerationWarning": "Класс открыт с предупреждениями генерации: {{count}}."
+    "partialGenerationWarning": "Класс открыт с предупреждениями генерации: {{count}}.",
+    "controls": {
+      "toggleSidebar": "Открыть или закрыть список сцен",
+      "toggleChat": "Открыть или закрыть чат",
+      "mute": "Выключить звук",
+      "unmute": "Включить звук",
+      "playbackSpeed": "Скорость воспроизведения",
+      "previousScene": "Предыдущая сцена",
+      "nextScene": "Следующая сцена",
+      "finishLesson": "Завершить урок",
+      "autoPlay": "Автовоспроизведение",
+      "showDiscussion": "Показать обсуждение",
+      "hideDiscussion": "Скрыть обсуждение",
+      "volume": "Громкость озвучивания"
+    },
+    "completion": {
+      "title": "Курс завершён",
+      "summaryLabel": "Итоги урока",
+      "subtitle": "Проверьте результаты и вернитесь к любой части урока.",
+      "contents": "Содержание урока",
+      "quizScore": "Результат теста",
+      "scoreDetail": "Правильных ответов: {{correct}} из {{total}} вопросов с автоматической проверкой",
+      "noQuiz": "Нет вопросов с вариантами ответа для автоматического подсчёта.",
+      "reviewQuiz": "Повторить проверочные вопросы",
+      "reviewStart": "Повторить с начала",
+      "revisit": "Вернуться к сцене",
+      "types": {
+        "slide": "Слайды",
+        "quiz": "Тесты",
+        "interactive": "Интерактивные задания",
+        "pbl": "Проекты"
+      }
+    },
+    "reading": {
+      "viewLabel": "Вид урока",
+      "slideView": "Вид слайда",
+      "readingView": "Режим чтения",
+      "mediaUnavailable": "Этот материал пока недоступен.",
+      "image": "Изображение {{number}} со слайда. Текстовое описание отсутствует.",
+      "video": "Видео {{number}} со слайда",
+      "audio": "Аудио {{number}} со слайда",
+      "table": "Таблица {{number}} со слайда",
+      "chart": "Данные диаграммы {{number}}",
+      "category": "Категория",
+      "layoutNote": "Режим чтения показывает текст и материалы в порядке их расположения на слайде. Переключитесь на вид слайда, чтобы увидеть исходную компоновку и схемы."
+    },
+    "demo": {
+      "preparing": "Подготовка демонстрационного урока…",
+      "backHome": "На главную",
+      "openFailed": "Не удалось открыть демонстрационный урок."
+    }
   },
   "upload": {
     "pdfSizeLimit": "Поддержка PDF до 50 МБ",

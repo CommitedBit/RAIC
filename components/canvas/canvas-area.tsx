@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { useNarrowClassroom } from '@/lib/hooks/use-narrow-classroom';
+import { SlideReadingView } from '@/components/scene-renderers/slide-reading-view';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -30,6 +32,7 @@ interface CanvasAreaProps extends CanvasToolbarProps {
   readonly isCourseComplete?: boolean;
   readonly isGenerationFailed?: boolean;
   readonly onRetryGeneration?: () => void;
+  readonly onReviewScene?: (sceneId: string) => void;
   readonly runUrl?: string | null;
   readonly reportUrl?: string | null;
   readonly viewerHasSimulationControl?: boolean;
@@ -58,6 +61,10 @@ export function CanvasArea({
   currentScene,
   currentSceneIndex,
   scenesCount,
+  hasNextScene,
+  nextSceneIsCompletion,
+  canPlay = true,
+  onReviewScene,
   mode,
   engineState,
   isLiveSession,
@@ -103,18 +110,33 @@ export function CanvasArea({
   onRecoverToLesson,
 }: CanvasAreaProps) {
   const { t } = useI18n();
+  const narrow = useNarrowClassroom();
+  const [readingPreference, setReadingPreference] = useState<boolean | null>(null);
+  const readingView = mode === 'playback' && !isPresenting && (readingPreference ?? narrow);
   const currentSurface = activeSurface ?? sharedSimulation?.activeSurface ?? 'lesson';
   const isLessonSurface = currentSurface === 'lesson';
   const showControls = mode === 'playback' && !whiteboardOpen;
+  const showReadingToggle =
+    showControls && isLessonSurface && currentScene?.type === 'slide' && !isPresenting;
+  const useReadingView = showReadingToggle && readingView;
+  const useSlideFrame =
+    whiteboardOpen || (isLessonSurface && currentScene?.type === 'slide' && !useReadingView);
   const showPlayHint =
     showControls &&
     isLessonSurface &&
     engineState !== 'playing' &&
     currentScene?.type === 'slide' &&
     !isLiveSession &&
-    !isPendingScene;
+    !isPendingScene &&
+    canPlay &&
+    !useReadingView;
   const slidePlaybackInteractive =
-    showControls && isLessonSurface && !isLiveSession && currentScene?.type === 'slide';
+    showControls &&
+    isLessonSurface &&
+    !isLiveSession &&
+    currentScene?.type === 'slide' &&
+    canPlay &&
+    !useReadingView;
   const slidePlaybackLabel =
     engineState === 'playing' ? t('roundtable.pause') : t('roundtable.play');
 
@@ -160,10 +182,34 @@ export function CanvasArea({
 
   return (
     <div className="w-full h-full flex flex-col bg-gray-50 dark:bg-gray-900 group/canvas">
+      {showReadingToggle ? (
+        <div
+          className="flex shrink-0 items-center justify-end gap-1 px-3 py-1"
+          role="group"
+          aria-label={t('classroom.reading.viewLabel')}
+        >
+          <button
+            type="button"
+            aria-pressed={!useReadingView}
+            onClick={() => setReadingPreference(false)}
+            className="min-h-9 rounded-md px-3 text-sm text-slate-600 hover:bg-white aria-pressed:bg-white aria-pressed:font-semibold aria-pressed:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-800"
+          >
+            {t('classroom.reading.slideView')}
+          </button>
+          <button
+            type="button"
+            aria-pressed={useReadingView}
+            onClick={() => setReadingPreference(true)}
+            className="min-h-9 rounded-md px-3 text-sm text-slate-600 hover:bg-white aria-pressed:bg-white aria-pressed:font-semibold aria-pressed:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-800"
+          >
+            {t('classroom.reading.readingView')}
+          </button>
+        </div>
+      ) : null}
       {/* Slide area — takes remaining space */}
       <div
         className={cn(
-          'flex-1 min-h-0 relative overflow-hidden flex items-center justify-center p-2 transition-colors duration-500',
+          'flex-1 min-h-0 relative overflow-hidden flex items-center justify-center p-2 transition-colors duration-500 [container-type:size]',
           isLessonSurface && currentScene?.type === 'interactive'
             ? 'bg-blue-50/30 dark:bg-blue-900/10'
             : 'bg-gray-50/30 dark:bg-gray-900/30',
@@ -171,13 +217,18 @@ export function CanvasArea({
       >
         <div
           className={cn(
-            'aspect-[16/9] h-full max-h-full max-w-full bg-white dark:bg-gray-800 shadow-2xl rounded-lg overflow-hidden relative transition-all duration-700',
+            'max-h-full max-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden relative',
+            useSlideFrame
+              ? 'w-[min(100cqw,calc(100cqh*16/9))] h-[min(100cqh,calc(100cqw*9/16))] shadow-xl'
+              : 'h-full w-full',
             slidePlaybackInteractive &&
               'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2',
             isLessonSurface && currentScene?.type === 'interactive'
               ? 'shadow-blue-200/50 dark:shadow-blue-900/50 ring-1 ring-blue-900/5 dark:ring-blue-500/10'
               : 'shadow-gray-200/50 dark:shadow-gray-800/50 ring-1 ring-gray-950/5 dark:ring-white/5',
           )}
+          data-testid="classroom-scene-frame"
+          data-view={useReadingView ? 'reading' : useSlideFrame ? 'slide' : 'activity'}
           onClick={handleSlideClick}
           onKeyDown={handleSlideKeyDown}
           role={slidePlaybackInteractive ? 'button' : undefined}
@@ -195,12 +246,19 @@ export function CanvasArea({
           {isLessonSurface && currentScene && !whiteboardOpen && (
             <div className="absolute inset-0">
               <SceneProvider>
-                <SceneRenderer
-                  scene={currentScene}
-                  mode={mode}
-                  gameSession={gameSession}
-                  onGameEvent={onGameEvent}
-                />
+                {useReadingView && currentScene.content.type === 'slide' ? (
+                  <SlideReadingView
+                    canvas={currentScene.content.canvas}
+                    title={currentScene.title}
+                  />
+                ) : (
+                  <SceneRenderer
+                    scene={currentScene}
+                    mode={mode}
+                    gameSession={gameSession}
+                    onGameEvent={onGameEvent}
+                  />
+                )}
               </SceneProvider>
             </div>
           )}
@@ -241,7 +299,7 @@ export function CanvasArea({
                 transition={{ duration: 0.3, ease: 'easeOut' }}
                 className="absolute inset-0"
               >
-                <ClassroomCompletePageConnected />
+                <ClassroomCompletePageConnected onReviewScene={onReviewScene} />
               </motion.div>
             )}
             {isPendingScene && !currentScene && !isCourseComplete && (
@@ -312,8 +370,11 @@ export function CanvasArea({
           )}
 
           {/* Scene Number Badge */}
-          {currentScene && (
-            <div className="absolute top-4 right-4 text-gray-200 dark:text-gray-700 font-black text-4xl opacity-50 pointer-events-none select-none mix-blend-multiply dark:mix-blend-screen">
+          {currentScene && !useReadingView && currentScene.type === 'slide' && (
+            <div
+              aria-hidden="true"
+              className="absolute top-4 right-4 text-gray-200 dark:text-gray-700 font-black text-4xl opacity-50 pointer-events-none select-none mix-blend-multiply dark:mix-blend-screen"
+            >
               {(currentSceneIndex + 1).toString().padStart(2, '0')}
             </div>
           )}
@@ -365,12 +426,16 @@ export function CanvasArea({
       {!hideToolbar && (
         <CanvasToolbar
           className={cn(
-            'shrink-0 h-9 px-2',
+            'shrink-0 min-h-11 px-2',
             'bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl',
             'border-t border-gray-200/40 dark:border-gray-700/40',
           )}
           currentSceneIndex={currentSceneIndex}
           scenesCount={scenesCount}
+          hasNextScene={hasNextScene}
+          nextSceneIsCompletion={nextSceneIsCompletion}
+          isCourseComplete={isCourseComplete}
+          canPlay={canPlay}
           engineState={engineState}
           isLiveSession={isLiveSession}
           whiteboardOpen={whiteboardOpen}

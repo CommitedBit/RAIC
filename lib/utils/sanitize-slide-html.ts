@@ -39,6 +39,23 @@ const ALLOWED_STYLE_TAGS = ['p', 'strong', 'em', 'u', 's', 'sup', 'sub', 'span',
 
 const allowedAttributes = Object.fromEntries(ALLOWED_STYLE_TAGS.map((tag) => [tag, ['style']]));
 
+// Newlines between HTML tags are source formatting; only plain text needs them preserved.
+const HTML_MARKUP_PATTERN = /<\/?[a-z][^>]*>|<![^>]*>/i;
+
+export function preservesPlainTextLineBreaks(content: string): boolean {
+  return !HTML_MARKUP_PATTERN.test(content);
+}
+
+/** Reflow slide prose without imported sizes, colors, or positioning. */
+export function sanitizeSlideReadingHtml(html: string): string {
+  return sanitizeHtml(html, {
+    allowedTags: [...ALLOWED_TAGS],
+    allowedAttributes: {},
+    nonTextTags: ['script', 'style', 'textarea', 'option', 'noscript', 'xmp'],
+    transformTags: { b: 'strong', i: 'em', strike: 's' },
+  });
+}
+
 /**
  * Sanitize rich slide HTML while preserving a narrow formatting subset that
  * matches the app's stored text model.

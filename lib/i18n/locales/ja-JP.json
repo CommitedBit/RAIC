@@ -11,7 +11,7 @@
   "home": {
     "slogan": "応答支援の対話型教室",
     "greetingWithName": "こんにちは、{{name}}さん",
-    "demoShortcut": "個別学習デモを見る",
+    "demoShortcut": "API キーなしでデモを体験",
     "schedule": {
       "title": "クラスを予定",
       "add": "追加",
@@ -311,7 +311,9 @@
     "voiceInputDisabled": "音声入力無効",
     "textInput": "テキスト入力",
     "stopRecording": "録音を停止",
-    "startRecording": "録音を開始"
+    "startRecording": "録音を開始",
+    "play": "再生",
+    "pause": "一時停止"
   },
   "pbl": {
     "legacyFormat": "このPBLシーンは旧形式です。コースを再生成してください。",
@@ -473,7 +475,8 @@
         "practice": "Practice",
         "check": "Check",
         "recap": "Recap"
-      }
+      },
+      "guideToggle": "授業ガイドとノート"
     },
     "boardNotes": {
       "ariaLabel": "Board notes",
@@ -589,7 +592,57 @@
       "multiUserFootnote": "Multi-user classrooms keep the teacher in charge of pane switching while students collaborate live inside the shared simulation.",
       "closeButton": "Close"
     },
-    "partialGenerationWarning": "{{count}} 件の生成警告がある状態で教室を開きました。"
+    "partialGenerationWarning": "{{count}} 件の生成警告がある状態で教室を開きました。",
+    "controls": {
+      "toggleSidebar": "シーン一覧を切り替え",
+      "toggleChat": "チャットを切り替え",
+      "mute": "ミュート",
+      "unmute": "ミュート解除",
+      "playbackSpeed": "再生速度",
+      "previousScene": "前のシーン",
+      "nextScene": "次のシーン",
+      "finishLesson": "授業を終了",
+      "autoPlay": "自動再生",
+      "showDiscussion": "話し合いを表示",
+      "hideDiscussion": "話し合いを閉じる",
+      "volume": "ナレーションの音量"
+    },
+    "completion": {
+      "title": "授業完了",
+      "summaryLabel": "授業のまとめ",
+      "subtitle": "結果を確認し、授業の内容をいつでも振り返れます。",
+      "contents": "授業内容",
+      "quizScore": "クイズの得点",
+      "scoreDetail": "自動採点した選択問題 {{total}} 問中 {{correct}} 問正解",
+      "noQuiz": "集計できる自動採点の選択問題はありません。",
+      "reviewQuiz": "確認問題を復習",
+      "reviewStart": "最初から復習",
+      "revisit": "シーンを振り返る",
+      "types": {
+        "slide": "スライド",
+        "quiz": "クイズ",
+        "interactive": "インタラクティブ",
+        "pbl": "プロジェクト"
+      }
+    },
+    "reading": {
+      "viewLabel": "授業の表示形式",
+      "slideView": "スライド表示",
+      "readingView": "読みやすい表示",
+      "mediaUnavailable": "このメディアはまだ利用できません。",
+      "image": "スライドの画像 {{number}}。説明文はありません。",
+      "video": "スライドの動画 {{number}}",
+      "audio": "スライドの音声 {{number}}",
+      "table": "スライドの表 {{number}}",
+      "chart": "グラフ {{number}} のデータ",
+      "category": "項目",
+      "layoutNote": "文字とメディアをスライド上の位置順に表示します。元の配置や図を見るにはスライド表示に切り替えてください。"
+    },
+    "demo": {
+      "preparing": "デモ授業を準備しています…",
+      "backHome": "ホームに戻る",
+      "openFailed": "デモ授業を開けませんでした。"
+    }
   },
   "upload": {
     "pdfSizeLimit": "50MBまでのPDFファイルに対応しています",

@@ -78,7 +78,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 import { VisuallyHidden } from 'radix-ui';
@@ -1565,7 +1564,8 @@ export function Stage({
   // get scene information
   const isPendingScene = currentSceneId === PENDING_SCENE_ID;
   const hasNextPending = generatingOutlines.length > 0;
-  const isCourseComplete = scenes.length > 0 && generatingOutlines.length === 0;
+  const isCourseReady = scenes.length > 0 && generatingOutlines.length === 0;
+  const isCourseComplete = isPendingScene && isCourseReady;
 
   const courseCompletionContextKeyRef = useRef<string | null>(null);
   useEffect(() => {
@@ -1611,7 +1611,7 @@ export function Stage({
     } else if (hasNextPending) {
       // On last generated scene -> wait for pending scenes.
       commitSceneSelection(PENDING_SCENE_ID, 'pending');
-    } else if (isCourseComplete) {
+    } else if (isCourseReady) {
       // On last real scene -> advance to the completion page.
       commitSceneSelection(PENDING_SCENE_ID, 'manual', { isCourseCompletion: true });
     }
@@ -1620,7 +1620,7 @@ export function Stage({
     currentSceneId,
     gatedSceneSwitch,
     hasNextPending,
-    isCourseComplete,
+    isCourseReady,
     isPendingScene,
     scenes,
   ]);
@@ -1628,7 +1628,15 @@ export function Stage({
   const currentSceneIndex = isPendingScene
     ? scenes.length
     : scenes.findIndex((s) => s.id === currentSceneId);
-  const totalScenesCount = scenes.length + (hasNextPending || isCourseComplete ? 1 : 0);
+  const totalScenesCount = scenes.length + generatingOutlines.length;
+  const currentSceneNumber = Math.min(
+    Math.max(currentSceneIndex + 1, 1),
+    Math.max(totalScenesCount, 1),
+  );
+  const hasNextScene =
+    !isPendingScene && (currentSceneIndex < scenes.length - 1 || hasNextPending || isCourseReady);
+  const nextSceneIsCompletion =
+    !isPendingScene && currentSceneIndex === scenes.length - 1 && isCourseReady;
   const lessonState = useMemo(
     () =>
       buildClassroomLessonState({
@@ -1698,7 +1706,19 @@ export function Stage({
 
     return (
       target.closest(
-        ['input', 'textarea', 'select', '[role="slider"]', 'input[type="range"]'].join(', '),
+        [
+          'input',
+          'textarea',
+          'select',
+          'button',
+          'a',
+          'summary',
+          '[role="slider"]',
+          '[role="button"]',
+          '[role="radio"]',
+          '[role="checkbox"]',
+          '[tabindex="0"]',
+        ].join(', '),
       ) !== null
     );
   }, []);
@@ -2050,19 +2070,12 @@ export function Stage({
       }
     : null;
 
-  // Calculate scene viewer height (subtract Header's 80px height)
-  const sceneViewerHeight = (() => {
-    const headerHeight = isPresenting ? 0 : 80; // Header h-20 = 80px
-    const lessonGuideHeight = isPresenting ? 0 : 194;
-    const roundtableHeight = mode === 'playback' && !isPresenting ? 192 : 0;
-    return `calc(100% - ${headerHeight + lessonGuideHeight + roundtableHeight}px)`;
-  })();
-
   return (
     <div
       ref={stageRef}
       className={cn(
-        'flex h-full min-h-0 flex-1 overflow-hidden overscroll-none bg-gray-50 dark:bg-gray-900',
+        'relative flex h-full min-h-0 flex-1 overflow-hidden overscroll-contain bg-gray-50 dark:bg-gray-900',
+        !isPresenting && '[@media(max-height:540px)]:overflow-y-auto',
         isPresenting && !controlsVisible && 'cursor-none',
       )}
     >
@@ -2076,11 +2089,19 @@ export function Stage({
       />
 
       {/* Main Content Area */}
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div
+        className={cn(
+          'relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+          !isPresenting && '[@media(max-height:540px)]:min-h-[38rem]',
+        )}
+      >
         {/* Header */}
         {!isPresenting && (
           <Header
-            currentSceneTitle={currentScene?.title || ''}
+            currentSceneTitle={
+              isCourseComplete ? t('classroom.completion.title') : currentScene?.title || ''
+            }
+            isCourseComplete={isCourseComplete}
             classroomSource={classroomSource}
             homePath={homePath}
             onOpenMiroFishManager={openMiroFishManager}
@@ -2089,51 +2110,51 @@ export function Stage({
           />
         )}
 
-        {!isPresenting ? (
-          <>
+        {!isPresenting && !isCourseComplete ? (
+          <details className="group/guide z-10 max-h-[40dvh] shrink-0 overflow-y-auto border-y border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+            <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 dark:text-slate-200 sm:px-6">
+              {t('classroom.lesson.guideToggle')}
+              <span className="ml-3 text-xs font-normal text-slate-500 dark:text-slate-400">
+                {t('classroom.lesson.sceneProgress', {
+                  current: currentSceneNumber,
+                  total: totalScenesCount,
+                })}
+              </span>
+            </summary>
             <LessonFlowPanel
               lessonState={lessonState}
               currentSceneTitle={currentScene?.title}
-              currentSceneNumber={Math.max(currentSceneIndex + 1, 1)}
+              currentSceneNumber={currentSceneNumber}
               totalScenesCount={totalScenesCount}
             />
             <BoardNotesPanel lessonState={lessonState} currentScene={currentScene} />
-          </>
+          </details>
         ) : null}
 
         {!isPresenting && classroomNotice ? (
-          <div className="px-6 pb-2">
-            <Alert className="border-blue-200/70 bg-white/80 dark:border-blue-900/50 dark:bg-slate-950/80">
-              <AlertTriangle className="size-4 text-blue-500 dark:text-blue-300" />
-              <AlertTitle>{t('classroom.localDemoBadge')}</AlertTitle>
-              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <span>{classroomNotice}</span>
-                {onMakeShareable ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0"
-                    onClick={onMakeShareable}
-                    disabled={makeShareablePending}
-                  >
-                    {makeShareablePending
-                      ? makeShareableStatus || t('classroom.share.publishing')
-                      : t('classroom.share.makeShareable')}
-                  </Button>
-                ) : null}
-              </AlertDescription>
-            </Alert>
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-sky-50/60 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-sky-950/20 dark:text-slate-300 sm:px-6">
+            <p className="min-w-0 flex-1">{classroomNotice}</p>
+            {onMakeShareable ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="shrink-0"
+                onClick={onMakeShareable}
+                disabled={makeShareablePending}
+              >
+                {makeShareablePending
+                  ? makeShareableStatus || t('classroom.share.publishing')
+                  : t('classroom.share.makeShareable')}
+              </Button>
+            ) : null}
           </div>
         ) : null}
 
         {/* Canvas Area */}
         <div
           className="overflow-hidden relative flex-1 min-h-0 isolate"
-          style={{
-            height: sceneViewerHeight,
-          }}
-          suppressHydrationWarning
+          data-testid="classroom-content-area"
         >
           {showTeacherCockpit ? (
             <div
@@ -2144,7 +2165,7 @@ export function Stage({
                 open={cockpitOpen}
                 onOpenChange={setCockpitOpen}
                 currentSceneTitle={currentScene?.title || ''}
-                currentSceneNumber={Math.max(currentSceneIndex + 1, 1)}
+                currentSceneNumber={currentSceneNumber}
                 totalScenesCount={totalScenesCount}
                 previousScene={
                   previousScene
@@ -2214,6 +2235,10 @@ export function Stage({
             currentScene={currentScene}
             currentSceneIndex={currentSceneIndex}
             scenesCount={totalScenesCount}
+            hasNextScene={hasNextScene}
+            nextSceneIsCompletion={nextSceneIsCompletion}
+            canPlay={currentScene?.type === 'slide' && (currentScene.actions?.length ?? 0) > 0}
+            onReviewScene={gatedSceneSwitch}
             mode={mode}
             engineState={canvasEngineState}
             isLiveSession={
@@ -2423,6 +2448,10 @@ export function Stage({
               currentActionIndex={0}
               currentSceneIndex={currentSceneIndex}
               scenesCount={totalScenesCount}
+              hasNextScene={hasNextScene}
+              nextSceneIsCompletion={nextSceneIsCompletion}
+              isCourseComplete={isCourseComplete}
+              canPlay={currentScene?.type === 'slide' && (currentScene.actions?.length ?? 0) > 0}
               whiteboardOpen={whiteboardOpen}
               sidebarCollapsed={sidebarCollapsed}
               chatCollapsed={chatAreaCollapsed}

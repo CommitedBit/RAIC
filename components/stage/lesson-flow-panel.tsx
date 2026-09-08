@@ -76,11 +76,11 @@ export function LessonFlowPanel({
                 </span>
                 <span>{sceneProgress}</span>
               </div>
-              <h2 className="mt-0.5 max-w-[74rem] truncate text-base font-semibold text-slate-900 dark:text-slate-100">
+              <h2 className="mt-0.5 max-w-[74rem] break-words [overflow-wrap:anywhere] text-base font-semibold text-slate-900 dark:text-slate-100">
                 {lessonState.goal}
               </h2>
               {currentSceneTitle ? (
-                <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-0.5 break-words [overflow-wrap:anywhere] text-xs text-slate-500 dark:text-slate-400">
                   {currentSceneTitle}
                 </p>
               ) : null}
@@ -94,7 +94,7 @@ export function LessonFlowPanel({
             </span>
             <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">
+              <span className="break-words [overflow-wrap:anywhere]">
                 {source.pdfAttached
                   ? t('classroom.lesson.pdfAttached', {
                       name: source.pdfName || t('classroom.lesson.pdfDocument'),
@@ -116,7 +116,7 @@ export function LessonFlowPanel({
             </span>
             <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               <BrainCircuit className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">
+              <span className="break-words [overflow-wrap:anywhere]">
                 {t('classroom.lesson.modelLabel', {
                   model: shortModelName(source.selectedModel),
                 })}
@@ -125,10 +125,7 @@ export function LessonFlowPanel({
           </div>
         </div>
 
-        <ol
-          className="flex gap-2 overflow-x-auto pb-0.5"
-          aria-label={t('classroom.lesson.stagesAria')}
-        >
+        <ol className="flex flex-wrap gap-2 pb-0.5" aria-label={t('classroom.lesson.stagesAria')}>
           {LESSON_STAGE_IDS.map((stageId) => {
             const isCurrent = lessonState.currentStage === stageId;
             const isComplete = completed.has(stageId);
@@ -139,7 +136,7 @@ export function LessonFlowPanel({
                 key={stageId}
                 aria-current={isCurrent ? 'step' : undefined}
                 className={cn(
-                  'flex min-w-[8.5rem] items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors',
+                  'flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors',
                   isCurrent
                     ? 'border-indigo-300 bg-indigo-50 text-indigo-900 shadow-sm dark:border-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-100'
                     : isComplete
@@ -154,7 +151,7 @@ export function LessonFlowPanel({
                 ) : (
                   <Circle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 )}
-                <span className="truncate font-semibold">{label}</span>
+                <span className="break-words [overflow-wrap:anywhere] font-semibold">{label}</span>
               </li>
             );
           })}

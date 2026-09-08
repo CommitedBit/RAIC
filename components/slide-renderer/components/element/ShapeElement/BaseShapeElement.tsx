@@ -8,7 +8,7 @@ import { useElementFlip } from '../hooks/useElementFlip';
 import { useElementFill } from '../hooks/useElementFill';
 import { GradientDefs } from './GradientDefs';
 import { PatternDefs } from './PatternDefs';
-import { sanitizeSlideHtml } from '@/lib/utils/sanitize-slide-html';
+import { preservesPlainTextLineBreaks, sanitizeSlideHtml } from '@/lib/utils/sanitize-slide-html';
 
 export interface BaseShapeElementProps {
   elementInfo: PPTShapeElement;
@@ -110,6 +110,7 @@ export function BaseShapeElement({ elementInfo }: BaseShapeElementProps) {
               style={{
                 // @ts-expect-error CSS custom properties
                 '--paragraphSpace': `${text.paragraphSpace === undefined ? 5 : text.paragraphSpace}px`,
+                whiteSpace: preservesPlainTextLineBreaks(text.content) ? 'pre-line' : undefined,
               }}
               dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />

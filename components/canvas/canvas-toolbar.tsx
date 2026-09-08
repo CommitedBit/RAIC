@@ -28,6 +28,10 @@ import type { PresentationSurface, SharedSimulation } from '@/lib/types/stage';
 export interface CanvasToolbarProps {
   readonly currentSceneIndex: number;
   readonly scenesCount: number;
+  readonly hasNextScene?: boolean;
+  readonly nextSceneIsCompletion?: boolean;
+  readonly isCourseComplete?: boolean;
+  readonly canPlay?: boolean;
   readonly engineState: 'idle' | 'playing' | 'paused';
   readonly isLiveSession?: boolean;
   readonly whiteboardOpen: boolean;
@@ -65,8 +69,9 @@ export interface CanvasToolbarProps {
 
 /* Compact control button */
 const ctrlBtn = cn(
-  'relative w-7 h-7 rounded-md flex items-center justify-center',
+  'relative w-9 h-9 min-w-9 min-h-9 rounded-md flex items-center justify-center',
   'transition-all duration-150 outline-none cursor-pointer',
+  'focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1',
   'hover:bg-gray-500/[0.08] dark:hover:bg-gray-400/[0.08] active:scale-90',
 );
 
@@ -94,6 +99,10 @@ function VolumeIcon({
 export function CanvasToolbar({
   currentSceneIndex,
   scenesCount,
+  hasNextScene,
+  nextSceneIsCompletion,
+  isCourseComplete,
+  canPlay = true,
   engineState,
   isLiveSession,
   whiteboardOpen,
@@ -129,8 +138,8 @@ export function CanvasToolbar({
 }: CanvasToolbarProps) {
   const { t } = useI18n();
   const canGoPrev = currentSceneIndex > 0;
-  const canGoNext = currentSceneIndex < scenesCount - 1;
-  const showPlayPause = !isLiveSession;
+  const canGoNext = hasNextScene ?? currentSceneIndex < scenesCount - 1;
+  const showPlayPause = !isLiveSession && canPlay && !isCourseComplete;
 
   const whiteboardElementCount = useStageStore(
     (s) => s.stage?.whiteboard?.[0]?.elements?.length || 0,
@@ -147,7 +156,9 @@ export function CanvasToolbar({
   }, []);
 
   const handleVolumeLeave = useCallback(() => {
-    volumeTimerRef.current = setTimeout(() => setVolumeHover(false), 300);
+    volumeTimerRef.current = setTimeout(() => {
+      if (!volumeContainerRef.current?.contains(document.activeElement)) setVolumeHover(false);
+    }, 300);
   }, []);
 
   // Cleanup volume hover timer on unmount
@@ -160,7 +171,7 @@ export function CanvasToolbar({
   const canShowMiroFishManager = !!viewerCanManageSimulation && !!onOpenMiroFishManager;
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn('flex flex-wrap items-center gap-x-2 gap-y-1 py-1', className)}>
       {/* ── Left: sidebar toggle + page indicator ── */}
       <div className="flex items-center gap-1 shrink-0 pl-1">
         {onToggleSidebar && (
@@ -173,25 +184,32 @@ export function CanvasToolbar({
                 ? 'text-gray-400 dark:text-gray-500'
                 : 'text-gray-600 dark:text-gray-300',
             )}
-            aria-label="Toggle sidebar"
+            aria-label={t('classroom.controls.toggleSidebar')}
+            aria-expanded={!sidebarCollapsed}
           >
             <LayoutList className="w-3.5 h-3.5" />
           </button>
         )}
-        <span className="text-[11px] text-gray-400 dark:text-gray-500 tabular-nums select-none font-medium">
-          {currentSceneIndex + 1}
-          <span className="opacity-35 mx-px">/</span>
-          {scenesCount}
+        <span className="text-[11px] text-gray-600 dark:text-gray-400 tabular-nums select-none font-medium">
+          {isCourseComplete ? (
+            t('classroom.completion.title')
+          ) : (
+            <>
+              {Math.min(currentSceneIndex + 1, scenesCount)}
+              <span className="opacity-35 mx-px">/</span>
+              {scenesCount}
+            </>
+          )}
         </span>
       </div>
 
       <CtrlDivider />
 
       {/* ── Center: unified playback controls ── */}
-      <div className="flex-1 flex items-center justify-center min-w-0">
+      <div className="order-3 basis-full flex-1 flex items-center justify-center min-w-0 sm:order-none sm:basis-auto">
         <div
           className={cn(
-            'inline-flex items-center gap-0.5 px-1 h-7',
+            'inline-flex flex-wrap items-center justify-center gap-0.5 px-1 min-h-9',
             isPresenting
               ? '' /* Single visual layer in fullscreen — buttons sit inside outer pill directly */
               : 'bg-gray-100/60 dark:bg-gray-800/60 rounded-lg',
@@ -204,6 +222,11 @@ export function CanvasToolbar({
               className="relative flex items-center"
               onMouseEnter={handleVolumeEnter}
               onMouseLeave={handleVolumeLeave}
+              onFocusCapture={handleVolumeEnter}
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                  handleVolumeLeave();
+              }}
             >
               <button
                 onClick={onToggleMute}
@@ -217,7 +240,9 @@ export function CanvasToolbar({
                       ? 'text-red-500 dark:text-red-400'
                       : 'text-gray-500 dark:text-gray-400',
                 )}
-                aria-label={ttsMuted ? 'Unmute' : 'Mute'}
+                aria-label={
+                  ttsMuted ? t('classroom.controls.unmute') : t('classroom.controls.mute')
+                }
               >
                 <VolumeIcon muted={!!ttsMuted} volume={ttsVolume} disabled={!ttsEnabled} />
               </button>
@@ -226,16 +251,20 @@ export function CanvasToolbar({
               <div
                 className={cn(
                   'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex flex-col items-center',
-                  'transition-all duration-200 ease-out pointer-events-none opacity-0',
-                  volumeHover && ttsEnabled && 'pointer-events-auto opacity-100',
+                  'transition-opacity duration-200 ease-out',
+                  volumeHover && ttsEnabled
+                    ? 'visible pointer-events-auto opacity-100'
+                    : 'invisible pointer-events-none opacity-0',
                 )}
               >
                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2.5 flex flex-col items-center gap-1.5">
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums font-medium select-none">
+                  <span className="text-[10px] text-gray-600 dark:text-gray-400 tabular-nums font-medium select-none">
                     {Math.round(effectiveVolume * 100)}
                   </span>
                   <input
                     type="range"
+                    aria-label={t('classroom.controls.volume')}
+                    disabled={!ttsEnabled}
                     min={0}
                     max={1}
                     step={0.05}
@@ -280,7 +309,7 @@ export function CanvasToolbar({
                         ? 'text-violet-600 dark:text-violet-400 bg-violet-500/10 dark:bg-violet-400/10'
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
                     )}
-                    aria-label="Playback speed"
+                    aria-label={t('classroom.controls.playbackSpeed')}
                   >
                     {playbackSpeed === 1.5 ? '1.5x' : `${playbackSpeed}x`}
                   </button>
@@ -295,7 +324,7 @@ export function CanvasToolbar({
           <CtrlDivider />
 
           {/* Prev scene */}
-          {scenesCount > 1 && (
+          {(scenesCount > 1 || canGoPrev || canGoNext) && (
             <button
               onClick={onPrevSlide}
               disabled={!canGoPrev}
@@ -303,7 +332,7 @@ export function CanvasToolbar({
                 ctrlBtn,
                 'w-6 h-6 text-gray-500 dark:text-gray-400 disabled:opacity-20 disabled:pointer-events-none',
               )}
-              aria-label="Previous scene"
+              aria-label={t('classroom.controls.previousScene')}
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
@@ -340,7 +369,7 @@ export function CanvasToolbar({
                   ? 'text-violet-600 dark:text-violet-400'
                   : 'text-gray-500 dark:text-gray-400',
               )}
-              aria-label={engineState === 'playing' ? 'Pause' : 'Play'}
+              aria-label={engineState === 'playing' ? t('roundtable.pause') : t('roundtable.play')}
             >
               {engineState === 'playing' ? (
                 <Pause className="w-3.5 h-3.5" />
@@ -351,7 +380,7 @@ export function CanvasToolbar({
           ) : null}
 
           {/* Next scene */}
-          {scenesCount > 1 && (
+          {(scenesCount > 1 || canGoPrev || canGoNext) && (
             <button
               onClick={onNextSlide}
               disabled={!canGoNext}
@@ -359,7 +388,11 @@ export function CanvasToolbar({
                 ctrlBtn,
                 'w-6 h-6 text-gray-500 dark:text-gray-400 disabled:opacity-20 disabled:pointer-events-none',
               )}
-              aria-label="Next scene"
+              aria-label={
+                nextSceneIsCompletion
+                  ? t('classroom.controls.finishLesson')
+                  : t('classroom.controls.nextScene')
+              }
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -381,7 +414,7 @@ export function CanvasToolbar({
                         ? 'text-violet-600 dark:text-violet-400'
                         : 'text-gray-500 dark:text-gray-400',
                     )}
-                    aria-label="Auto-play"
+                    aria-label={t('classroom.controls.autoPlay')}
                   >
                     <Repeat className="w-3.5 h-3.5" />
                   </button>
@@ -522,7 +555,8 @@ export function CanvasToolbar({
                 ? 'text-gray-400 dark:text-gray-500'
                 : 'text-gray-600 dark:text-gray-300',
             )}
-            aria-label="Toggle chat"
+            aria-label={t('classroom.controls.toggleChat')}
+            aria-expanded={!chatCollapsed}
           >
             <MessageSquare className="w-3.5 h-3.5" />
           </button>

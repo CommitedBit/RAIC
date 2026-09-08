@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/hooks/use-i18n';
 import {
   clearClassroomLaunchContext,
   getHomePathForLaunchMode,
@@ -12,6 +13,7 @@ import { EXAMPLE_COURSE_ID, ensureOpenRaicExampleSeeded } from '@/lib/utils/exam
 
 export default function ExampleClassroomPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,8 +33,7 @@ export default function ExampleClassroomPage() {
         router.push(`/classroom/${EXAMPLE_COURSE_ID}`);
       } catch (err) {
         if (!active) return;
-        const message =
-          err instanceof Error ? err.message : 'Unable to open the example classroom.';
+        const message = err instanceof Error ? err.message : t('classroom.demo.openFailed');
         setError(message);
       }
     };
@@ -42,7 +43,7 @@ export default function ExampleClassroomPage() {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [router, t]);
 
   if (error) {
     return (
@@ -59,7 +60,7 @@ export default function ExampleClassroomPage() {
             }}
             variant="outline"
           >
-            Go back home
+            {t('classroom.demo.backHome')}
           </Button>
         </div>
       </main>
@@ -69,7 +70,7 @@ export default function ExampleClassroomPage() {
   return (
     <main className="min-h-[100dvh] grid place-items-center bg-slate-50 dark:bg-slate-950 px-4">
       <p className="text-sm text-muted-foreground" data-testid="example-loading-text">
-        Preparing demo classroom...
+        {t('classroom.demo.preparing')}
       </p>
     </main>
   );

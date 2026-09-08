@@ -31,7 +31,7 @@ export function BoardNotesPanel({ lessonState, currentScene }: BoardNotesPanelPr
             <p className="font-semibold text-slate-900 dark:text-slate-100">
               {t('classroom.boardNotes.keyIdea')}
             </p>
-            <p className="truncate">{notes.keyIdea}</p>
+            <p className="break-words [overflow-wrap:anywhere]">{notes.keyIdea}</p>
           </div>
         </div>
 
@@ -41,7 +41,7 @@ export function BoardNotesPanel({ lessonState, currentScene }: BoardNotesPanelPr
             <p className="font-semibold text-slate-900 dark:text-slate-100">
               {t('classroom.boardNotes.example')}
             </p>
-            <p className="truncate">{notes.example}</p>
+            <p className="break-words [overflow-wrap:anywhere]">{notes.example}</p>
           </div>
         </div>
 
@@ -51,7 +51,7 @@ export function BoardNotesPanel({ lessonState, currentScene }: BoardNotesPanelPr
             <p className="font-semibold text-slate-900 dark:text-slate-100">
               {t('classroom.boardNotes.steps')}
             </p>
-            <p className="truncate">{notes.steps.join(' / ')}</p>
+            <p className="break-words [overflow-wrap:anywhere]">{notes.steps.join(' / ')}</p>
           </div>
         </div>
 
@@ -61,7 +61,7 @@ export function BoardNotesPanel({ lessonState, currentScene }: BoardNotesPanelPr
             <p className="font-semibold text-slate-900 dark:text-slate-100">
               {t('classroom.boardNotes.practice')}
             </p>
-            <p className="truncate">{notes.practicePrompt}</p>
+            <p className="break-words [overflow-wrap:anywhere]">{notes.practicePrompt}</p>
           </div>
         </div>
       </div>

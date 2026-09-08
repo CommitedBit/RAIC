@@ -276,7 +276,7 @@ export const ChatArea = forwardRef<ChatAreaRef, ChatAreaProps>(
             : 'width var(--motion-duration-enter) var(--motion-ease-standard)',
         }}
         className={cn(
-          'relative z-20 flex h-full min-h-0 shrink-0 flex-col overflow-hidden overscroll-contain border-l border-gray-100 bg-white/80 shadow-[-2px_0_24px_rgba(0,0,0,0.02)] backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/80',
+          'absolute inset-y-0 right-0 z-30 max-w-[90vw] md:relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden overscroll-contain border-l border-gray-100 bg-white/80 shadow-[-2px_0_24px_rgba(0,0,0,0.02)] backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/80',
           className,
         )}
       >

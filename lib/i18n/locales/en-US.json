@@ -11,7 +11,7 @@
   "home": {
     "slogan": "Responsive Assistance Interactive Classroom",
     "greetingWithName": "Hi, {{name}}",
-    "demoShortcut": "Explore differentiated demo",
+    "demoShortcut": "Try the demo — no API key",
     "schedule": {
       "title": "Schedule Classes",
       "add": "Add",
@@ -311,7 +311,9 @@
     "voiceInputDisabled": "Voice input disabled",
     "textInput": "Text input",
     "stopRecording": "Stop recording",
-    "startRecording": "Start recording"
+    "startRecording": "Start recording",
+    "play": "Play",
+    "pause": "Pause"
   },
   "pbl": {
     "legacyFormat": "This PBL scene uses a legacy format. Please regenerate the course.",
@@ -473,7 +475,8 @@
         "practice": "Practice",
         "check": "Check",
         "recap": "Recap"
-      }
+      },
+      "guideToggle": "Lesson guide and notes"
     },
     "boardNotes": {
       "ariaLabel": "Board notes",
@@ -589,7 +592,57 @@
       "multiUserFootnote": "Multi-user classrooms keep the teacher in charge of pane switching while students collaborate live inside the shared simulation.",
       "closeButton": "Close"
     },
-    "partialGenerationWarning": "Classroom opened with {{count}} generation warnings."
+    "partialGenerationWarning": "Classroom opened with {{count}} generation warnings.",
+    "controls": {
+      "toggleSidebar": "Toggle sidebar",
+      "toggleChat": "Toggle chat",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "playbackSpeed": "Playback speed",
+      "previousScene": "Previous scene",
+      "nextScene": "Next scene",
+      "finishLesson": "Finish lesson",
+      "autoPlay": "Auto-play",
+      "showDiscussion": "Show discussion",
+      "hideDiscussion": "Hide discussion",
+      "volume": "Narration volume"
+    },
+    "completion": {
+      "title": "Course complete",
+      "summaryLabel": "Lesson summary",
+      "subtitle": "Review your results and revisit any part of the lesson.",
+      "contents": "Lesson contents",
+      "quizScore": "Quiz score",
+      "scoreDetail": "{{correct}} of {{total}} auto-graded choice questions correct",
+      "noQuiz": "No auto-graded choice questions to summarize.",
+      "reviewQuiz": "Review checkpoint",
+      "reviewStart": "Review from the beginning",
+      "revisit": "Revisit a scene",
+      "types": {
+        "slide": "Slides",
+        "quiz": "Quizzes",
+        "interactive": "Interactives",
+        "pbl": "Projects"
+      }
+    },
+    "reading": {
+      "viewLabel": "Lesson view",
+      "slideView": "Slide view",
+      "readingView": "Reading view",
+      "mediaUnavailable": "This media is not available yet.",
+      "image": "Slide image {{number}}; no text description provided.",
+      "video": "Slide video {{number}}",
+      "audio": "Slide audio {{number}}",
+      "table": "Slide table {{number}}",
+      "chart": "Chart {{number}} data",
+      "category": "Category",
+      "layoutNote": "Reading view follows the slide’s text and media order. Switch to Slide view to see the original arrangement and diagrams."
+    },
+    "demo": {
+      "preparing": "Preparing demo classroom…",
+      "backHome": "Go back home",
+      "openFailed": "Unable to open the example classroom."
+    }
   },
   "upload": {
     "pdfSizeLimit": "Supports PDF files up to 50MB",

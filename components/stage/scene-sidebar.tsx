@@ -39,7 +39,7 @@ export function SceneSidebar({
   onRetryOutline,
   homePath,
 }: SceneSidebarProps) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const router = useRouter();
   const { scenes, currentSceneId, setCurrentSceneId, generatingOutlines, generationStatus } =
     useStageStore();
@@ -68,8 +68,9 @@ export function SceneSidebar({
       } else {
         setCurrentSceneId(sceneId);
       }
+      if (window.matchMedia('(max-width: 767px)').matches) onCollapseChange(true);
     },
-    [onSceneSelect, setCurrentSceneId],
+    [onSceneSelect, setCurrentSceneId, onCollapseChange],
   );
 
   const adjustSidebarWidth = useCallback((delta: number) => {
@@ -156,7 +157,7 @@ export function SceneSidebar({
           ? 'none'
           : 'width var(--motion-duration-enter) var(--motion-ease-standard)',
       }}
-      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-gray-100 dark:border-gray-800 shadow-[2px_0_24px_rgba(0,0,0,0.02)] flex flex-col shrink-0 z-20 relative overflow-visible"
+      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-gray-100 dark:border-gray-800 shadow-[2px_0_24px_rgba(0,0,0,0.02)] flex flex-col shrink-0 z-30 absolute inset-y-0 left-0 max-w-[85vw] overflow-visible md:relative"
     >
       {/* Drag handle */}
       {!collapsed && (
@@ -525,7 +526,7 @@ export function SceneSidebar({
             scenes.length > 0 &&
             (() => {
               const isActive = currentSceneId === PENDING_SCENE_ID;
-              const label = locale === 'zh-CN' ? '课程完成' : 'Course complete';
+              const label = t('classroom.completion.title');
               return (
                 <div
                   key="course-complete-slot"
@@ -553,7 +554,7 @@ export function SceneSidebar({
                             : 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
                         )}
                       >
-                        {scenes.length + 1}
+                        <Trophy className="h-3 w-3" aria-hidden="true" />
                       </span>
                       <span className="text-xs font-bold truncate text-amber-700 dark:text-amber-300">
                         {label}

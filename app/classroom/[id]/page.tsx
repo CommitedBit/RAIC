@@ -471,7 +471,13 @@ export default function ClassroomDetailPage() {
           }),
         );
       }
-      clearClassroomLaunchContext(classroomId);
+      if (resolvedSource === 'public-demo') {
+        // Keep the explicit local launch for reloads in this tab. Returning home
+        // clears it; teacher classrooms continue to use server authorization.
+        writeClassroomLaunchContext({ classroomId, launchMode: 'public-demo', homePath: '/' });
+      } else {
+        clearClassroomLaunchContext(classroomId);
+      }
     } catch (err) {
       log.error('Failed to load classroom:', err);
       const status = err instanceof Error ? (err as Error & { status?: number }).status : undefined;
@@ -836,7 +842,7 @@ export default function ClassroomDetailPage() {
   return (
     <ThemeProvider>
       <MediaStageProvider value={classroomId}>
-        <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none">
+        <main className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none">
           {loading ? (
             <div
               className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900"
@@ -975,7 +981,7 @@ export default function ClassroomDetailPage() {
               />
             </div>
           )}
-        </div>
+        </main>
       </MediaStageProvider>
     </ThemeProvider>
   );

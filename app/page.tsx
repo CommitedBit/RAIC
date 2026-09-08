@@ -204,6 +204,9 @@ interface HomePageProps {
 }
 
 export function HomePage({ launchMode = 'public-demo' }: HomePageProps) {
+  useEffect(() => {
+    clearClassroomLaunchContext();
+  }, []);
   const { t, locale } = useI18n();
   const { theme, setTheme } = useTheme();
   const router = useRouter();

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { PPTTextElement } from '@/lib/types/slides';
 import { useElementShadow } from '../hooks/useElementShadow';
 import { ElementOutline } from '../ElementOutline';
-import { sanitizeSlideHtml } from '@/lib/utils/sanitize-slide-html';
+import { preservesPlainTextLineBreaks, sanitizeSlideHtml } from '@/lib/utils/sanitize-slide-html';
 
 export interface BaseTextElementProps {
   elementInfo: PPTTextElement;
@@ -60,6 +60,11 @@ export function BaseTextElement({ elementInfo, target }: BaseTextElementProps) {
           />
           <div
             className={`text ProseMirror-static relative ${target === 'thumbnail' ? 'pointer-events-none' : ''}`}
+            style={{
+              whiteSpace: preservesPlainTextLineBreaks(elementInfo.content)
+                ? 'pre-line'
+                : undefined,
+            }}
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
         </div>

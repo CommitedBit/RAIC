@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import { CheckCircle2, FileText, HelpCircle, MonitorPlay, Puzzle, Trophy } from 'lucide-react';
+import { useEffect, useMemo, useRef } from 'react';
+import { FileText, HelpCircle, MonitorPlay, Puzzle, Trophy } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { useStageStore } from '@/lib/store';
 import { summarizeScenes } from '@/lib/classroom/complete-summary';
@@ -15,119 +15,153 @@ const sceneTypeIcons: Record<SceneType, typeof FileText> = {
   pbl: Puzzle,
 };
 
-const sceneTypeLabels: Record<'zh-CN' | 'en-US', Record<SceneType, string>> = {
-  'zh-CN': {
-    slide: '幻灯片',
-    quiz: '测验',
-    interactive: '互动',
-    pbl: '项目',
-  },
-  'en-US': {
-    slide: 'Slides',
-    quiz: 'Quizzes',
-    interactive: 'Interactives',
-    pbl: 'Projects',
-  },
-};
-
-function copy(locale: string) {
-  const zh = locale === 'zh-CN';
-  return {
-    title: zh ? '课程完成' : 'Course complete',
-    subtitle: zh
-      ? '你已经走完整个课堂。做得漂亮。'
-      : 'You made it through the whole classroom. Nicely done.',
-    quizScore: zh ? '测验得分' : 'Quiz score',
-    noQuiz: zh ? '本课程没有可自动汇总的选择题。' : 'No auto-graded quiz questions to summarize.',
-    scenes: zh ? '学习足迹' : 'Learning trail',
-    completed: zh ? '已完成' : 'Completed',
-  };
-}
-
 export function ClassroomCompletePage({
   scenes,
   title,
+  onReviewScene,
 }: {
   readonly scenes: Scene[];
   readonly title: string;
+  readonly onReviewScene?: (sceneId: string) => void;
 }) {
-  const { locale } = useI18n();
-  const labels = copy(locale);
-  const typeLabels = sceneTypeLabels[locale === 'zh-CN' ? 'zh-CN' : 'en-US'];
+  const { t } = useI18n();
+  const heading = useRef<HTMLHeadingElement>(null);
   const summary = useMemo(() => summarizeScenes(scenes, readAnswersForSummary), [scenes]);
-  const types = (['slide', 'quiz', 'interactive', 'pbl'] as SceneType[]).filter(
-    (type) => (summary.countsByType[type] ?? 0) > 0,
-  );
+  const ordered = useMemo(() => [...scenes].sort((a, b) => a.order - b.order), [scenes]);
+  const firstQuiz = ordered.find((scene) => scene.type === 'quiz');
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
 
   return (
-    <section className="absolute inset-0 z-[105] flex items-center justify-center overflow-auto bg-gradient-to-br from-amber-50 via-white to-sky-50 p-6 dark:from-gray-950 dark:via-gray-900 dark:to-slate-950">
-      <div className="w-full max-w-2xl rounded-3xl border border-amber-100 bg-white/90 p-8 text-center shadow-2xl shadow-amber-200/30 backdrop-blur dark:border-amber-900/40 dark:bg-gray-900/90 dark:shadow-black/40">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-orange-500 text-white shadow-lg shadow-amber-300/40">
-          <Trophy className="h-10 w-10" />
+    <section
+      data-testid="classroom-completion"
+      className="h-full overflow-y-auto overscroll-contain bg-gradient-to-br from-amber-50 via-white to-sky-50 p-4 dark:from-gray-950 dark:via-gray-900 dark:to-slate-950 sm:p-6"
+    >
+      <div className="mx-auto w-full max-w-3xl rounded-2xl border border-amber-100 bg-white p-5 dark:border-amber-900/40 dark:bg-gray-900 sm:p-7">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+            <Trophy className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h2
+              ref={heading}
+              tabIndex={-1}
+              className="text-2xl font-bold text-slate-950 outline-none dark:text-white"
+            >
+              {t('classroom.completion.title')}
+            </h2>
+            <p className="mt-1 break-words font-medium text-slate-700 dark:text-slate-200">
+              {title}
+            </p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              {t('classroom.completion.subtitle')}
+            </p>
+          </div>
         </div>
 
-        <p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-amber-600 dark:text-amber-300">
-          {labels.completed}
-        </p>
-        <h2 className="mt-2 text-3xl font-black text-gray-950 dark:text-white">
-          {title || labels.title}
-        </h2>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{labels.subtitle}</p>
-
-        <div className="mt-7 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-left dark:border-gray-800 dark:bg-gray-950/70">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              {labels.scenes}
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {types.map((type) => {
-                const Icon = sceneTypeIcons[type];
-                return (
-                  <div
-                    key={type}
-                    className="rounded-xl bg-white px-3 py-3 shadow-sm ring-1 ring-gray-100 dark:bg-gray-900 dark:ring-gray-800"
-                  >
-                    <Icon className="mb-2 h-4 w-4 text-amber-500" />
-                    <div className="text-2xl font-black text-gray-900 dark:text-gray-100">
-                      {summary.countsByType[type]}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {typeLabels[type]}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+              {t('classroom.completion.contents')}
+            </h3>
+            <dl className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              {Object.entries(summary.countsByType).map(([type, count]) => (
+                <div key={type} className="flex items-center justify-between gap-3">
+                  <dt>{t(`classroom.completion.types.${type}`)}</dt>
+                  <dd className="font-semibold tabular-nums">{count}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
-
-          <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-left dark:border-amber-900/40 dark:bg-amber-950/20">
-            <div className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-              {labels.quizScore}
-            </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+            <h3 className="font-semibold text-amber-900 dark:text-amber-200">
+              {t('classroom.completion.quizScore')}
+            </h3>
             {summary.quiz ? (
-              <div className="mt-5 flex items-end gap-2">
-                <span className="text-5xl font-black text-amber-700 dark:text-amber-300">
+              <>
+                <p className="mt-3 text-4xl font-bold text-amber-800 dark:text-amber-300">
                   {summary.quiz.pct}%
-                </span>
-                <span className="pb-2 text-sm text-amber-700/70 dark:text-amber-300/70">
-                  {summary.quiz.correct}/{summary.quiz.total}
-                </span>
-              </div>
+                </p>
+                <p className="mt-2 text-sm text-amber-900 dark:text-amber-200">
+                  {t('classroom.completion.scoreDetail', {
+                    correct: summary.quiz.correct,
+                    total: summary.quiz.total,
+                  })}
+                </p>
+              </>
             ) : (
-              <p className="mt-5 text-sm text-amber-700/75 dark:text-amber-200/75">
-                {labels.noQuiz}
+              <p className="mt-3 text-sm text-amber-900 dark:text-amber-200">
+                {t('classroom.completion.noQuiz')}
               </p>
             )}
           </div>
         </div>
+
+        {onReviewScene ? (
+          <>
+            <div className="mt-5 flex flex-wrap gap-3">
+              {firstQuiz ? (
+                <button
+                  type="button"
+                  onClick={() => onReviewScene(firstQuiz.id)}
+                  className="min-h-11 rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+                >
+                  {t('classroom.completion.reviewQuiz')}
+                </button>
+              ) : null}
+              {ordered[0] ? (
+                <button
+                  type="button"
+                  onClick={() => onReviewScene(ordered[0].id)}
+                  className="min-h-11 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  {t('classroom.completion.reviewStart')}
+                </button>
+              ) : null}
+            </div>
+            <h3 className="mt-6 font-semibold text-slate-800 dark:text-slate-100">
+              {t('classroom.completion.revisit')}
+            </h3>
+            <ol className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+              {ordered.map((scene, index) => {
+                const Icon = sceneTypeIcons[scene.type];
+                return (
+                  <li key={scene.id}>
+                    <button
+                      type="button"
+                      onClick={() => onReviewScene(scene.id)}
+                      className="flex min-h-11 w-full items-center gap-3 rounded-md px-2 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      <span className="tabular-nums text-slate-500 dark:text-slate-400">
+                        {index + 1}
+                      </span>
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 break-words">{scene.title}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        ) : null}
       </div>
     </section>
   );
 }
 
-export function ClassroomCompletePageConnected() {
+export function ClassroomCompletePageConnected({
+  onReviewScene,
+}: {
+  readonly onReviewScene?: (sceneId: string) => void;
+}) {
   const stage = useStageStore((s) => s.stage);
   const scenes = useStageStore((s) => s.scenes);
-  return <ClassroomCompletePage scenes={scenes} title={stage?.name ?? ''} />;
+  return (
+    <ClassroomCompletePage
+      scenes={scenes}
+      title={stage?.name ?? ''}
+      onReviewScene={onReviewScene}
+    />
+  );
 }

@@ -90,6 +90,10 @@ interface RoundtableProps {
   // Toolbar props (merged from CanvasArea)
   readonly currentSceneIndex?: number;
   readonly scenesCount?: number;
+  readonly hasNextScene?: boolean;
+  readonly nextSceneIsCompletion?: boolean;
+  readonly isCourseComplete?: boolean;
+  readonly canPlay?: boolean;
   readonly whiteboardOpen?: boolean;
   readonly sidebarCollapsed?: boolean;
   readonly chatCollapsed?: boolean;
@@ -191,6 +195,10 @@ export function Roundtable({
   onDiscussionResume,
   currentSceneIndex = 0,
   scenesCount = 1,
+  hasNextScene,
+  nextSceneIsCompletion,
+  isCourseComplete,
+  canPlay,
   whiteboardOpen = false,
   sidebarCollapsed,
   chatCollapsed,
@@ -224,6 +232,7 @@ export function Roundtable({
   const setAutoPlayLecture = useSettingsStore((s) => s.setAutoPlayLecture);
   const playbackSpeed = useSettingsStore((s) => s.playbackSpeed);
   const setPlaybackSpeed = useSettingsStore((s) => s.setPlaybackSpeed);
+  const [discussionExpanded, setDiscussionExpanded] = useState<boolean | null>(null);
   const [isInputOpen, setIsInputOpen] = useState(false);
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -717,11 +726,17 @@ export function Roundtable({
     isVoiceOpen ||
     isRecording ||
     isProcessing;
+  const showDiscussion =
+    isInputOpen || isVoiceOpen || (discussionExpanded ?? (!!discussionRequest || isInLiveFlow));
   const toolbar = (
     <CanvasToolbar
-      className="shrink-0 h-8 px-3 border-b border-gray-100/40 dark:border-gray-700/30"
+      className="shrink-0 min-h-11 px-2 border-b border-gray-100/40 dark:border-gray-700/30"
       currentSceneIndex={currentSceneIndex}
       scenesCount={scenesCount}
+      hasNextScene={hasNextScene}
+      nextSceneIsCompletion={nextSceneIsCompletion}
+      isCourseComplete={isCourseComplete}
+      canPlay={canPlay}
       engineState={
         engineMode === 'playing' || engineMode === 'live'
           ? 'playing'
@@ -1173,7 +1188,8 @@ export function Roundtable({
   return (
     <div
       className={cn(
-        'h-[192px] w-full flex flex-col relative z-10 transition-all duration-300',
+        'w-full flex flex-col relative z-10 transition-all duration-300',
+        showDiscussion ? 'min-h-[192px]' : 'min-h-11',
         isPresenting && !controlsVisible
           ? 'border-t border-transparent bg-transparent backdrop-blur-none'
           : 'border-t border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md',
@@ -1188,8 +1204,42 @@ export function Roundtable({
       >
         {toolbar}
       </div>
+      {!isCourseComplete ? (
+        <div className="flex min-h-10 items-center gap-3 px-3 py-1.5">
+          <button
+            type="button"
+            aria-expanded={showDiscussion}
+            aria-controls="classroom-discussion"
+            onClick={() => {
+              setDiscussionExpanded(!showDiscussion);
+              if (showDiscussion) {
+                setIsInputOpen(false);
+                setIsVoiceOpen(false);
+                cancelRecording();
+              }
+            }}
+            className="inline-flex min-h-8 shrink-0 items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            <MessageSquare className="h-4 w-4" aria-hidden="true" />
+            {showDiscussion
+              ? t('classroom.controls.hideDiscussion')
+              : t('classroom.controls.showDiscussion')}
+          </button>
+          {!showDiscussion && (currentSpeech || lectureSpeech || idleText) ? (
+            <p className="line-clamp-2 min-w-0 text-sm text-slate-600 dark:text-slate-300">
+              {currentSpeech || lectureSpeech || idleText}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {/* ── Interaction area — three-column layout ── */}
-      <div className="flex-1 flex items-stretch min-h-0">
+      <div
+        id="classroom-discussion"
+        className={cn(
+          'h-40 flex items-stretch min-h-0',
+          (!showDiscussion || isCourseComplete) && 'hidden',
+        )}
+      >
         {/* Left: Teacher identity */}
         <div
           className={cn(

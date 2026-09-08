@@ -153,7 +153,7 @@ function QuizCover({
   const { t } = useI18n();
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+    <div className="w-full min-h-full flex flex-col items-center justify-center gap-4 relative px-4 py-6">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 p-6 opacity-[0.03]">
         <PieChart className="w-52 h-52 text-violet-500" />
@@ -920,7 +920,7 @@ export function QuizView({ questions: sourceQuestions, sceneId }: QuizViewProps)
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, x: -20 }}
-            className="flex-1"
+            className="flex-1 min-h-0 overflow-y-auto"
           >
             <QuizCover
               questionCount={questions.length}
@@ -939,7 +939,7 @@ export function QuizView({ questions: sourceQuestions, sceneId }: QuizViewProps)
             className="flex-1 flex flex-col min-h-0"
           >
             {/* Header bar */}
-            <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6 border-b border-gray-100 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur shrink-0">
               <div className="flex items-center gap-2">
                 <PieChart className="w-4 h-4 text-violet-500" />
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -971,7 +971,7 @@ export function QuizView({ questions: sourceQuestions, sceneId }: QuizViewProps)
             </div>
 
             {/* Questions */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-4 sm:px-6">
               {questions.map((q, i) => {
                 if (q.type === 'single') {
                   return (
@@ -1056,7 +1056,7 @@ export function QuizView({ questions: sourceQuestions, sceneId }: QuizViewProps)
             className="flex-1 flex flex-col min-h-0"
           >
             {/* Header bar */}
-            <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6 border-b border-gray-100 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur shrink-0">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -1073,7 +1073,7 @@ export function QuizView({ questions: sourceQuestions, sceneId }: QuizViewProps)
             </div>
 
             {/* Results */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-4 sm:px-6">
               <ScoreBanner score={earnedScore} total={gradedPoints} results={results} />
 
               {questions.map((q, i) => {

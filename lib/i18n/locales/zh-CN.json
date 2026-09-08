@@ -11,7 +11,7 @@
   "home": {
     "slogan": "Responsive Assistance Interactive Classroom",
     "greetingWithName": "嗨，{{name}}",
-    "demoShortcut": "查看差异化教学演示",
+    "demoShortcut": "体验演示，无需 API 密钥",
     "schedule": {
       "title": "安排课程",
       "add": "添加",
@@ -311,7 +311,9 @@
     "voiceInputDisabled": "语音输入已禁用",
     "textInput": "文字输入",
     "stopRecording": "停止录音",
-    "startRecording": "开始录音"
+    "startRecording": "开始录音",
+    "play": "播放",
+    "pause": "暂停"
   },
   "pbl": {
     "legacyFormat": "此PBL场景使用旧格式，请重新生成课程",
@@ -473,7 +475,8 @@
         "practice": "练习",
         "check": "理解检查",
         "recap": "回顾"
-      }
+      },
+      "guideToggle": "课程指南与笔记"
     },
     "boardNotes": {
       "ariaLabel": "板书笔记",
@@ -589,7 +592,57 @@
       "multiUserFootnote": "Multi-user classrooms keep the teacher in charge of pane switching while students collaborate live inside the shared simulation.",
       "closeButton": "Close"
     },
-    "partialGenerationWarning": "课堂已打开，但存在 {{count}} 条生成警告。"
+    "partialGenerationWarning": "课堂已打开，但存在 {{count}} 条生成警告。",
+    "controls": {
+      "toggleSidebar": "切换场景列表",
+      "toggleChat": "切换聊天",
+      "mute": "静音",
+      "unmute": "取消静音",
+      "playbackSpeed": "播放速度",
+      "previousScene": "上一页",
+      "nextScene": "下一页",
+      "finishLesson": "完成课程",
+      "autoPlay": "自动播放",
+      "showDiscussion": "展开讨论",
+      "hideDiscussion": "收起讨论",
+      "volume": "旁白音量"
+    },
+    "completion": {
+      "title": "课程完成",
+      "summaryLabel": "课程总结",
+      "subtitle": "查看学习结果，随时回顾课程中的任何部分。",
+      "contents": "课程内容",
+      "quizScore": "测验得分",
+      "scoreDetail": "自动评分的 {{total}} 道选择题中答对 {{correct}} 道",
+      "noQuiz": "没有可自动汇总的选择题。",
+      "reviewQuiz": "回顾测验",
+      "reviewStart": "从头回顾",
+      "revisit": "回顾场景",
+      "types": {
+        "slide": "幻灯片",
+        "quiz": "测验",
+        "interactive": "互动",
+        "pbl": "项目"
+      }
+    },
+    "reading": {
+      "viewLabel": "课程视图",
+      "slideView": "幻灯片视图",
+      "readingView": "阅读视图",
+      "mediaUnavailable": "此媒体尚不可用。",
+      "image": "幻灯片图片 {{number}}，尚未提供文字描述。",
+      "video": "幻灯片视频 {{number}}",
+      "audio": "幻灯片音频 {{number}}",
+      "table": "幻灯片表格 {{number}}",
+      "chart": "图表 {{number}} 的数据",
+      "category": "类别",
+      "layoutNote": "阅读视图按幻灯片中文字和媒体的位置顺序排列。切换到幻灯片视图可查看原始布局和图示。"
+    },
+    "demo": {
+      "preparing": "正在准备演示课堂…",
+      "backHome": "返回首页",
+      "openFailed": "无法打开示例课堂。"
+    }
   },
   "upload": {
     "pdfSizeLimit": "支持最大50MB的PDF文件",

@@ -4,73 +4,60 @@ import type { PPTTextElement, Slide } from '@/lib/types/slides';
 import type { Scene } from '@/lib/types/stage';
 
 export const EXAMPLE_COURSE_ID = 'openraic-rit-diff-by-band';
-export const EXAMPLE_COURSE_SEED_VERSION = 1;
+export const EXAMPLE_COURSE_SEED_VERSION = 2;
 
 function buildTextElement(options: {
   readonly id: string;
   readonly content: string;
   readonly top: number;
-  readonly left?: number;
-  readonly width?: number;
-  readonly height?: number;
-  readonly textType?: 'title' | 'subtitle' | 'content' | 'header';
+  readonly height: number;
+  readonly textType?: 'title' | 'content';
 }): PPTTextElement {
   return {
     type: 'text',
-    id: options.id,
-    content: options.content,
-    left: options.left ?? 40,
-    top: options.top,
-    width: options.width ?? 920,
-    height: options.height ?? 120,
+    ...options,
+    left: 42,
+    width: 916,
     rotate: 0,
-    textType: options.textType,
-    defaultFontName: 'Microsoft YaHei',
+    defaultFontName: 'Arial',
     defaultColor: '#1f2937',
+    lineHeight: 1.35,
   };
 }
 
-function makeSlideCanvas(override: {
-  readonly id: string;
-  readonly title: string;
-  readonly body: string;
-  readonly secondary?: string;
-}) {
-  const template = createDefaultSlideContent();
-  const canvas = template.canvas as Slide;
-  const slide = {
-    ...canvas,
-    id: override.id,
+function makeSlideCanvas(id: string, title: string, body: string, secondary?: string): Slide {
+  const template = createDefaultSlideContent().canvas;
+  return {
+    ...template,
+    id,
     elements: [
       buildTextElement({
-        id: `${override.id}-title`,
+        id: `${id}-title`,
         textType: 'title',
-        content: override.title,
-        top: 56,
+        top: 28,
+        height: 110,
+        content: `<p style="font-size:34px"><strong>${title}</strong></p>`,
       }),
       buildTextElement({
-        id: `${override.id}-body`,
+        id: `${id}-body`,
         textType: 'content',
-        top: 180,
-        height: 420,
-        content: override.body,
+        top: 154,
+        height: 260,
+        content: body.replace(/<(p|li)>/g, '<$1 style="font-size:24px">'),
       }),
+      ...(secondary
+        ? [
+            buildTextElement({
+              id: `${id}-secondary`,
+              textType: 'content',
+              top: 436,
+              height: 92,
+              content: `<p style="font-size:21px">${secondary}</p>`,
+            }),
+          ]
+        : []),
     ],
-  } as Slide;
-
-  if (override.secondary) {
-    slide.elements.push(
-      buildTextElement({
-        id: `${override.id}-secondary`,
-        textType: 'content',
-        top: 410,
-        height: 170,
-        content: override.secondary,
-      }),
-    );
-  }
-
-  return slide;
+  };
 }
 
 const EXAMPLE_SCENES: Scene[] = [
@@ -82,15 +69,15 @@ const EXAMPLE_SCENES: Scene[] = [
     order: 0,
     content: {
       type: 'slide',
-      canvas: makeSlideCanvas({
-        id: 'openraic-rit-demo-slide-intro',
-        title: 'Open-RAIC Example: Student-by-Student RIT Support',
-        body: `<p><strong>Input shape</strong> (example JSON)</p><pre>{"students":[{"student_id":"a12","name":"Alex","rit":178},{"student_id":"b77","name":"Bri","rit":214},{"student_id":"c09","name":"Kai","rit":236}]}</pre><p><strong>Bands</strong></p><ul><li>Band A: 0-189</li><li>Band B: 190-219</li><li>Band C: 220+</li></ul><p><strong>Differentiated prompts</strong></p><ul><li>Band A: one worked example + one checkpoint check-in</li><li>Band B: varied practice + one verbal explanation request</li><li>Band C: open-ended scenario + one creative extension</li></ul>`,
-        secondary: `<p><strong>Why this is useful:</strong> the classroom keeps the same lesson goal while adapting prompt support by readiness.</p>`,
-      }),
+      canvas: makeSlideCanvas(
+        'openraic-rit-demo-slide-intro',
+        'One learning goal. Different amounts of support.',
+        '<p><strong>Shared goal:</strong> explain how to solve a two-step problem.</p><p>For this example, use three fictional learners and illustrative bands:</p><ul><li>Alex, 178 → Band A (below 190)</li><li>Bri, 214 → Band B (190–219)</li><li>Kai, 236 → Band C (220 and above)</li></ul>',
+        'These thresholds are only for this demo. Teacher judgment and classroom evidence guide real support decisions.',
+      ),
     },
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: 0,
+    updatedAt: 0,
   },
   {
     id: 'openraic-rit-demo-scene-prompts',
@@ -100,31 +87,77 @@ const EXAMPLE_SCENES: Scene[] = [
     order: 1,
     content: {
       type: 'slide',
-      canvas: makeSlideCanvas({
-        id: 'openraic-rit-demo-slide-prompts',
-        title: 'How prompts can adapt by band',
-        body: `<p><strong>Band A (support)</strong>: "Use simpler examples with one new concept, add a worked example, and ask one check question after every step."</p><p><strong>Band B (on track)</strong>: "Use varied problems and ask for one verbal explanation before each final answer."</p><p><strong>Band C (extension)</strong>: "Give a real-life problem, then challenge with one creative extension question or multiple-step plan."</p>`,
-      }),
+      canvas: makeSlideCanvas(
+        'openraic-rit-demo-slide-prompts',
+        'Keep the goal. Adjust the prompt.',
+        '<p><strong>Band A:</strong> “Watch one worked example. Then explain the first step before trying the next.”</p><p><strong>Band B:</strong> “Try two varied problems. Explain why you chose each step.”</p><p><strong>Band C:</strong> “Solve a real-life problem. Then create an extension that uses the same idea.”</p>',
+        'Worked example: Bri’s 214 falls in Band B. Offer varied practice and ask for a verbal explanation.',
+      ),
     },
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
+    id: 'openraic-rit-demo-scene-check',
+    stageId: EXAMPLE_COURSE_ID,
+    type: 'quiz',
+    title: 'Check your understanding',
+    order: 2,
+    content: {
+      type: 'quiz',
+      questions: [
+        {
+          id: 'demo-band-choice',
+          type: 'single',
+          question: 'Using the demo thresholds, which band contains Bri’s score of 214?',
+          options: [
+            { value: 'A', label: 'Band A: below 190' },
+            { value: 'B', label: 'Band B: 190–219' },
+            { value: 'C', label: 'Band C: 220 and above' },
+          ],
+          answer: ['B'],
+          hasAnswer: true,
+          points: 1,
+          analysis:
+            '214 is between 190 and 219, so Bri belongs in Band B for this example. Use varied practice and ask Bri to explain each step.',
+        },
+        {
+          id: 'demo-shared-goal',
+          type: 'single',
+          question: 'What stays the same across all three support bands?',
+          options: [
+            { value: 'A', label: 'The shared learning goal' },
+            { value: 'B', label: 'The amount of scaffolding' },
+            { value: 'C', label: 'Every practice prompt' },
+          ],
+          answer: ['A'],
+          hasAnswer: true,
+          points: 1,
+          analysis:
+            'All learners work toward explaining a two-step solution. The worked examples, prompts, and extensions change to offer different amounts of support.',
+        },
+      ],
+    },
+    createdAt: 0,
+    updatedAt: 0,
   },
   {
     id: 'openraic-rit-demo-scene-start',
     stageId: EXAMPLE_COURSE_ID,
     type: 'slide',
     title: 'Try it in class',
-    order: 2,
+    order: 3,
     content: {
       type: 'slide',
-      canvas: makeSlideCanvas({
-        id: 'openraic-rit-demo-slide-start',
-        title: 'Try the flow',
-        body: '<p>Add your own MAP RIT list, swap the band thresholds, then ask for student-specific revision plans.</p>',
-      }),
+      canvas: makeSlideCanvas(
+        'openraic-rit-demo-slide-start',
+        'Plan a small, observable next step.',
+        '<ol><li>Choose one learning goal for everyone.</li><li>Prepare a worked example, varied practice, and an extension.</li><li>Use a short checkpoint to decide what support to offer next.</li></ol><p>Review your checkpoint feedback, then finish the lesson to see your results.</p>',
+        'This demo uses only fictional information. Your answers and feedback stay in this browser; no AI call is needed to grade them.',
+      ),
     },
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: 0,
+    updatedAt: 0,
   },
 ];
 
@@ -133,13 +166,13 @@ export function buildOpenRaicRitDemoCoursePayload(timestamp?: number): StageStor
   return {
     stage: {
       id: EXAMPLE_COURSE_ID,
-      name: 'Public Demo: RIT Differentiation',
+      name: 'Public Demo: Differentiated Support',
       description:
-        'This is a public demo course showing how Open-RAIC supports student-by-student differentiation from NWEA MAP RIT scores.',
+        'A complete demonstration of differentiated prompts, a local checkpoint, and useful feedback using fictional learners.',
       createdAt: now,
       updatedAt: now,
       learningGoal:
-        'Demonstrate how teacher prompts can be adapted for small RIT bands while keeping the same learning target.',
+        'Adapt the amount of support while keeping one shared learning goal, then check understanding.',
       language: 'en-US',
       languageDirective: 'Use short, concrete examples and avoid overloading learners.',
       style: 'professional',
@@ -152,7 +185,7 @@ export function buildOpenRaicRitDemoCoursePayload(timestamp?: number): StageStor
       },
     },
     scenes: EXAMPLE_SCENES.map((scene) => ({
-      ...scene,
+      ...structuredClone(scene),
       createdAt: now,
       updatedAt: now,
       stageId: EXAMPLE_COURSE_ID,

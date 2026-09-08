@@ -2,7 +2,13 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { StaticTable } from '@/components/slide-renderer/components/element/TableElement/StaticTable';
-import { sanitizeSlideHtml } from '@/lib/utils/sanitize-slide-html';
+import {
+  preservesPlainTextLineBreaks,
+  sanitizeSlideHtml,
+  sanitizeSlideReadingHtml,
+} from '@/lib/utils/sanitize-slide-html';
+import { BaseTextElement } from '@/components/slide-renderer/components/element/TextElement/BaseTextElement';
+import { BaseShapeElement } from '@/components/slide-renderer/components/element/ShapeElement/BaseShapeElement';
 
 describe('sanitizeSlideHtml', () => {
   it('preserves safe formatting while removing dangerous markup and styles', () => {
@@ -63,5 +69,53 @@ describe('sanitizeSlideHtml', () => {
     expect(markup).toContain('&lt;img src=x onerror=alert(1)&gt;');
     expect(markup).toContain('line 2');
     expect(markup).toContain('white-space:pre-wrap');
+  });
+});
+
+describe('plain slide line breaks', () => {
+  it('preserves text newlines while leaving pretty-printed HTML layout alone', () => {
+    expect(preservesPlainTextLineBreaks('One\nTwo')).toBe(true);
+    expect(preservesPlainTextLineBreaks('x < 2\ny > 3')).toBe(true);
+    expect(preservesPlainTextLineBreaks('<p>One</p>\n<p>Two</p>')).toBe(false);
+    expect(preservesPlainTextLineBreaks('<!-- note -->\n<p>Two</p>')).toBe(false);
+    const box = { id: 'text-lines', left: 0, top: 0, width: 300, height: 100, rotate: 0 };
+    const plain = 'One\nTwo';
+    const markup = '<p>One</p>\n<p>Two</p>';
+    for (const content of [plain, markup]) {
+      const text = renderToStaticMarkup(
+        React.createElement(BaseTextElement, {
+          elementInfo: {
+            ...box,
+            type: 'text',
+            content,
+            defaultFontName: 'Arial',
+            defaultColor: '#333',
+          },
+        }),
+      );
+      const shape = renderToStaticMarkup(
+        React.createElement(BaseShapeElement, {
+          elementInfo: {
+            ...box,
+            type: 'shape',
+            path: '',
+            viewBox: [300, 100],
+            fill: '#fff',
+            fixedRatio: false,
+            text: { content, align: 'middle', defaultFontName: 'Arial', defaultColor: '#333' },
+          },
+        }),
+      );
+      expect(text.includes('white-space:pre-line')).toBe(content === plain);
+      expect(shape.includes('white-space:pre-line')).toBe(content === plain);
+    }
+  });
+
+  it('keeps reading text and structure while dropping source sizing and executable markup', () => {
+    expect(
+      sanitizeSlideReadingHtml(
+        '<p style="font-size:1px" onclick="void(0)">Read <strong>this</strong></p><script>unsafe()</script>',
+      ),
+    ).toBe('<p>Read <strong>this</strong></p>');
   });
 });

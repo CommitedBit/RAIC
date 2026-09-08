@@ -29,6 +29,7 @@ import type { ClassroomLiveMeeting } from '@/lib/types/stage';
 
 interface HeaderProps {
   readonly currentSceneTitle: string;
+  readonly isCourseComplete?: boolean;
   readonly classroomSource?: 'public-demo' | 'teacher-server' | null;
   readonly homePath?: string;
   readonly onOpenMiroFishManager?: () => void;
@@ -38,6 +39,7 @@ interface HeaderProps {
 
 export function Header({
   currentSceneTitle,
+  isCourseComplete,
   classroomSource,
   homePath,
   onOpenMiroFishManager,
@@ -97,8 +99,8 @@ export function Header({
 
   return (
     <>
-      <header className="h-20 px-8 flex items-center justify-between z-10 bg-transparent gap-4">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+      <header className="min-h-16 shrink-0 px-3 py-2 flex flex-wrap items-center justify-between z-20 bg-transparent gap-2 sm:px-6">
+        <div className="flex items-center gap-2 min-w-0 basis-full sm:basis-auto flex-1">
           <button
             onClick={() => router.push(homePath || '/')}
             type="button"
@@ -108,13 +110,13 @@ export function Header({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex flex-col min-w-0">
-            <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-500 mb-0.5">
-              {t('stage.currentScene')}
+          <div className="flex flex-1 flex-col min-w-0">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-gray-600 dark:text-gray-400 mb-0.5">
+              {isCourseComplete ? t('classroom.completion.summaryLabel') : t('stage.currentScene')}
             </span>
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               <h1
-                className="text-xl font-bold text-gray-800 dark:text-gray-200 tracking-tight truncate"
+                className="text-lg font-bold text-gray-800 dark:text-gray-200 tracking-tight break-words [overflow-wrap:anywhere] sm:text-xl"
                 suppressHydrationWarning
               >
                 {currentSceneTitle || t('common.loading')}
@@ -122,7 +124,10 @@ export function Header({
               {classroomSourceLabel ? (
                 <Badge
                   variant={classroomSource === 'teacher-server' ? 'secondary' : 'outline'}
-                  className="max-w-[14rem] truncate"
+                  className={cn(
+                    'max-w-full',
+                    classroomSource === 'public-demo' && 'hidden sm:inline-flex',
+                  )}
                 >
                   {classroomSourceLabel}
                 </Badge>
@@ -171,7 +176,7 @@ export function Header({
           </a>
         ) : null}
 
-        <div className="flex items-center gap-4 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md px-2 py-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/50 shadow-sm shrink-0">
+        <div className="flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md px-2 py-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/50 shadow-sm shrink-0">
           {/* Language Selector */}
           <LanguageSwitcher onOpen={() => setThemeOpen(false)} />
 
