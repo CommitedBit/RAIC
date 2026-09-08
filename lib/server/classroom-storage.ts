@@ -15,6 +15,7 @@ import { ensureDirPath, writeJsonFileAtomic } from '@/lib/server/json-file';
 import type { Scene, Stage } from '@/lib/types/stage';
 import { preserveStageSharedSimulation } from '@/lib/utils/classroom-presentation';
 import { getDataPath } from '@/lib/server/data-root';
+import { sanitizeFormulaContent } from '@/lib/utils/sanitize-latex-html';
 
 export { writeJsonFileAtomic } from '@/lib/server/json-file';
 
@@ -125,8 +126,10 @@ function normalizePersistedClassroomData(value: PersistedClassroomLike): Persist
       Number.isFinite((value as { roomVersion?: number }).roomVersion)
         ? Math.max(0, Math.floor((value as { roomVersion?: number }).roomVersion ?? 0))
         : 0,
-    stage: preserveStageSharedSimulation(value.stage, value.stage.sharedSimulation ?? null),
-    scenes: Array.isArray(value.scenes) ? value.scenes : [],
+    stage: sanitizeFormulaContent(
+      preserveStageSharedSimulation(value.stage, value.stage.sharedSimulation ?? null),
+    ),
+    scenes: Array.isArray(value.scenes) ? sanitizeFormulaContent(value.scenes) : [],
     createdAt,
     updatedAt,
   };
@@ -369,7 +372,7 @@ export async function persistClassroom(
 ): Promise<PersistedClassroomData & { url: string }> {
   const canonicalStage = { ...data.stage, id: data.id };
   const now = new Date().toISOString();
-  const classroomData: PersistedClassroomData = {
+  const classroomData = normalizePersistedClassroomData({
     id: data.id,
     ownerUserId: data.ownerUserId ?? null,
     organizationId: data.organizationId ?? null,
@@ -378,7 +381,7 @@ export async function persistClassroom(
     scenes: data.scenes,
     createdAt: now,
     updatedAt: now,
-  };
+  });
 
   log.info('Classroom persist start', {
     classroomId: classroomData.id,

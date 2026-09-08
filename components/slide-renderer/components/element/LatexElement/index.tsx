@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState, useLayoutEffect } from 'react';
+import { useRef, useState, useLayoutEffect, useMemo } from 'react';
 import type { PPTLatexElement } from '@/lib/types/slides';
+import { sanitizeLatexHtml } from '@/lib/utils/sanitize-latex-html';
 
 export { BaseLatexElement } from './BaseLatexElement';
 
@@ -78,6 +79,7 @@ export function LatexElement({ elementInfo, selectElement }: LatexElementProps) 
 function KatexContent({ html, width, height }: { html: string; width: number; height: number }) {
   const innerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const sanitizedHtml = useMemo(() => sanitizeLatexHtml(html), [html]);
 
   useLayoutEffect(() => {
     if (!innerRef.current) return;
@@ -86,7 +88,7 @@ function KatexContent({ html, width, height }: { html: string; width: number; he
     if (naturalW > 0 && naturalH > 0) {
       setScale(Math.min(width / naturalW, height / naturalH));
     }
-  }, [html, width, height]);
+  }, [sanitizedHtml, width, height]);
 
   return (
     <div style={{ width, height, overflow: 'hidden' }}>
@@ -98,7 +100,7 @@ function KatexContent({ html, width, height }: { html: string; width: number; he
           transform: `scale(${scale})`,
           whiteSpace: 'nowrap',
         }}
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
     </div>
   );

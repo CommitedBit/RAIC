@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState, useLayoutEffect } from 'react';
+import { useRef, useState, useLayoutEffect, useMemo } from 'react';
 import type { PPTLatexElement } from '@/lib/types/slides';
+import { sanitizeLatexHtml } from '@/lib/utils/sanitize-latex-html';
 
 export interface BaseLatexElementProps {
   elementInfo: PPTLatexElement;
@@ -80,6 +81,7 @@ function KatexContent({
 }) {
   const innerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const sanitizedHtml = useMemo(() => sanitizeLatexHtml(html), [html]);
 
   useLayoutEffect(() => {
     if (!innerRef.current) return;
@@ -88,7 +90,7 @@ function KatexContent({
     if (naturalW > 0 && naturalH > 0) {
       setScale(Math.min(width / naturalW, height / naturalH));
     }
-  }, [html, width, height]);
+  }, [sanitizedHtml, width, height]);
 
   const justify = ALIGN_MAP[align];
   const origin =
@@ -113,7 +115,7 @@ function KatexContent({
           transform: `scale(${scale})`,
           whiteSpace: 'nowrap',
         }}
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
     </div>
   );

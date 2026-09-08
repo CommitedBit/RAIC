@@ -11,6 +11,7 @@ import { db } from './database';
 import { saveChatSessions, loadChatSessions, deleteChatSessions } from './chat-storage';
 import { clearPlaybackState } from './playback-storage';
 import { createLogger } from '@/lib/logger';
+import { sanitizeFormulaContent } from '@/lib/utils/sanitize-latex-html';
 
 const log = createLogger('StageStorage');
 
@@ -62,7 +63,7 @@ export async function saveStageData(stageId: string, data: StageStoreData): Prom
     if (data.scenes && data.scenes.length > 0) {
       await db.scenes.bulkPut(
         data.scenes.map((scene, index) => ({
-          ...scene,
+          ...sanitizeFormulaContent(scene),
           stageId,
           order: scene.order ?? index,
           createdAt: scene.createdAt || now,
@@ -104,8 +105,8 @@ export async function loadStageData(stageId: string): Promise<StageStoreData | n
     log.info(`Loaded stage: ${stageId}, scenes: ${scenes.length}, chats: ${chats.length}`);
 
     return {
-      stage,
-      scenes,
+      stage: sanitizeFormulaContent(stage),
+      scenes: sanitizeFormulaContent(scenes),
       currentSceneId: stage.currentSceneId || scenes[0]?.id || null,
       chats,
     };
@@ -183,7 +184,7 @@ export async function getFirstSlideByStages(
         const scenes = await db.scenes.where('stageId').equals(stageId).sortBy('order');
         const firstSlide = scenes.find((s) => s.content?.type === 'slide');
         if (firstSlide && firstSlide.content.type === 'slide') {
-          const slide = structuredClone(firstSlide.content.canvas);
+          const slide = sanitizeFormulaContent(firstSlide.content.canvas);
 
           // Resolve gen_img_* placeholders from mediaFiles
           const placeholderEls = slide.elements.filter(
