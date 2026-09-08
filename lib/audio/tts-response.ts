@@ -3,6 +3,60 @@ export interface ValidatedTTSAudio {
   format: string;
 }
 
+export const MAX_TTS_AUDIO_BYTES = 32 * 1024 * 1024;
+// Hex uses two characters per byte; leave bounded room for the JSON envelope.
+export const MAX_TTS_ENVELOPE_BYTES = MAX_TTS_AUDIO_BYTES * 2 + 1024 * 1024;
+export const MAX_TTS_METADATA_BYTES = 1024 * 1024;
+export const MAX_TTS_ERROR_BYTES = 64 * 1024;
+
+/** Count actual stream bytes even when Content-Length is missing or incorrect. */
+export async function readTTSResponseBytes(
+  response: Response,
+  maxBytes = MAX_TTS_AUDIO_BYTES,
+): Promise<Uint8Array> {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
+    throw new Error('TTS response byte limit must be a positive integer');
+  }
+  const length = response.headers.get('content-length');
+  if (length && /^\d+$/.test(length) && Number(length) > maxBytes) {
+    await response.body?.cancel().catch(() => undefined);
+    throw new Error(`TTS provider response exceeds ${maxBytes}-byte limit`);
+  }
+  if (!response.body) return new Uint8Array();
+  const reader = response.body.getReader();
+  // Coalesce immediately so tiny chunks cannot create an unbounded object list.
+  let bytes = new Uint8Array(Math.min(16 * 1024, maxBytes));
+  let size = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const nextSize = size + value.byteLength;
+      if (nextSize > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error(`TTS provider response exceeds ${maxBytes}-byte limit`);
+      }
+      if (nextSize > bytes.length) {
+        const expanded = new Uint8Array(Math.min(maxBytes, Math.max(nextSize, bytes.length * 2)));
+        expanded.set(bytes);
+        bytes = expanded;
+      }
+      bytes.set(value, size);
+      size = nextSize;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return size === bytes.length ? bytes : bytes.slice(0, size);
+}
+
+export async function readTTSTextResponse(
+  response: Response,
+  maxBytes = MAX_TTS_ENVELOPE_BYTES,
+): Promise<string> {
+  return new TextDecoder().decode(await readTTSResponseBytes(response, maxBytes));
+}
+
 const MIME_FORMATS: Record<string, string> = {
   'audio/wav': 'wav',
   'audio/wave': 'wav',
@@ -93,6 +147,9 @@ export function validateTTSAudioPayload(
   requestedFormat?: string,
 ): ValidatedTTSAudio {
   if (!audio.length) throw new Error('TTS provider returned empty audio');
+  if (audio.byteLength > MAX_TTS_AUDIO_BYTES) {
+    throw new Error(`TTS audio exceeds ${MAX_TTS_AUDIO_BYTES}-byte limit`);
+  }
   const detected = detectAudioFormat(audio);
   if (detected)
     return { audio, format: detected === 'ogg' && requestedFormat === 'opus' ? 'opus' : detected };
@@ -113,7 +170,7 @@ export async function readTTSAudioResponse(
     await response.body?.cancel().catch(() => undefined);
     throw new Error(`TTS provider returned a non-audio response (${mime})`);
   }
-  const audio = new Uint8Array(await response.arrayBuffer());
+  const audio = await readTTSResponseBytes(response);
   // A contradictory audio Content-Type must not authorize headerless raw samples.
   return validateTTSAudioPayload(
     audio,

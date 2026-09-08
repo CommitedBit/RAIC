@@ -92,7 +92,14 @@
 import type { TTSModelConfig } from './types';
 import { isCustomTTSProvider } from './types';
 import { TTS_PROVIDERS } from './constants';
-import { readTTSAudioResponse, validateTTSAudioPayload } from './tts-response';
+import {
+  MAX_TTS_AUDIO_BYTES,
+  MAX_TTS_ERROR_BYTES,
+  MAX_TTS_METADATA_BYTES,
+  readTTSAudioResponse,
+  readTTSTextResponse,
+  validateTTSAudioPayload,
+} from './tts-response';
 import {
   VOXCPM_AUTO_VOICE_ID,
   VOXCPM_VLLM_MODEL_ID,
@@ -213,7 +220,9 @@ async function generateOpenAITTS(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: response.statusText }));
+    const error = await readTTSTextResponse(response, MAX_TTS_ERROR_BYTES)
+      .then((text) => JSON.parse(text))
+      .catch(() => ({ error: response.statusText }));
     throw new Error(`OpenAI TTS API error: ${error.error?.message || response.statusText}`);
   }
 
@@ -511,7 +520,9 @@ async function postVoxCPMNanoVLLM(
 }
 
 async function readTTSApiError(response: Response): Promise<string> {
-  const text = await response.text().catch(() => response.statusText);
+  const text = await readTTSTextResponse(response, MAX_TTS_ERROR_BYTES).catch(
+    () => response.statusText,
+  );
   if (!text) return response.statusText;
   try {
     const json = JSON.parse(text) as { detail?: unknown; error?: { message?: string } | string };
@@ -554,6 +565,7 @@ async function generateAzureTTS(
   });
 
   if (!response.ok) {
+    await response.body?.cancel().catch(() => undefined);
     throw new Error(`Azure TTS API error: ${response.statusText}`);
   }
 
@@ -583,7 +595,9 @@ async function generateGLMTTS(config: TTSModelConfig, text: string): Promise<TTS
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
+    const errorText = await readTTSTextResponse(response, MAX_TTS_ERROR_BYTES).catch(
+      () => response.statusText,
+    );
     let errorMessage = `GLM TTS API error: ${errorText}`;
     try {
       const errorJson = JSON.parse(errorText);
@@ -632,11 +646,13 @@ async function generateQwenTTS(config: TTSModelConfig, text: string): Promise<TT
   );
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
+    const errorText = await readTTSTextResponse(response, MAX_TTS_ERROR_BYTES).catch(
+      () => response.statusText,
+    );
     throw new Error(`Qwen TTS API error: ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = JSON.parse(await readTTSTextResponse(response, MAX_TTS_METADATA_BYTES));
 
   // Check for audio URL in response
   if (!data.output?.audio?.url) {
@@ -648,6 +664,7 @@ async function generateQwenTTS(config: TTSModelConfig, text: string): Promise<TT
   const audioResponse = await (config.fetchImpl ?? fetch)(audioUrl);
 
   if (!audioResponse.ok) {
+    await audioResponse.body?.cancel().catch(() => undefined);
     throw new Error(`Failed to download audio from URL: ${audioResponse.statusText}`);
   }
 
@@ -693,24 +710,27 @@ async function generateMiniMaxTTS(
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
+    const errorText = await readTTSTextResponse(response, MAX_TTS_ERROR_BYTES).catch(
+      () => response.statusText,
+    );
     throw new Error(`MiniMax TTS API error: ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = JSON.parse(await readTTSTextResponse(response));
   const hexAudio = data?.data?.audio;
   if (!hexAudio || typeof hexAudio !== 'string') {
     throw new Error(`MiniMax TTS error: No audio returned. Response: ${JSON.stringify(data)}`);
   }
 
   const cleanedHex = hexAudio.trim();
+  if (cleanedHex.length > MAX_TTS_AUDIO_BYTES * 2) {
+    throw new Error(`TTS audio exceeds ${MAX_TTS_AUDIO_BYTES}-byte limit`);
+  }
   if (cleanedHex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(cleanedHex)) {
     throw new Error('MiniMax TTS error: invalid hex audio payload');
   }
 
-  const audio = new Uint8Array(
-    cleanedHex.match(/.{1,2}/g)?.map((byte: string) => parseInt(byte, 16)) || [],
-  );
+  const audio = new Uint8Array(Buffer.from(cleanedHex, 'hex'));
   return {
     audio,
     format: data?.extra_info?.audio_format || config.format || 'mp3',
@@ -758,7 +778,9 @@ async function generateElevenLabsTTS(
   );
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
+    const errorText = await readTTSTextResponse(response, MAX_TTS_ERROR_BYTES).catch(
+      () => response.statusText,
+    );
     throw new Error(`ElevenLabs TTS API error: ${errorText || response.statusText}`);
   }
 
@@ -834,12 +856,15 @@ async function generateDoubaoTTS(
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
+    const errorText = await readTTSTextResponse(response, MAX_TTS_ERROR_BYTES).catch(
+      () => response.statusText,
+    );
     throw new Error(`Doubao TTS API error (${response.status}): ${errorText}`);
   }
 
-  const responseText = await response.text();
+  const responseText = await readTTSTextResponse(response);
   const audioChunks: Uint8Array[] = [];
+  let totalLength = 0;
 
   let depth = 0;
   let start = -1;
@@ -860,7 +885,18 @@ async function generateDoubaoTTS(
         start = -1;
 
         if (chunk.code === 0 && chunk.data) {
-          audioChunks.push(new Uint8Array(Buffer.from(chunk.data, 'base64')));
+          if (
+            typeof chunk.data !== 'string' ||
+            chunk.data.length > Math.ceil(MAX_TTS_AUDIO_BYTES / 3) * 4
+          ) {
+            throw new Error(`TTS audio exceeds ${MAX_TTS_AUDIO_BYTES}-byte limit or is invalid`);
+          }
+          const audio = new Uint8Array(Buffer.from(chunk.data, 'base64'));
+          totalLength += audio.byteLength;
+          if (totalLength > MAX_TTS_AUDIO_BYTES) {
+            throw new Error(`TTS audio exceeds ${MAX_TTS_AUDIO_BYTES}-byte limit`);
+          }
+          audioChunks.push(audio);
         } else if (chunk.code === 20000000) {
           break;
         } else if (chunk.code && chunk.code !== 0) {
@@ -880,7 +916,6 @@ async function generateDoubaoTTS(
     throw new Error('Doubao TTS: no audio data received');
   }
 
-  const totalLength = audioChunks.reduce((sum, c) => sum + c.length, 0);
   const combined = new Uint8Array(totalLength);
   let offset = 0;
   for (const chunk of audioChunks) {
