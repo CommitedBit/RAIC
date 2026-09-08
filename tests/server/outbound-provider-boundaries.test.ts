@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateText } from 'ai';
 import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 import { generateTTS } from '@/lib/audio/tts-providers';
+import { silentWav } from '../support/tts-audio';
 import { transcribeAudio } from '@/lib/audio/asr-providers';
 import { getModel } from '@/lib/ai/providers';
 import { generateImage, IMAGE_PROVIDERS } from '@/lib/media/image-providers';
@@ -156,7 +157,7 @@ describe('provider-returned URL boundaries', () => {
         Response.json({ output: { audio: { url: 'https://cdn.example/audio.wav' } } }),
       )
       .mockResolvedValueOnce(
-        new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'audio/wav' } }),
+        new Response(silentWav().slice().buffer, { headers: { 'content-type': 'audio/wav' } }),
       );
     const result = await generateTTS(
       {
@@ -169,7 +170,7 @@ describe('provider-returned URL boundaries', () => {
       },
       'Synthetic fixture',
     );
-    expect([...result.audio]).toEqual([1, 2, 3]);
+    expect(result.audio).toEqual(silentWav());
     expect(fetchMock.mock.calls[1][1]?.headers).toBeUndefined();
   });
 

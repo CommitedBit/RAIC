@@ -37,7 +37,8 @@
  *    - Validate config and build API request
  *    - Handle API authentication (apiKey, headers)
  *    - Convert provider-specific parameters (voice, speed, format)
- *    - Return { audio: Uint8Array, format: string }
+ *    - Read binary responses with readTTSAudioResponse(response, requestedFormat)
+ *    - The public generateTTS factory also validates decoded/combined audio bytes
  *
  *    Example:
  *    async function generateElevenLabsTTS(
@@ -66,11 +67,7 @@
  *        throw new Error(`ElevenLabs TTS API error: ${response.statusText}`);
  *      }
  *
- *      const arrayBuffer = await response.arrayBuffer();
- *      return {
- *        audio: new Uint8Array(arrayBuffer),
- *        format: 'mp3',
- *      };
+ *      return readTTSAudioResponse(response, 'mp3');
  *    }
  *
  * 4. Add case to generateTTS() switch statement
@@ -95,6 +92,7 @@
 import type { TTSModelConfig } from './types';
 import { isCustomTTSProvider } from './types';
 import { TTS_PROVIDERS } from './constants';
+import { readTTSAudioResponse, validateTTSAudioPayload } from './tts-response';
 import {
   VOXCPM_AUTO_VOICE_ID,
   VOXCPM_VLLM_MODEL_ID,
@@ -131,6 +129,15 @@ export class TTSRateLimitError extends Error {
  * Generate speech using specified TTS provider
  */
 export async function generateTTS(
+  config: TTSModelConfig,
+  text: string,
+): Promise<TTSGenerationResult> {
+  const result = await generateProviderTTS(config, text);
+  // Also validate providers that encode audio inside JSON or chunk envelopes.
+  return validateTTSAudioPayload(result.audio, config.format);
+}
+
+async function generateProviderTTS(
   config: TTSModelConfig,
   text: string,
 ): Promise<TTSGenerationResult> {
@@ -201,6 +208,7 @@ async function generateOpenAITTS(
       input: text,
       voice: config.voice,
       speed: config.speed || 1.0,
+      response_format: config.format || 'mp3',
     }),
   });
 
@@ -209,12 +217,7 @@ async function generateOpenAITTS(
     throw new Error(`OpenAI TTS API error: ${error.error?.message || response.statusText}`);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  const contentType = response.headers.get('content-type') || '';
-  return {
-    audio: new Uint8Array(arrayBuffer),
-    format: getAudioResponseFormat(contentType),
-  };
+  return readTTSAudioResponse(response, config.format || 'mp3');
 }
 
 async function generateLemonadeTTS(
@@ -247,12 +250,7 @@ async function generateLemonadeTTS(
     throw new Error(`Lemonade TTS API error: ${await readTTSApiError(response)}`);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  const contentType = response.headers.get('content-type') || '';
-  return {
-    audio: new Uint8Array(arrayBuffer),
-    format: getAudioResponseFormat(contentType),
-  };
+  return readTTSAudioResponse(response, config.format || 'wav');
 }
 
 async function generateVoxCPMTTS(
@@ -333,12 +331,7 @@ async function generateVoxCPMTTS(
     throw new Error(`VoxCPM TTS API error: ${await readTTSApiError(response)}`);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  const contentType = response.headers.get('content-type') || '';
-  return {
-    audio: new Uint8Array(arrayBuffer),
-    format: getAudioResponseFormat(contentType),
-  };
+  return readTTSAudioResponse(response, 'wav');
 }
 
 function buildVoxCPMTargetText(text: string, voicePrompt?: string): string {
@@ -348,15 +341,6 @@ function buildVoxCPMTargetText(text: string, voicePrompt?: string): string {
     .replace(/\s+/gu, ' ')
     .trim();
   return prompt ? `(${prompt})${text}` : text;
-}
-
-function getAudioResponseFormat(contentType: string): string {
-  if (contentType.includes('audio/wav') || contentType.includes('audio/x-wav')) return 'wav';
-  if (contentType.includes('audio/mpeg') || contentType.includes('audio/mp3')) return 'mp3';
-  if (contentType.includes('audio/flac')) return 'flac';
-  if (contentType.includes('audio/ogg')) return 'ogg';
-  if (contentType.includes('audio/webm')) return 'webm';
-  return 'mp3';
 }
 
 function getVoxCPMAudioFormat(mimeType?: string, fileName?: string): string {
@@ -573,11 +557,7 @@ async function generateAzureTTS(
     throw new Error(`Azure TTS API error: ${response.statusText}`);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  return {
-    audio: new Uint8Array(arrayBuffer),
-    format: 'mp3',
-  };
+  return readTTSAudioResponse(response, 'mp3');
 }
 
 /**
@@ -616,11 +596,7 @@ async function generateGLMTTS(config: TTSModelConfig, text: string): Promise<TTS
     throw new Error(errorMessage);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  return {
-    audio: new Uint8Array(arrayBuffer),
-    format: 'wav',
-  };
+  return readTTSAudioResponse(response, 'wav');
 }
 
 /**
@@ -675,12 +651,7 @@ async function generateQwenTTS(config: TTSModelConfig, text: string): Promise<TT
     throw new Error(`Failed to download audio from URL: ${audioResponse.statusText}`);
   }
 
-  const arrayBuffer = await audioResponse.arrayBuffer();
-
-  return {
-    audio: new Uint8Array(arrayBuffer),
-    format: 'wav', // Qwen3 TTS returns WAV format
-  };
+  return readTTSAudioResponse(audioResponse, 'wav');
 }
 
 /**
@@ -733,8 +704,8 @@ async function generateMiniMaxTTS(
   }
 
   const cleanedHex = hexAudio.trim();
-  if (cleanedHex.length % 2 !== 0) {
-    throw new Error('MiniMax TTS error: invalid hex audio payload length');
+  if (cleanedHex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(cleanedHex)) {
+    throw new Error('MiniMax TTS error: invalid hex audio payload');
   }
 
   const audio = new Uint8Array(
@@ -791,11 +762,7 @@ async function generateElevenLabsTTS(
     throw new Error(`ElevenLabs TTS API error: ${errorText || response.statusText}`);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  return {
-    audio: new Uint8Array(arrayBuffer),
-    format: requestedFormat,
-  };
+  return readTTSAudioResponse(response, requestedFormat);
 }
 
 /**

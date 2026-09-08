@@ -1,0 +1,11 @@
+# TTS response validation
+
+A provider could return HTTP 200 with an HTML or JSON error page, or an empty body, and the application would label it as MP3 audio. The response now passes a shared content check before it is returned to the API or background media writer.
+
+Binary response handlers require a supported audio MIME type or a generic/absent binary type, reject non-audio headers, and release rejected response bodies. The payload must be nonempty and have a recognized WAV, MP3, AAC, FLAC, Ogg, WebM or MP4 audio-container signature. The returned extension follows the recognized container instead of defaulting arbitrary bytes to MP3. Basic media-signature references are in the [WHATWG MIME Sniffing Standard](https://mimesniff.spec.whatwg.org/#matching-an-audio-or-video-type-pattern).
+
+Headerless PCM, mu-law and A-law data is accepted only when the caller explicitly requested that format and the response MIME type does not contradict it. Obvious HTML/XML or JSON errors are rejected even in this case. OpenAI-compatible requests now forward an explicit output format. The official [OpenAI speech guide](https://developers.openai.com/api/docs/guides/text-to-speech#supported-output-formats) describes PCM as raw samples without a container header.
+
+All TTS providers pass through final byte validation, including MiniMax hex and Doubao chunk envelopes. MiniMax rejects non-hexadecimal payloads. Rate-limit errors retain their existing type. Provider download requests continue to use the validated outbound transport.
+
+Tests reproduce the original HTML, JSON and empty-body failures, preserve a real synthetic silent WAV, exercise every binary adapter, and cover provider-returned downloads, encoded envelopes, MIME handling, explicit raw formats and rate limits. Compressed-format fixtures test signature recognition only. These checks are not a full codec decoder or a measure of intelligible speech; raw samples cannot be proven meaningful from their bytes alone. Previously cached invalid audio may need regeneration. No cache migration, paid synthesis, provider enablement or production deployment is part of this slice. Exact commit and completed repository gates are recorded in the implementation evidence. Package version remains 0.9.2.
