@@ -263,7 +263,11 @@
     "aiGrading": "AI 正在批改中...",
     "aiGradingWait": "请稍候，正在分析你的答案",
     "quizReport": "答题报告",
-    "retry": "重新答题"
+    "retry": "重新答题",
+    "ungraded": "未评分",
+    "excludedFromScore": "未评分的问题不会影响你的得分。",
+    "answerKeyNeedsReview": "参考答案需要教师检查。本题不计入得分。",
+    "gradingUnavailable": "暂时无法提供反馈。你的回答已保存，本题不计入得分。"
   },
   "roundtable": {
     "teacher": "教师",

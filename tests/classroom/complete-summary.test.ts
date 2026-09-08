@@ -25,12 +25,21 @@ const scenes: Scene[] = [
           id: 'q1',
           type: 'single',
           question: 'One?',
+          options: [
+            { value: 'A', label: 'First' },
+            { value: 'B', label: 'Second' },
+          ],
           answer: ['A'],
         },
         {
           id: 'q2',
           type: 'multiple',
           question: 'Many?',
+          options: [
+            { value: 'A', label: 'First' },
+            { value: 'B', label: 'Second' },
+            { value: 'C', label: 'Third' },
+          ],
           answer: ['A', 'C'],
         },
         {
@@ -53,5 +62,13 @@ describe('complete summary', () => {
 
     expect(summary.countsByType).toEqual({ slide: 1, quiz: 1 });
     expect(summary.quiz).toEqual({ correct: 2, total: 2, pct: 100 });
+  });
+
+  it('excludes ambiguous and missing keys from the completion score', () => {
+    const source = structuredClone(scenes);
+    if (source[1].content.type !== 'quiz') throw new Error('Expected fixture quiz');
+    source[1].content.questions[0].answer = ['not an option'];
+    const summary = summarizeScenes(source, () => ({ q1: 'A', q2: ['A', 'C'] }));
+    expect(summary.quiz).toEqual({ correct: 1, total: 1, pct: 100 });
   });
 });

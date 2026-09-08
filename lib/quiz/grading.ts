@@ -1,11 +1,13 @@
 import type { QuizQuestion } from '@/lib/types/stage';
+import { normalizeQuizQuestion } from '@/lib/quiz/normalize';
 
 export interface QuestionResult {
   questionId: string;
   correct: boolean | null;
-  status: 'correct' | 'incorrect';
+  status: 'correct' | 'incorrect' | 'ungraded';
   earned: number;
   aiComment?: string;
+  reason?: 'answer_key' | 'grading_unavailable';
 }
 
 export function arraysEqual(a: string[], b: string[]): boolean {
@@ -21,7 +23,7 @@ export function toArray(v: string | string[] | undefined): string[] {
 }
 
 export function isShortAnswer(q: QuizQuestion): boolean {
-  return q.type === 'short_answer' || (!q.hasAnswer && (!q.answer || q.answer.length === 0));
+  return q.type === 'short_answer' || (q.type as string) === 'text';
 }
 
 /** Grade choice questions locally. Returns results only for non-short-answer questions. */
@@ -31,9 +33,18 @@ export function gradeChoiceQuestions(
 ): QuestionResult[] {
   return questions
     .filter((q) => !isShortAnswer(q))
-    .map((q) => {
+    .map((source): QuestionResult => {
+      const q = normalizeQuizQuestion(source);
+      if (q.answerKeyIssue)
+        return {
+          questionId: q.id,
+          correct: null,
+          status: 'ungraded',
+          earned: 0,
+          reason: 'answer_key',
+        };
       const pts = q.points ?? 1;
-      const userAnswer = toArray(answers[q.id]);
+      const userAnswer = toArray(answers[q.id]).map((value) => value.trim());
       const correctAnswer = toArray(q.answer);
       const correct = arraysEqual(userAnswer, correctAnswer);
       return {
@@ -43,4 +54,29 @@ export function gradeChoiceQuestions(
         earned: correct ? pts : 0,
       };
     });
+}
+
+/** Recalculate legacy choice feedback without repeating billable short-answer grading. */
+export function reconcileQuizResults(
+  questions: QuizQuestion[],
+  answers: Record<string, string | string[]>,
+  saved: QuestionResult[],
+): QuestionResult[] {
+  const choices = new Map(
+    gradeChoiceQuestions(questions, answers).map((result) => [result.questionId, result]),
+  );
+  return questions.map((question): QuestionResult => {
+    if (!isShortAnswer(question)) return choices.get(question.id)!;
+    const previous = saved.find((result) => result.questionId === question.id);
+    if (!previous || previous.correct === null || !Number.isFinite(previous.earned)) {
+      return {
+        questionId: question.id,
+        correct: null,
+        status: 'ungraded',
+        earned: 0,
+        reason: 'grading_unavailable',
+      };
+    }
+    return previous;
+  });
 }

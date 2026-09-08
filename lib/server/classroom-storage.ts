@@ -16,6 +16,7 @@ import type { Scene, Stage } from '@/lib/types/stage';
 import { preserveStageSharedSimulation } from '@/lib/utils/classroom-presentation';
 import { getDataPath } from '@/lib/server/data-root';
 import { sanitizeFormulaContent } from '@/lib/utils/sanitize-latex-html';
+import { normalizeQuizScenes } from '@/lib/quiz/normalize';
 
 export { writeJsonFileAtomic } from '@/lib/server/json-file';
 
@@ -129,7 +130,9 @@ function normalizePersistedClassroomData(value: PersistedClassroomLike): Persist
     stage: sanitizeFormulaContent(
       preserveStageSharedSimulation(value.stage, value.stage.sharedSimulation ?? null),
     ),
-    scenes: Array.isArray(value.scenes) ? sanitizeFormulaContent(value.scenes) : [],
+    scenes: Array.isArray(value.scenes)
+      ? normalizeQuizScenes(sanitizeFormulaContent(value.scenes))
+      : [],
     createdAt,
     updatedAt,
   };

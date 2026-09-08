@@ -177,6 +177,15 @@ export interface QuizOption {
   value: string; // Selection key: "A", "B", "C", "D"
 }
 
+export type QuizAnswerKeyIssue =
+  | 'invalid_options'
+  | 'missing_answer'
+  | 'unknown_answer'
+  | 'ambiguous_answer'
+  | 'invalid_answer_count'
+  | 'conflicting_answers'
+  | 'unsupported_type';
+
 export interface QuizQuestion {
   id: string;
   type: 'single' | 'multiple' | 'short_answer';
@@ -186,6 +195,7 @@ export interface QuizQuestion {
   analysis?: string; // Explanation shown after grading
   commentPrompt?: string; // Grading guidance for text questions
   hasAnswer?: boolean; // Whether auto-grading is possible
+  answerKeyIssue?: QuizAnswerKeyIssue; // Choice question excluded from scoring until corrected
   points?: number; // Points per question (default 1)
 }
 

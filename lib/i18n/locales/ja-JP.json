@@ -263,7 +263,11 @@
     "aiGrading": "AIが採点中...",
     "aiGradingWait": "回答を分析しています。お待ちください",
     "quizReport": "クイズレポート",
-    "retry": "やり直す"
+    "retry": "やり直す",
+    "ungraded": "未採点",
+    "excludedFromScore": "未採点の問題は得点に影響しません。",
+    "answerKeyNeedsReview": "正解の設定には教師の確認が必要です。この問題は採点の対象外です。",
+    "gradingUnavailable": "フィードバックを取得できません。回答は保存され、この問題は採点の対象外です。"
   },
   "roundtable": {
     "teacher": "教師",

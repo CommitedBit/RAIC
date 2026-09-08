@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { sanitizeFormulaContent } from '@/lib/utils/sanitize-latex-html';
+import { normalizeQuizScenes } from '@/lib/quiz/normalize';
 import type {
   ClassroomSourceContext,
   Scene,
@@ -408,7 +409,7 @@ export async function exportDatabase(): Promise<{
 }> {
   return {
     stages: sanitizeFormulaContent(await db.stages.toArray()),
-    scenes: sanitizeFormulaContent(await db.scenes.toArray()),
+    scenes: normalizeQuizScenes(sanitizeFormulaContent(await db.scenes.toArray())),
     chatSessions: await db.chatSessions.toArray(),
     playbackState: await db.playbackState.toArray(),
   };
@@ -428,7 +429,8 @@ export async function importDatabase(data: {
     [db.stages, db.scenes, db.chatSessions, db.playbackState],
     async () => {
       if (data.stages) await db.stages.bulkPut(sanitizeFormulaContent(data.stages));
-      if (data.scenes) await db.scenes.bulkPut(sanitizeFormulaContent(data.scenes));
+      if (data.scenes)
+        await db.scenes.bulkPut(normalizeQuizScenes(sanitizeFormulaContent(data.scenes)));
       if (data.chatSessions) await db.chatSessions.bulkPut(data.chatSessions);
       if (data.playbackState) await db.playbackState.bulkPut(data.playbackState);
     },
@@ -442,7 +444,9 @@ export async function importDatabase(data: {
  * Get all scenes for a course
  */
 export async function getScenesByStageId(stageId: string): Promise<SceneRecord[]> {
-  return sanitizeFormulaContent(await db.scenes.where('stageId').equals(stageId).sortBy('order'));
+  return normalizeQuizScenes(
+    sanitizeFormulaContent(await db.scenes.where('stageId').equals(stageId).sortBy('order')),
+  );
 }
 
 /**

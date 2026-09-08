@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it } from 'vitest';
+import { quizLesson } from '../support/quiz-lesson';
 
 import {
   ANSWERS_KEY_PREFIX,
@@ -49,5 +50,21 @@ describe('quiz persistence', () => {
 
     clearAllForScene('scene-1');
     expect(readAnswersForSummary('scene-1')).toEqual({});
+  });
+  it('recalculates saved legacy choice grades from the current answer key', () => {
+    const { scenes } = quizLesson();
+    if (scenes[0].content.type !== 'quiz') throw new Error('Expected quiz fixture');
+    writeSubmittedAnswers('scene-1', { vector: 'A', ambiguous: 'B' });
+    writeSubmittedResults('scene-1', [
+      { questionId: 'vector', correct: false, status: 'incorrect', earned: 0 },
+      { questionId: 'ambiguous', correct: false, status: 'incorrect', earned: 0 },
+    ]);
+    expect(readSubmittedState('scene-1', scenes[0].content.questions)).toMatchObject({
+      kind: 'reviewing',
+      results: [
+        { questionId: 'vector', correct: true, earned: 2 },
+        { questionId: 'ambiguous', correct: null, status: 'ungraded', earned: 0 },
+      ],
+    });
   });
 });

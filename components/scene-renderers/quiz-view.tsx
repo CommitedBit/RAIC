@@ -24,7 +24,13 @@ import { useDraftCache } from '@/lib/hooks/use-draft-cache';
 import { SpeechButton } from '@/components/audio/speech-button';
 import { toast } from 'sonner';
 import { getBrowserLocalUnsupportedFlowGuard } from '@/lib/utils/browser-local-guards';
-import { gradeChoiceQuestions, isShortAnswer, type QuestionResult } from '@/lib/quiz/grading';
+import {
+  gradeChoiceQuestions,
+  isShortAnswer,
+  reconcileQuizResults,
+  type QuestionResult,
+} from '@/lib/quiz/grading';
+import { normalizeQuizQuestions } from '@/lib/quiz/normalize';
 import { renderQuizMathText } from '@/lib/quiz/math-text';
 import {
   clearSubmitted,
@@ -111,6 +117,8 @@ async function gradeShortAnswerQuestion(
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = (await res.json()) as { score: number; comment: string };
+    if (!Number.isFinite(data.score) || typeof data.comment !== 'string')
+      throw new Error('Invalid grading response');
     const earned = Math.max(0, Math.min(pts, data.score));
     return {
       questionId: q.id,
@@ -121,16 +129,12 @@ async function gradeShortAnswerQuestion(
     };
   } catch (err) {
     log.error('[quiz-view] AI grading failed for', q.id, err);
-    // Fallback: give half credit
     return {
       questionId: q.id,
       correct: null,
-      status: 'incorrect',
-      earned: Math.round(pts * 0.5),
-      aiComment:
-        language === 'zh-CN'
-          ? '评分服务暂时不可用，已给予基础分。'
-          : 'Grading service unavailable. Base score given.',
+      status: 'ungraded',
+      earned: 0,
+      reason: 'grading_unavailable',
     };
   }
 }
@@ -232,19 +236,19 @@ function SingleChoiceQuestion({
   disabled?: boolean;
   result?: QuestionResult;
 }) {
-  const isReview = !!result;
+  const isReview = !!result && result.status !== 'ungraded';
 
   return (
     <QuestionCard question={question} index={index} result={result}>
       <div className="grid gap-2">
-        {question.options?.map((opt) => {
+        {question.options?.map((opt, optionIndex) => {
           const selected = value === opt.value;
           const isCorrectOpt = isReview && question.answer?.includes(opt.value);
           const isWrong = isReview && selected && result?.status === 'incorrect';
 
           return (
             <button
-              key={opt.value}
+              key={`${opt.value}-${optionIndex}`}
               disabled={disabled}
               onClick={() => !disabled && onChange(opt.value)}
               className={cn(
@@ -325,7 +329,7 @@ function MultipleChoiceQuestion({
   disabled?: boolean;
   result?: QuestionResult;
 }) {
-  const isReview = !!result;
+  const isReview = !!result && result.status !== 'ungraded';
   const selected = value ?? [];
 
   const toggle = (optValue: string) => {
@@ -347,14 +351,14 @@ function MultipleChoiceQuestion({
         </p>
       )}
       <div className="grid gap-2">
-        {question.options?.map((opt) => {
+        {question.options?.map((opt, optionIndex) => {
           const isSelected = selected.includes(opt.value);
           const isCorrectOpt = isReview && question.answer?.includes(opt.value);
           const isWrong = isReview && isSelected && !isCorrectOpt;
 
           return (
             <button
-              key={opt.value}
+              key={`${opt.value}-${optionIndex}`}
               disabled={disabled}
               onClick={() => toggle(opt.value)}
               className={cn(
@@ -518,6 +522,7 @@ function QuestionCard({
       className={cn(
         'bg-white dark:bg-gray-800 rounded-2xl border p-5 relative overflow-hidden',
         !isReview && 'border-gray-150 dark:border-gray-700 shadow-sm',
+        result?.status === 'ungraded' && 'border-slate-200 dark:border-slate-700',
         isReview &&
           result.status === 'correct' &&
           'border-emerald-200 dark:border-emerald-800 shadow-sm shadow-emerald-50 dark:shadow-emerald-900/20',
@@ -533,6 +538,7 @@ function QuestionCard({
           !isReview && 'bg-violet-400',
           isReview && result.status === 'correct' && 'bg-emerald-400',
           isReview && result.status === 'incorrect' && 'bg-red-400',
+          result?.status === 'ungraded' && 'bg-slate-400',
         )}
       />
 
@@ -580,8 +586,19 @@ function QuestionCard({
       {/* Body */}
       {children}
 
+      {(question.answerKeyIssue || result?.status === 'ungraded') && (
+        <p
+          className="mt-3 rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-sm text-slate-700 dark:text-slate-300"
+          role="status"
+        >
+          {result?.reason === 'grading_unavailable'
+            ? t('quiz.gradingUnavailable')
+            : t('quiz.answerKeyNeedsReview')}
+        </p>
+      )}
+
       {/* Analysis (review only) */}
-      {isReview && question.analysis && (
+      {isReview && result.status !== 'ungraded' && question.analysis && (
         <div className="mt-3 p-3 rounded-lg bg-blue-50/70 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
           <span className="font-medium">{t('quiz.analysis')}</span>
           <QuizMathText text={question.analysis} allowDisplayMode />
@@ -604,6 +621,19 @@ function ScoreBanner({
   const pct = total > 0 ? Math.round((score / total) * 100) : 0;
   const correctCount = results.filter((r) => r.status === 'correct').length;
   const incorrectCount = results.filter((r) => r.status === 'incorrect').length;
+  const ungradedCount = results.filter((r) => r.status === 'ungraded').length;
+
+  if (total <= 0) {
+    return (
+      <div
+        className="rounded-2xl p-6 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+        role="status"
+      >
+        <p className="font-semibold">{t('quiz.ungraded')}</p>
+        <p className="mt-2 text-sm">{t('quiz.excludedFromScore')}</p>
+      </div>
+    );
+  }
 
   const color = pct >= 80 ? 'emerald' : pct >= 60 ? 'amber' : 'red';
   const colorMap = {
@@ -649,6 +679,11 @@ function ScoreBanner({
               <XCircle className="w-3.5 h-3.5" /> {incorrectCount} {t('quiz.incorrect')}
             </span>
           </div>
+          {ungradedCount > 0 && (
+            <p className="mt-2 text-xs">
+              {ungradedCount} {t('quiz.ungraded')} · {t('quiz.excludedFromScore')}
+            </p>
+          )}
         </div>
 
         {/* Percentage ring */}
@@ -687,9 +722,13 @@ function ScoreBanner({
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export function QuizView({ questions, sceneId }: QuizViewProps) {
+export function QuizView({ questions: sourceQuestions, sceneId }: QuizViewProps) {
   const { t, locale } = useI18n();
-  const initialSubmitted = useMemo(() => readSubmittedState(sceneId), [sceneId]);
+  const questions = useMemo(() => normalizeQuizQuestions(sourceQuestions), [sourceQuestions]);
+  const initialSubmitted = useMemo(
+    () => readSubmittedState(sceneId, questions),
+    [sceneId, questions],
+  );
   const [phase, setPhase] = useState<Phase>(() =>
     initialSubmitted?.kind === 'reviewing'
       ? 'reviewing'
@@ -700,9 +739,20 @@ export function QuizView({ questions, sceneId }: QuizViewProps) {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>(
     () => initialSubmitted?.answers ?? {},
   );
-  const [results, setResults] = useState<QuestionResult[]>(() =>
+  const [storedResults, setResults] = useState<QuestionResult[]>(() =>
     initialSubmitted?.kind === 'reviewing' ? initialSubmitted.results : [],
   );
+  const results = useMemo(
+    () =>
+      phase === 'reviewing'
+        ? reconcileQuizResults(questions, answers, storedResults)
+        : storedResults,
+    [phase, questions, answers, storedResults],
+  );
+
+  useEffect(() => {
+    if (phase === 'reviewing') writeSubmittedResults(sceneId, results);
+  }, [phase, results, sceneId]);
 
   const [prevSceneId, setPrevSceneId] = useState(sceneId);
   if (sceneId !== prevSceneId) {
@@ -747,12 +797,13 @@ export function QuizView({ questions, sceneId }: QuizViewProps) {
   }
 
   const totalPoints = useMemo(
-    () => questions.reduce((sum, q) => sum + (q.points ?? 1), 0),
+    () => questions.reduce((sum, q) => sum + (q.answerKeyIssue ? 0 : (q.points ?? 1)), 0),
     [questions],
   );
 
   const allAnswered = useMemo(() => {
     return questions.every((q) => {
+      if (q.answerKeyIssue) return true;
       const a = answers[q.id];
       if (!a) return false;
       if (Array.isArray(a)) return a.length > 0;
@@ -835,7 +886,22 @@ export function QuizView({ questions, sceneId }: QuizViewProps) {
     clearAnswersCache();
   }, [clearAnswersCache, sceneId]);
 
-  const earnedScore = useMemo(() => results.reduce((sum, r) => sum + r.earned, 0), [results]);
+  const earnedScore = useMemo(
+    () => results.reduce((sum, r) => sum + (r.status === 'ungraded' ? 0 : r.earned), 0),
+    [results],
+  );
+  const gradedPoints = useMemo(
+    () =>
+      questions.reduce(
+        (sum, q) =>
+          sum +
+          (results.some((r) => r.questionId === q.id && r.status !== 'ungraded')
+            ? (q.points ?? 1)
+            : 0),
+        0,
+      ),
+    [questions, results],
+  );
 
   const resultMap = useMemo(() => {
     const map: Record<string, QuestionResult> = {};
@@ -915,6 +981,7 @@ export function QuizView({ questions, sceneId }: QuizViewProps) {
                       index={i}
                       value={answers[q.id] as string | undefined}
                       onChange={(v) => handleSetAnswer(q.id, v)}
+                      disabled={!!q.answerKeyIssue}
                     />
                   );
                 }
@@ -926,6 +993,7 @@ export function QuizView({ questions, sceneId }: QuizViewProps) {
                       index={i}
                       value={answers[q.id] as string[] | undefined}
                       onChange={(v) => handleSetAnswer(q.id, v)}
+                      disabled={!!q.answerKeyIssue}
                     />
                   );
                 }
@@ -1006,7 +1074,7 @@ export function QuizView({ questions, sceneId }: QuizViewProps) {
 
             {/* Results */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-              <ScoreBanner score={earnedScore} total={totalPoints} results={results} />
+              <ScoreBanner score={earnedScore} total={gradedPoints} results={results} />
 
               {questions.map((q, i) => {
                 const r = resultMap[q.id];

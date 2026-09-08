@@ -1,3 +1,4 @@
+import { normalizeQuizQuestion } from '@/lib/quiz/normalize';
 /**
  * Stage 2: Scene content and action generation.
  *
@@ -1102,67 +1103,34 @@ async function generateQuizContent(
 
   log.debug(`Got ${generatedQuestions.length} questions for: ${outline.title}`);
 
-  // Ensure each question has an ID and normalize options format
-  const questions: QuizQuestion[] = generatedQuestions.map((q) => {
-    const isText = q.type === 'short_answer';
-    return {
-      ...q,
-      id: q.id || `q_${nanoid(8)}`,
-      options: isText ? undefined : normalizeQuizOptions(q.options),
-      answer: isText ? undefined : normalizeQuizAnswer(q as unknown as Record<string, unknown>),
-      hasAnswer: isText ? false : true,
-    };
-  });
-
-  return { questions };
-}
-
-/**
- * Normalize quiz options from AI response.
- * AI may generate plain strings ["OptionA", "OptionB"] or QuizOption objects.
- * This normalizes to QuizOption[] format: { value: "A", label: "OptionA" }
- */
-function normalizeQuizOptions(
-  options: unknown[] | undefined,
-): { value: string; label: string }[] | undefined {
-  if (!options || !Array.isArray(options)) return undefined;
-
-  return options.map((opt, index) => {
-    const letter = String.fromCharCode(65 + index); // A, B, C, D...
-
-    if (typeof opt === 'string') {
-      return { value: letter, label: opt };
+  const ids = new Set<string>();
+  const questions: QuizQuestion[] = [];
+  for (const source of generatedQuestions) {
+    if (
+      !source ||
+      typeof source !== 'object' ||
+      typeof source.question !== 'string' ||
+      !source.question.trim()
+    ) {
+      log.error('Generated quiz contains an invalid question');
+      return null;
     }
-
-    if (typeof opt === 'object' && opt !== null) {
-      const obj = opt as Record<string, unknown>;
-      return {
-        value: typeof obj.value === 'string' ? obj.value : letter,
-        label: typeof obj.label === 'string' ? obj.label : String(obj.value || obj.text || letter),
-      };
+    const question = normalizeQuizQuestion({
+      ...source,
+      id: typeof source.id === 'string' && source.id.trim() ? source.id.trim() : `q_${nanoid(8)}`,
+    });
+    if (question.answerKeyIssue || ids.has(question.id)) {
+      log.error(
+        'Generated quiz has an invalid answer key or repeated question ID',
+        question.id,
+        question.answerKeyIssue,
+      );
+      return null;
     }
-
-    return { value: letter, label: String(opt) };
-  });
-}
-
-/**
- * Normalize quiz answer from AI response.
- * AI may generate correctAnswer as string or string[], under various field names.
- * This normalizes to string[] format matching option values.
- */
-function normalizeQuizAnswer(question: Record<string, unknown>): string[] | undefined {
-  // AI might use "correctAnswer", "answer", or "correct_answer"
-  const raw =
-    question.answer ??
-    question.correctAnswer ??
-    (question as Record<string, unknown>).correct_answer;
-  if (!raw) return undefined;
-
-  if (Array.isArray(raw)) {
-    return raw.map(String);
+    ids.add(question.id);
+    questions.push(question);
   }
-  return [String(raw)];
+  return questions.length ? { questions } : null;
 }
 
 // ==================== Deep Interactive Widget Generation ====================

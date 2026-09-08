@@ -22,6 +22,7 @@ export function summarizeScenes(scenes: Scene[], readAnswers: AnswerReader): Com
     const answers = readAnswers(scene.id);
     const results = gradeChoiceQuestions(questions, answers);
     for (const result of results) {
+      if (result.status === 'ungraded') continue;
       total += 1;
       if (result.correct === true) correct += 1;
     }

@@ -1,4 +1,5 @@
-import type { QuestionResult } from '@/lib/quiz/grading';
+import { reconcileQuizResults, type QuestionResult } from '@/lib/quiz/grading';
+import type { QuizQuestion } from '@/lib/types/stage';
 
 export const DRAFT_KEY_PREFIX = 'quizDraft:';
 export const ANSWERS_KEY_PREFIX = 'quizAnswers:';
@@ -40,7 +41,7 @@ function safeRemove(key: string): void {
   }
 }
 
-export function readSubmittedState(sceneId: string): SubmittedState {
+export function readSubmittedState(sceneId: string, questions?: QuizQuestion[]): SubmittedState {
   const rawAnswers = safeGet(ANSWERS_KEY_PREFIX + sceneId);
   if (!rawAnswers) return null;
   try {
@@ -49,7 +50,11 @@ export function readSubmittedState(sceneId: string): SubmittedState {
     if (rawResults) {
       const results = JSON.parse(rawResults) as QuestionResult[];
       if (Array.isArray(results) && results.length > 0) {
-        return { kind: 'reviewing', answers, results };
+        return {
+          kind: 'reviewing',
+          answers,
+          results: questions ? reconcileQuizResults(questions, answers, results) : results,
+        };
       }
     }
     return { kind: 'answering', answers };

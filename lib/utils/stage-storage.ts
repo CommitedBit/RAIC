@@ -12,6 +12,7 @@ import { saveChatSessions, loadChatSessions, deleteChatSessions } from './chat-s
 import { clearPlaybackState } from './playback-storage';
 import { createLogger } from '@/lib/logger';
 import { sanitizeFormulaContent } from '@/lib/utils/sanitize-latex-html';
+import { normalizeQuizScene, normalizeQuizScenes } from '@/lib/quiz/normalize';
 
 const log = createLogger('StageStorage');
 
@@ -63,7 +64,7 @@ export async function saveStageData(stageId: string, data: StageStoreData): Prom
     if (data.scenes && data.scenes.length > 0) {
       await db.scenes.bulkPut(
         data.scenes.map((scene, index) => ({
-          ...sanitizeFormulaContent(scene),
+          ...normalizeQuizScene(sanitizeFormulaContent(scene)),
           stageId,
           order: scene.order ?? index,
           createdAt: scene.createdAt || now,
@@ -106,7 +107,7 @@ export async function loadStageData(stageId: string): Promise<StageStoreData | n
 
     return {
       stage: sanitizeFormulaContent(stage),
-      scenes: sanitizeFormulaContent(scenes),
+      scenes: normalizeQuizScenes(sanitizeFormulaContent(scenes)),
       currentSceneId: stage.currentSceneId || scenes[0]?.id || null,
       chats,
     };

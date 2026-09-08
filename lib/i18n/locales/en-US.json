@@ -263,7 +263,11 @@
     "aiGrading": "AI is grading...",
     "aiGradingWait": "Please wait, analyzing your answers",
     "quizReport": "Quiz Report",
-    "retry": "Retry"
+    "retry": "Retry",
+    "ungraded": "Not graded",
+    "excludedFromScore": "Ungraded questions do not affect your score.",
+    "answerKeyNeedsReview": "The answer key needs teacher review. This question is excluded from your score.",
+    "gradingUnavailable": "Feedback is unavailable. Your response is saved, and this question is excluded from your score."
   },
   "roundtable": {
     "teacher": "TEACHER",
