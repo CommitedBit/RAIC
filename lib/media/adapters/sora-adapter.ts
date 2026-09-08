@@ -91,6 +91,7 @@ async function submitVideoGeneration(
   apiKey: string,
   model: string,
   options: VideoGenerationOptions,
+  fetchImpl?: typeof fetch,
 ): Promise<SoraVideoJob> {
   const { size } = getSize(options);
   const body = new FormData();
@@ -99,7 +100,7 @@ async function submitVideoGeneration(
   body.set('size', size);
   body.set('seconds', String(options.duration || 8));
 
-  const response = await fetch(`${baseUrl}/videos`, {
+  const response = await (fetchImpl ?? fetch)(`${baseUrl}/videos`, {
     method: 'POST',
     headers: authHeaders(apiKey),
     body,
@@ -117,8 +118,9 @@ async function pollVideoStatus(
   baseUrl: string,
   apiKey: string,
   videoId: string,
+  fetchImpl?: typeof fetch,
 ): Promise<SoraVideoJob> {
-  const response = await fetch(`${baseUrl}/videos/${videoId}`, {
+  const response = await (fetchImpl ?? fetch)(`${baseUrl}/videos/${videoId}`, {
     method: 'GET',
     headers: authHeaders(apiKey),
   });
@@ -135,8 +137,9 @@ async function downloadVideoContent(
   baseUrl: string,
   apiKey: string,
   videoId: string,
+  fetchImpl?: typeof fetch,
 ): Promise<string> {
-  const response = await fetch(`${baseUrl}/videos/${videoId}/content`, {
+  const response = await (fetchImpl ?? fetch)(`${baseUrl}/videos/${videoId}/content`, {
     method: 'GET',
     headers: authHeaders(apiKey),
   });
@@ -156,7 +159,7 @@ export async function testSoraConnectivity(
 ): Promise<{ success: boolean; message: string }> {
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
   try {
-    const response = await fetch(`${baseUrl}/models`, {
+    const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/models`, {
       method: 'GET',
       redirect: 'manual',
       headers: authHeaders(config.apiKey),
@@ -187,7 +190,13 @@ export async function generateWithSora(
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
   const { width, height } = getSize(options);
 
-  let current = await submitVideoGeneration(baseUrl, config.apiKey, model, options);
+  let current = await submitVideoGeneration(
+    baseUrl,
+    config.apiKey,
+    model,
+    options,
+    config.fetchImpl,
+  );
   if (!current.id) {
     throw new Error('Sora returned a video job without an id');
   }
@@ -195,7 +204,7 @@ export async function generateWithSora(
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
     if (current.status === 'completed') {
       return {
-        url: await downloadVideoContent(baseUrl, config.apiKey, current.id),
+        url: await downloadVideoContent(baseUrl, config.apiKey, current.id, config.fetchImpl),
         duration: Number(current.seconds || options.duration || 8),
         width,
         height,
@@ -207,7 +216,7 @@ export async function generateWithSora(
     }
 
     await delay(POLL_INTERVAL_MS);
-    current = await pollVideoStatus(baseUrl, config.apiKey, current.id);
+    current = await pollVideoStatus(baseUrl, config.apiKey, current.id, config.fetchImpl);
   }
 
   throw new Error(

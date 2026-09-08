@@ -11,6 +11,7 @@ import type { AuthContext } from '@/lib/auth/current-user';
 import { getRequestAuth } from '@/lib/auth/current-user';
 import { resolveLLMGovernedConfig } from '@/lib/server/ai-governance';
 import { validateUrlForSSRF } from '@/lib/server/ssrf-guard';
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 
 export interface ResolvedModel extends ModelWithInfo {
   modelString: string;
@@ -31,7 +32,7 @@ export async function resolveModel(params: {
   const requestedModelString = params.modelString || process.env.DEFAULT_MODEL || 'gpt-5.4-mini';
   const { providerId, modelId } = parseModelString(requestedModelString);
 
-  if (params.baseUrl && process.env.NODE_ENV === 'production') {
+  if (params.baseUrl) {
     const ssrfError = await validateUrlForSSRF(params.baseUrl);
     if (ssrfError) {
       throw new Error(ssrfError);
@@ -57,6 +58,10 @@ export async function resolveModel(params: {
     baseUrl: resolved.baseUrl,
     proxy: resolved.proxy,
     providerType: resolved.providerType,
+    fetchImpl: createValidatedFetch({
+      trustedBaseUrl: resolved.trustedBaseUrl,
+      proxy: resolved.proxy,
+    }),
   });
 
   return {

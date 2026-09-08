@@ -83,6 +83,7 @@ interface ScenarioProviderRegistryEntry {
 }
 
 interface ScenarioProviderSelection {
+  trustedBaseUrl?: string;
   providerId: string;
   modelId: string | null;
   apiKey: string;
@@ -1000,6 +1001,7 @@ export async function resolveScenarioManagedProviderRoute(
         modelId: attempt.modelId,
         apiKey: attempt.result.apiKey,
         baseUrl: attempt.result.baseUrl,
+        trustedBaseUrl: attempt.result.trustedBaseUrl,
         scenarioProfileId: profile.id,
       };
     }

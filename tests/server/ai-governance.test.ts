@@ -108,6 +108,7 @@ describe('ai-governance resolver', () => {
 
     expect(resolved.apiKey).toBe('bootstrap-key');
     expect(resolved.baseUrl).toBe('https://bootstrap.example.com/v1');
+    expect(resolved.trustedBaseUrl).toBe('https://bootstrap.example.com/v1');
     expect(resolved.source).toBe('bootstrap');
   });
 
@@ -193,6 +194,24 @@ describe('ai-governance resolver', () => {
 
     expect(withoutPersonalOverride.apiKey).toBe('decrypted:org-secret');
     expect(withoutPersonalOverride.source).toBe('organization');
+    expect(withoutPersonalOverride.trustedBaseUrl).toBe('https://org-llm.example.com');
+
+    findOrganizationAIPolicyMock.mockResolvedValue({
+      id: 'policy-1',
+      organizationId: 'org-1',
+      allowPersonalOverrides: true,
+      allowPersonalCustomBaseUrls: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    const keyOnlyOverride = await resolveLLMGovernedConfig({
+      auth: authContext,
+      providerId: 'openai',
+      modelId: 'gpt-4o',
+    });
+    expect(keyOnlyOverride.source).toBe('personal');
+    expect(keyOnlyOverride.apiKey).toBe('decrypted:user-secret');
+    expect(keyOnlyOverride.trustedBaseUrl).toBe('https://org-llm.example.com');
 
     findOrganizationAIPolicyMock.mockResolvedValue({
       id: 'policy-1',
@@ -212,6 +231,7 @@ describe('ai-governance resolver', () => {
     expect(withPersonalOverride.apiKey).toBe('decrypted:user-secret');
     expect(withPersonalOverride.baseUrl).toBe('https://user-llm.example.com');
     expect(withPersonalOverride.source).toBe('personal');
+    expect(withPersonalOverride.trustedBaseUrl).toBeUndefined();
   });
 
   it('resolves built-in personal overrides without org provider config', async () => {

@@ -1,3 +1,4 @@
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 /**
  * Verify Video Provider API
  *
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-video-base-url') || request.headers.get('x-base-url') || undefined;
     const auth = await getRequestAuth(request);
 
-    if (clientBaseUrl && process.env.NODE_ENV === 'production') {
+    if (clientBaseUrl) {
       const ssrfError = await validateUrlForSSRF(clientBaseUrl);
       if (ssrfError) {
         return apiErrorWithRequestSession(request, 'INVALID_URL', 403, ssrfError);
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest) {
       providerId: resolved.providerId as VideoProviderId,
       apiKey: resolved.apiKey,
       baseUrl: resolved.baseUrl,
+      fetchImpl: createValidatedFetch({ trustedBaseUrl: resolved.trustedBaseUrl }),
       model: resolved.modelId || model,
     });
 

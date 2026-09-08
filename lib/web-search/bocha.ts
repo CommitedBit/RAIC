@@ -45,11 +45,12 @@ export async function searchWithBocha(params: {
   apiKey: string;
   maxResults?: number;
   baseUrl?: string;
+  fetchImpl?: typeof fetch;
 }): Promise<WebSearchResult> {
   const { query, apiKey, maxResults = 10, baseUrl } = params;
   const startedAt = Date.now();
 
-  const res = await proxyFetch(buildBochaWebSearchUrl(baseUrl), {
+  const res = await (params.fetchImpl ?? proxyFetch)(buildBochaWebSearchUrl(baseUrl), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

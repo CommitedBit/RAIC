@@ -1,3 +1,4 @@
+import { createValidatedFetch, validatedFetch } from '@/lib/server/outbound-fetch';
 /**
  * Server-side media and TTS generation for classrooms.
  *
@@ -40,8 +41,20 @@ async function ensureDir(dir: string) {
 const DOWNLOAD_TIMEOUT_MS = 120_000; // 2 minutes
 const DOWNLOAD_MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
-async function downloadToBuffer(url: string): Promise<Buffer> {
-  const resp = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
+async function downloadToBuffer(
+  url: string,
+  fetchImpl: typeof fetch = validatedFetch,
+): Promise<Buffer> {
+  // Sora/Veo and some image adapters return inline bytes, requiring no network request.
+  if (url.startsWith('data:')) {
+    const inline =
+      /^data:(?:image\/(?:png|jpeg|webp)|video\/mp4);base64,([A-Za-z0-9+/]*={0,2})$/.exec(url);
+    if (!inline || inline[1].length > Math.ceil(DOWNLOAD_MAX_SIZE / 3) * 4) {
+      throw new Error('Invalid or oversized inline media');
+    }
+    return Buffer.from(inline[1], 'base64');
+  }
+  const resp = await fetchImpl(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
   if (!resp.ok) throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
   const contentLength = Number(resp.headers.get('content-length') || 0);
   if (contentLength > DOWNLOAD_MAX_SIZE) {
@@ -77,6 +90,7 @@ async function resolveFirstBackgroundProvider<T extends string>(input: {
 }
 
 interface ResolvedImageProviderConfig {
+  trustedBaseUrl?: string;
   providerId: ImageProviderId;
   apiKey: string;
   baseUrl?: string;
@@ -88,6 +102,7 @@ function resolveImageProviderConfig(
   config: {
     providerId: string;
     apiKey?: string;
+    trustedBaseUrl?: string;
     baseUrl?: string;
     modelId?: string;
   },
@@ -124,6 +139,7 @@ function resolveImageProviderConfig(
     providerId,
     apiKey,
     baseUrl,
+    trustedBaseUrl: source === 'governed background config' ? config.trustedBaseUrl : undefined,
     modelId,
   };
 }
@@ -166,6 +182,7 @@ async function resolveImageProviderForClassroom(scope: {
     providerId,
     apiKey: resolvedImageProvider.apiKey,
     baseUrl: resolvedImageProvider.baseUrl,
+    trustedBaseUrl: resolvedImageProvider.trustedBaseUrl,
     modelId: resolvedImageProvider.modelId,
   });
 
@@ -249,6 +266,9 @@ export async function generateMediaForClassroom(
             providerId,
             apiKey: resolvedImageProvider.apiKey,
             baseUrl: resolvedImageProvider.baseUrl,
+            fetchImpl: createValidatedFetch({
+              trustedBaseUrl: resolvedImageProvider.trustedBaseUrl,
+            }),
             model,
           },
           { prompt: req.prompt, aspectRatio: req.aspectRatio || '16:9' },
@@ -260,7 +280,10 @@ export async function generateMediaForClassroom(
           buf = Buffer.from(result.base64, 'base64');
           ext = 'png';
         } else if (result.url) {
-          buf = await downloadToBuffer(result.url);
+          buf = await downloadToBuffer(
+            result.url,
+            createValidatedFetch({ trustedBaseUrl: resolvedImageProvider.trustedBaseUrl }),
+          );
           const urlExt = path.extname(new URL(result.url).pathname).replace('.', '');
           ext = ['png', 'jpg', 'jpeg', 'webp'].includes(urlExt) ? urlExt : 'png';
         } else {
@@ -328,12 +351,18 @@ export async function generateMediaForClassroom(
             providerId,
             apiKey: resolvedVideoProvider.apiKey,
             baseUrl: resolvedVideoProvider.baseUrl,
+            fetchImpl: createValidatedFetch({
+              trustedBaseUrl: resolvedVideoProvider.trustedBaseUrl,
+            }),
             model,
           },
           normalized,
         );
 
-        const buf = await downloadToBuffer(result.url);
+        const buf = await downloadToBuffer(
+          result.url,
+          createValidatedFetch({ trustedBaseUrl: resolvedVideoProvider.trustedBaseUrl }),
+        );
         const filename = `${req.elementId}.mp4`;
         await fs.writeFile(path.join(mediaDir, filename), buf);
         mediaMap[req.elementId] = mediaServingUrl(baseUrl, classroomId, `media/${filename}`);
@@ -453,6 +482,7 @@ export async function generateTTSForClassroom(
               DEFAULT_TTS_MODELS[providerId as keyof typeof DEFAULT_TTS_MODELS] ||
               '',
             baseUrl: ttsBaseUrl,
+            fetchImpl: createValidatedFetch({ trustedBaseUrl: resolvedTTSProvider.trustedBaseUrl }),
             voice,
             speed: speechAction.speed,
           },

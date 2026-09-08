@@ -1,3 +1,4 @@
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 import { nanoid } from 'nanoid';
 import { callLLM, summarizeProviderError } from '@/lib/ai/llm';
 import { createStageAPI } from '@/lib/api/stage-api';
@@ -383,6 +384,10 @@ export async function generateClassroom(
           query: searchQuery.query,
           apiKey: resolvedWebSearch.apiKey,
           baseUrl: resolvedWebSearch.baseUrl,
+          fetchImpl: createValidatedFetch({
+            trustedBaseUrl: resolvedWebSearch.trustedBaseUrl,
+            useEnvProxy: true,
+          }),
         });
         researchContext = formatSearchResultsAsContext(searchResult);
         if (researchContext) {

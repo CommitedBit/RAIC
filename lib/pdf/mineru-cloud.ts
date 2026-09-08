@@ -98,11 +98,11 @@ interface BatchExtractRow {
   err_msg?: string;
 }
 
-async function parseMinerUZip(zipUrl: string): Promise<ParsedPdfContent> {
+async function parseMinerUZip(zipUrl: string, config: PDFParserConfig): Promise<ParsedPdfContent> {
   log.info('[MinerU Cloud] Downloading result ZIP...');
 
   const zipRes = await fetchWithRetry(
-    () => fetch(zipUrl, { signal: AbortSignal.timeout(TIMEOUTS.zip) }),
+    () => (config.fetchImpl ?? fetch)(zipUrl, { signal: AbortSignal.timeout(TIMEOUTS.zip) }),
     'ZIP download',
   );
   if (!zipRes.ok) {
@@ -202,7 +202,7 @@ export async function parseWithMinerUCloud(
   });
 
   const batchData = await fetchWithRetry(async () => {
-    const res = await fetch(`${apiRoot}/file-urls/batch`, {
+    const res = await (config.fetchImpl ?? fetch)(`${apiRoot}/file-urls/batch`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -232,7 +232,7 @@ export async function parseWithMinerUCloud(
 
   const putRes = await fetchWithRetry(
     () =>
-      fetch(uploadUrls[0], {
+      (config.fetchImpl ?? fetch)(uploadUrls[0], {
         method: 'PUT',
         body: new Blob([
           pdfBuffer.buffer.slice(
@@ -258,10 +258,13 @@ export async function parseWithMinerUCloud(
   while (Date.now() < deadline) {
     const statusData = await fetchWithRetry(
       async () => {
-        const res = await fetch(`${apiRoot}/extract-results/batch/${batchData.batch_id}`, {
-          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-          signal: AbortSignal.timeout(TIMEOUTS.poll),
-        });
+        const res = await (config.fetchImpl ?? fetch)(
+          `${apiRoot}/extract-results/batch/${batchData.batch_id}`,
+          {
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+            signal: AbortSignal.timeout(TIMEOUTS.poll),
+          },
+        );
         return readMinerUJson<{ extract_result?: BatchExtractRow | BatchExtractRow[] }>(
           res,
           'extract-results/batch',
@@ -293,7 +296,7 @@ export async function parseWithMinerUCloud(
     }
 
     if (row.state === 'done' && row.full_zip_url) {
-      return parseMinerUZip(row.full_zip_url);
+      return parseMinerUZip(row.full_zip_url, config);
     }
 
     await sleep(POLL_INTERVAL_MS);

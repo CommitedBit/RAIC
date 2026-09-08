@@ -1,3 +1,4 @@
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 import { NextRequest } from 'next/server';
 import { getRequestAuth } from '@/lib/auth/current-user';
 import { createLogger } from '@/lib/logger';
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     const clientBaseUrl = (baseUrl as string | undefined) || undefined;
-    if (clientBaseUrl && process.env.NODE_ENV === 'production') {
+    if (clientBaseUrl) {
       const ssrfError = await validateUrlForSSRF(clientBaseUrl);
       if (ssrfError) {
         return apiErrorWithRequestSession(req, 'INVALID_URL', 403, ssrfError);
@@ -59,14 +60,17 @@ export async function POST(req: NextRequest) {
       }
 
       const cloudBase = (resolved.baseUrl || MINERU_CLOUD_DEFAULT_BASE).replace(/\/+$/, '');
-      const response = await fetch(`${cloudBase}/extract-results/batch/test-connection`, {
-        headers: {
-          Authorization: `Bearer ${resolved.apiKey}`,
-          Accept: 'application/json',
+      const response = await createValidatedFetch({ trustedBaseUrl: resolved.trustedBaseUrl })(
+        `${cloudBase}/extract-results/batch/test-connection`,
+        {
+          headers: {
+            Authorization: `Bearer ${resolved.apiKey}`,
+            Accept: 'application/json',
+          },
+          signal: AbortSignal.timeout(10000),
+          redirect: 'manual',
         },
-        signal: AbortSignal.timeout(10000),
-        redirect: 'manual',
-      });
+      );
 
       if (response.status >= 300 && response.status < 400) {
         return apiErrorWithRequestSession(
@@ -104,11 +108,14 @@ export async function POST(req: NextRequest) {
       headers['Authorization'] = `Bearer ${resolved.apiKey}`;
     }
 
-    const response = await fetch(resolvedBaseUrl, {
-      headers,
-      signal: AbortSignal.timeout(10000),
-      redirect: 'manual',
-    });
+    const response = await createValidatedFetch({ trustedBaseUrl: resolved.trustedBaseUrl })(
+      resolvedBaseUrl,
+      {
+        headers,
+        signal: AbortSignal.timeout(10000),
+        redirect: 'manual',
+      },
+    );
 
     if (response.status >= 300 && response.status < 400) {
       return apiErrorWithRequestSession(

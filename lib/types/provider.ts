@@ -218,6 +218,7 @@ export interface ProviderConfig {
  * Model configuration for API calls
  */
 export interface ModelConfig {
+  fetchImpl?: typeof fetch;
   providerId: ProviderId;
   modelId: string;
   apiKey: string;

@@ -190,7 +190,7 @@ async function generateOpenAITTS(
   const baseUrl = config.baseUrl || TTS_PROVIDERS['openai-tts'].defaultBaseUrl;
 
   // Use gpt-4o-mini-tts for best quality and intelligent realtime applications
-  const response = await fetch(`${baseUrl}/audio/speech`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/audio/speech`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -228,7 +228,7 @@ async function generateLemonadeTTS(
   const modelId = config.modelId || TTS_PROVIDERS['lemonade-tts'].defaultModelId;
   const voice = config.voice || 'af_heart';
 
-  const response = await fetch(`${baseUrl}/audio/speech`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/audio/speech`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
@@ -298,6 +298,7 @@ async function generateVoxCPMTTS(
             referenceAudioName: options.referenceAudioName,
           },
           config.apiKey,
+          config.fetchImpl,
         )
       : backend === 'python-api'
         ? await postVoxCPMPythonAPI(
@@ -314,6 +315,7 @@ async function generateVoxCPMTTS(
               referenceAudioName: options.referenceAudioName,
             },
             config.apiKey,
+            config.fetchImpl,
           )
         : await postVoxCPMVLLMOmni(
             baseUrl,
@@ -415,7 +417,7 @@ async function postVoxCPMVLLMOmni(
     }
   }
 
-  return fetch(getVLLMOmniSpeechUrl(baseUrl), {
+  return (config.fetchImpl ?? fetch)(getVLLMOmniSpeechUrl(baseUrl), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
@@ -459,6 +461,7 @@ async function postVoxCPMPythonAPI(
     referenceAudioName?: string;
   },
   apiKey?: string,
+  fetchImpl?: typeof fetch,
 ): Promise<Response> {
   const formData = new FormData();
   formData.set('text', params.targetText);
@@ -477,7 +480,7 @@ async function postVoxCPMPythonAPI(
     }
   }
 
-  return fetch(`${baseUrl}/tts/upload`, {
+  return (fetchImpl ?? fetch)(`${baseUrl}/tts/upload`, {
     method: 'POST',
     headers: getBackendAuthHeaders(apiKey),
     body: formData,
@@ -495,6 +498,7 @@ async function postVoxCPMNanoVLLM(
     referenceAudioName?: string;
   },
   apiKey?: string,
+  fetchImpl?: typeof fetch,
 ): Promise<Response> {
   const payload: Record<string, unknown> = {
     target_text: params.targetText,
@@ -512,7 +516,7 @@ async function postVoxCPMNanoVLLM(
     }
   }
 
-  return fetch(`${baseUrl}/generate`, {
+  return (fetchImpl ?? fetch)(`${baseUrl}/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
@@ -555,7 +559,7 @@ async function generateAzureTTS(
     </speak>
   `.trim();
 
-  const response = await fetch(`${baseUrl}/cognitiveservices/v1`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/cognitiveservices/v1`, {
     method: 'POST',
     headers: {
       'Ocp-Apim-Subscription-Key': config.apiKey!,
@@ -582,7 +586,7 @@ async function generateAzureTTS(
 async function generateGLMTTS(config: TTSModelConfig, text: string): Promise<TTSGenerationResult> {
   const baseUrl = config.baseUrl || TTS_PROVIDERS['glm-tts'].defaultBaseUrl;
 
-  const response = await fetch(`${baseUrl}/audio/speech`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/audio/speech`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -629,24 +633,27 @@ async function generateQwenTTS(config: TTSModelConfig, text: string): Promise<TT
   // speed 1.0 = rate 0, speed 2.0 = rate 500, speed 0.5 = rate -250
   const rate = Math.round(((config.speed || 1.0) - 1.0) * 500);
 
-  const response = await fetch(`${baseUrl}/services/aigc/multimodal-generation/generation`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json; charset=utf-8',
+  const response = await (config.fetchImpl ?? fetch)(
+    `${baseUrl}/services/aigc/multimodal-generation/generation`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify({
+        model: config.modelId || 'qwen3-tts-flash',
+        input: {
+          text,
+          voice: config.voice,
+          language_type: 'Chinese', // Default to Chinese, can be made configurable
+        },
+        parameters: {
+          rate, // Speech rate from -500 to 500
+        },
+      }),
     },
-    body: JSON.stringify({
-      model: config.modelId || 'qwen3-tts-flash',
-      input: {
-        text,
-        voice: config.voice,
-        language_type: 'Chinese', // Default to Chinese, can be made configurable
-      },
-      parameters: {
-        rate, // Speech rate from -500 to 500
-      },
-    }),
-  });
+  );
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => response.statusText);
@@ -662,7 +669,7 @@ async function generateQwenTTS(config: TTSModelConfig, text: string): Promise<TT
 
   // Download audio from URL
   const audioUrl = data.output.audio.url;
-  const audioResponse = await fetch(audioUrl);
+  const audioResponse = await (config.fetchImpl ?? fetch)(audioUrl);
 
   if (!audioResponse.ok) {
     throw new Error(`Failed to download audio from URL: ${audioResponse.statusText}`);
@@ -687,7 +694,7 @@ async function generateMiniMaxTTS(
     /\/$/,
     '',
   );
-  const response = await fetch(`${baseUrl}/v1/t2a_v2`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/v1/t2a_v2`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -759,7 +766,7 @@ async function generateElevenLabsTTS(
   };
   const outputFormat = outputFormatMap[requestedFormat] || outputFormatMap.mp3;
 
-  const response = await fetch(
+  const response = await (config.fetchImpl ?? fetch)(
     `${baseUrl}/text-to-speech/${encodeURIComponent(config.voice)}?output_format=${outputFormat}`,
     {
       method: 'POST',
@@ -841,7 +848,7 @@ async function generateDoubaoTTS(
   const baseUrl = config.baseUrl || TTS_PROVIDERS['doubao-tts'].defaultBaseUrl;
   const speechRate = Math.round(((config.speed || 1.0) - 1.0) * 100);
 
-  const response = await fetch(`${baseUrl}/unidirectional`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/unidirectional`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

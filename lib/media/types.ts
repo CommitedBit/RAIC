@@ -126,6 +126,7 @@ export interface ImageProviderConfig {
  * Combines provider selection with authentication credentials.
  */
 export interface ImageGenerationConfig {
+  fetchImpl?: typeof fetch;
   /** Which image provider to use */
   providerId: ImageProviderId;
   /** API key for authentication */
@@ -234,6 +235,7 @@ export interface VideoProviderConfig {
  * Combines provider selection with authentication credentials.
  */
 export interface VideoGenerationConfig {
+  fetchImpl?: typeof fetch;
   /** Which video provider to use */
   providerId: VideoProviderId;
   /** API key for authentication */

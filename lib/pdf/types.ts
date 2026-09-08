@@ -23,6 +23,7 @@ export interface PDFProviderConfig {
  * PDF Parser Configuration for API calls
  */
 export interface PDFParserConfig {
+  fetchImpl?: typeof fetch;
   providerId: PDFProviderId;
   apiKey?: string;
   baseUrl?: string;

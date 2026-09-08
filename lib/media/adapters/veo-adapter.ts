@@ -87,6 +87,7 @@ async function submitVideoGeneration(
   apiKey: string,
   model: string,
   options: VideoGenerationOptions,
+  fetchImpl?: typeof fetch,
 ): Promise<VeoOperation> {
   const url = `${baseUrl}/v1beta/models/${model}:predictLongRunning`;
 
@@ -102,7 +103,7 @@ async function submitVideoGeneration(
     body.parameters = parameters;
   }
 
-  const response = await fetch(url, {
+  const response = await (fetchImpl ?? fetch)(url, {
     method: 'POST',
     headers: apiHeaders(apiKey),
     body: JSON.stringify(body),
@@ -125,10 +126,11 @@ async function pollOperation(
   apiKey: string,
   model: string,
   operationName: string,
+  fetchImpl?: typeof fetch,
 ): Promise<VeoOperation> {
   const url = `${baseUrl}/v1beta/models/${model}:fetchPredictOperation`;
 
-  const response = await fetch(url, {
+  const response = await (fetchImpl ?? fetch)(url, {
     method: 'POST',
     headers: apiHeaders(apiKey),
     body: JSON.stringify({ operationName }),
@@ -160,7 +162,7 @@ export async function testVeoConnectivity(
   // Try ?key= query param first (direct Google API), fall back to x-goog-api-key header (proxy)
   let response: Response | null = null;
   try {
-    response = await fetch(`${url}?key=${config.apiKey}`, {
+    response = await (config.fetchImpl ?? fetch)(`${url}?key=${config.apiKey}`, {
       method: 'GET',
       redirect: 'manual',
     });
@@ -169,7 +171,7 @@ export async function testVeoConnectivity(
   }
   if (!response || !response.ok) {
     try {
-      response = await fetch(url, {
+      response = await (config.fetchImpl ?? fetch)(url, {
         method: 'GET',
         redirect: 'manual',
         headers: { 'x-goog-api-key': config.apiKey },
@@ -208,7 +210,13 @@ export async function generateWithVeo(
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
 
   // 1. Submit
-  const operation = await submitVideoGeneration(baseUrl, config.apiKey, model, options);
+  const operation = await submitVideoGeneration(
+    baseUrl,
+    config.apiKey,
+    model,
+    options,
+    config.fetchImpl,
+  );
 
   if (!operation.name) {
     throw new Error('Veo returned operation without name');
@@ -222,7 +230,7 @@ export async function generateWithVeo(
       throw new Error('Veo video generation timed out after 10 minutes');
     }
     await delay(POLL_INTERVAL_MS);
-    current = await pollOperation(baseUrl, config.apiKey, model, current.name);
+    current = await pollOperation(baseUrl, config.apiKey, model, current.name, config.fetchImpl);
     pollCount++;
   }
 

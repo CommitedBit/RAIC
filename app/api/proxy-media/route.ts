@@ -1,3 +1,4 @@
+import { validatedFetch } from '@/lib/server/outbound-fetch';
 /**
  * Media Proxy API
  *
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     }, timeoutMs);
 
     // Disable redirect following to prevent redirect-to-internal attacks
-    const response = await fetch(url, {
+    const response = await validatedFetch(url, {
       redirect: 'manual',
       signal: controller.signal,
     });

@@ -34,7 +34,7 @@ export async function testGrokImageConnectivity(
   return probeAuth({
     providerName: 'Grok Image',
     request: () =>
-      fetch(`${baseUrl}/images/generations`, {
+      (config.fetchImpl ?? fetch)(`${baseUrl}/images/generations`, {
         method: 'POST',
         redirect: 'manual',
         headers: {
@@ -56,7 +56,7 @@ export async function generateWithGrokImage(
 ): Promise<ImageGenerationResult> {
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
 
-  const response = await fetch(`${baseUrl}/images/generations`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/images/generations`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

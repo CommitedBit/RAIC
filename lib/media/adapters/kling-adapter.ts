@@ -134,7 +134,7 @@ export async function testKlingConnectivity(
     request: async () => {
       const { accessKey, secretKey } = parseApiKey(config.apiKey);
       const token = generateJWT(accessKey, secretKey);
-      return fetch(`${baseUrl}/v1/videos/text2video/connectivity-test`, {
+      return (config.fetchImpl ?? fetch)(`${baseUrl}/v1/videos/text2video/connectivity-test`, {
         method: 'GET',
         redirect: 'manual',
         headers: { Authorization: `Bearer ${token}` },
@@ -152,6 +152,7 @@ async function submitTask(
   token: string,
   model: string,
   options: VideoGenerationOptions,
+  fetchImpl?: typeof fetch,
 ): Promise<string> {
   const body: Record<string, unknown> = {
     model_name: model,
@@ -163,7 +164,7 @@ async function submitTask(
   if (options.duration) body.duration = String(options.duration);
   if (options.aspectRatio) body.aspect_ratio = options.aspectRatio;
 
-  const response = await fetch(`${baseUrl}/v1/videos/text2video`, {
+  const response = await (fetchImpl ?? fetch)(`${baseUrl}/v1/videos/text2video`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -196,8 +197,9 @@ async function pollTask(
   baseUrl: string,
   token: string,
   taskId: string,
+  fetchImpl?: typeof fetch,
 ): Promise<KlingPollResponse['data']> {
-  const response = await fetch(`${baseUrl}/v1/videos/text2video/${taskId}`, {
+  const response = await (fetchImpl ?? fetch)(`${baseUrl}/v1/videos/text2video/${taskId}`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -229,12 +231,12 @@ export async function generateWithKling(
   const token = generateJWT(accessKey, secretKey);
 
   // 1. Submit
-  const taskId = await submitTask(baseUrl, token, model, options);
+  const taskId = await submitTask(baseUrl, token, model, options, config.fetchImpl);
 
   // 2. Poll until done
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-    const result = await pollTask(baseUrl, token, taskId);
+    const result = await pollTask(baseUrl, token, taskId, config.fetchImpl);
 
     if (result.task_status === 'succeed') {
       const video = result.task_result?.videos?.[0];

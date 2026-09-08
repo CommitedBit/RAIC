@@ -981,6 +981,7 @@ describe('provider and verification routes', () => {
       }),
     );
     expect(testImageConnectivityMock).toHaveBeenCalledWith({
+      fetchImpl: expect.any(Function),
       providerId: 'seedream',
       apiKey: 'fallback-key',
       baseUrl: 'https://images.example.com',
@@ -1194,6 +1195,7 @@ describe('provider and verification routes', () => {
 
     expect(response.status).toBe(200);
     expect(searchWebMock).toHaveBeenCalledWith({
+      fetchImpl: expect.any(Function),
       providerId: 'tavily',
       query: 'renewable energy',
       apiKey: 'server-key',
@@ -1335,6 +1337,7 @@ describe('provider and verification routes', () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(searchWebMock).toHaveBeenCalledWith({
+      fetchImpl: expect.any(Function),
       providerId: 'tavily',
       query: 'renewable energy',
       apiKey: 'server-key',

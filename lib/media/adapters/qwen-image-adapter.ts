@@ -42,19 +42,22 @@ export async function testQwenImageConnectivity(
   return probeAuth({
     providerName: 'Qwen Image',
     request: () =>
-      fetch(`${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`, {
-        method: 'POST',
-        redirect: 'manual',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.apiKey}`,
+      (config.fetchImpl ?? fetch)(
+        `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`,
+        {
+          method: 'POST',
+          redirect: 'manual',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${config.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: config.model || DEFAULT_MODEL,
+            input: { messages: [{ role: 'user', content: [{ text: '' }] }] },
+            parameters: { size: '1*1' },
+          }),
         },
-        body: JSON.stringify({
-          model: config.model || DEFAULT_MODEL,
-          input: { messages: [{ role: 'user', content: [{ text: '' }] }] },
-          parameters: { size: '1*1' },
-        }),
-      }),
+      ),
   });
 }
 
@@ -64,34 +67,37 @@ export async function generateWithQwenImage(
 ): Promise<ImageGenerationResult> {
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
 
-  const response = await fetch(`${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
+  const response = await (config.fetchImpl ?? fetch)(
+    `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model || DEFAULT_MODEL,
+        input: {
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  text: options.prompt,
+                },
+              ],
+            },
+          ],
+        },
+        parameters: {
+          negative_prompt: options.negativePrompt || undefined,
+          prompt_extend: true,
+          watermark: false,
+          size: resolveDashScopeSize(options),
+        },
+      }),
     },
-    body: JSON.stringify({
-      model: config.model || DEFAULT_MODEL,
-      input: {
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                text: options.prompt,
-              },
-            ],
-          },
-        ],
-      },
-      parameters: {
-        negative_prompt: options.negativePrompt || undefined,
-        prompt_extend: true,
-        watermark: false,
-        size: resolveDashScopeSize(options),
-      },
-    }),
-  });
+  );
 
   if (!response.ok) {
     const text = await response.text();

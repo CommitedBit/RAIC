@@ -1,3 +1,4 @@
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 /**
  * Single TTS Generation API
  *
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
     }
 
     const clientBaseUrl = ttsBaseUrl || undefined;
-    if (clientBaseUrl && process.env.NODE_ENV === 'production') {
+    if (clientBaseUrl) {
       const ssrfError = await validateUrlForSSRF(clientBaseUrl);
       if (ssrfError) {
         return apiErrorWithRequestSession(req, 'INVALID_URL', 403, ssrfError);
@@ -160,6 +161,7 @@ export async function POST(req: NextRequest) {
       speed: ttsSpeed ?? 1.0,
       apiKey: resolved.apiKey,
       baseUrl: resolved.baseUrl,
+      fetchImpl: createValidatedFetch({ trustedBaseUrl: resolved.trustedBaseUrl }),
     };
 
     log.info(

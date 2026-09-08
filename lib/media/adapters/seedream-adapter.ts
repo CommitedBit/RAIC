@@ -54,7 +54,7 @@ export async function testSeedreamConnectivity(
   return probeAuth({
     providerName: 'Seedream',
     request: () =>
-      fetch(`${baseUrl}/api/v3/images/generations`, {
+      (config.fetchImpl ?? fetch)(`${baseUrl}/api/v3/images/generations`, {
         method: 'POST',
         redirect: 'manual',
         headers: {
@@ -76,7 +76,7 @@ export async function generateWithSeedream(
 ): Promise<ImageGenerationResult> {
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
 
-  const response = await fetch(`${baseUrl}/api/v3/images/generations`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/api/v3/images/generations`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

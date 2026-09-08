@@ -132,6 +132,7 @@ export interface TTSProviderConfig {
  * TTS Model Configuration for API calls
  */
 export interface TTSModelConfig {
+  fetchImpl?: typeof fetch;
   providerId: TTSProviderId;
   modelId?: string;
   apiKey?: string;
@@ -179,6 +180,7 @@ export interface ASRProviderConfig {
  * ASR Model Configuration for API calls
  */
 export interface ASRModelConfig {
+  fetchImpl?: typeof fetch;
   providerId: ASRProviderId;
   modelId?: string;
   apiKey?: string;

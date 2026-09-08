@@ -131,10 +131,10 @@ describe('validateUrlForSSRF', () => {
     const { isPrivateIP } = await import('@/lib/server/ssrf-guard');
 
     const addresses = [
-      '2001:db8:0:1:0:5efe:7f00:1',
-      '2001:db8:0:1:200:5efe:a00:1',
-      '2001:db8:0:1::5efe:c0a8:101',
-      '2001:db8::200:5efe:ac10:1',
+      '2606:4700:0:1:0:5efe:7f00:1',
+      '2606:4700:0:1:200:5efe:a00:1',
+      '2606:4700:0:1::5efe:c0a8:101',
+      '2606:4700::200:5efe:ac10:1',
     ];
 
     for (const address of addresses) {
@@ -145,20 +145,20 @@ describe('validateUrlForSSRF', () => {
   it('classifies dotted-tail ISATAP addresses by their embedded IPv4', async () => {
     const { isPrivateIP } = await import('@/lib/server/ssrf-guard');
 
-    expect(isPrivateIP('2001:db8:0:1::5efe:192.168.1.1')).toBe(true);
-    expect(isPrivateIP('2001:db8::200:5efe:10.0.0.1')).toBe(true);
-    expect(isPrivateIP('2001:db8:0:1::5efe:8.8.8.8')).toBe(false);
+    expect(isPrivateIP('2606:4700:0:1::5efe:192.168.1.1')).toBe(true);
+    expect(isPrivateIP('2606:4700::200:5efe:10.0.0.1')).toBe(true);
+    expect(isPrivateIP('2606:4700:0:1::5efe:8.8.8.8')).toBe(false);
   });
 
   it('does not match ISATAP lookalikes or zero-width compression', async () => {
     const { isPrivateIP } = await import('@/lib/server/ssrf-guard');
 
     const addresses = [
-      '2001:db8::100:5efe:127.0.0.1',
-      '2001:db8::300:5efe:127.0.0.1',
-      '2001:db8::beef:127.0.0.1',
-      '2001:db8::5efe:0:127.0.0.1',
-      '2001:db8:0:1:0:5efe::127.0.0.1',
+      '2606:4700::100:5efe:127.0.0.1',
+      '2606:4700::300:5efe:127.0.0.1',
+      '2606:4700::beef:127.0.0.1',
+      '2606:4700::5efe:0:127.0.0.1',
+      '2606:4700:0:1:0:5efe::127.0.0.1',
     ];
 
     for (const address of addresses) {
@@ -228,7 +228,7 @@ describe('validateUrlForSSRF', () => {
   });
 
   it('rejects hostnames resolving to ISATAP addresses with private IPv4', async () => {
-    lookupMock.mockResolvedValue([{ address: '2001:db8::200:5efe:192.168.1.10', family: 6 }]);
+    lookupMock.mockResolvedValue([{ address: '2606:4700::200:5efe:192.168.1.10', family: 6 }]);
 
     const { validateUrlForSSRF } = await import('@/lib/server/ssrf-guard');
 
@@ -258,5 +258,45 @@ describe('validateUrlForSSRF', () => {
     await expect(validateUrlForSSRF('https://missing.example')).resolves.toBe(
       'Unable to verify hostname safety',
     );
+  });
+
+  it.each([
+    '0:0:0:0:0:0:0:1',
+    '0:0:0:0:0:ffff:7f00:1',
+    '64:ff9b::a9fe:a9fe',
+    '64:ff9b:1::1',
+    '100.100.100.200',
+    '198.18.0.1',
+    '192.0.2.1',
+    '198.51.100.1',
+    '203.0.113.1',
+    '224.0.0.1',
+    '240.0.0.1',
+    '2001:db8::1',
+    '3fff::1',
+    'ff02::1',
+    'fe80::1%lo0',
+    '2001:0000:7f00:0001:8000:63bf:f7f7:f7f7',
+  ])('rejects internal DNS answer representation %s', async (address) => {
+    lookupMock.mockResolvedValue([{ address, family: address.includes(':') ? 6 : 4 }]);
+    const { validateUrlForSSRF } = await import('@/lib/server/ssrf-guard');
+    await expect(validateUrlForSSRF('https://provider.example')).resolves.toBe(
+      LOCAL_NETWORKS_BLOCKED_MESSAGE,
+    );
+  });
+
+  it.each([
+    '0:0:0:0:0:ffff:808:808',
+    '64:ff9b::808:808',
+    '2606:4700::1111',
+    '100.63.255.255',
+    '100.128.0.1',
+    '192.0.0.9',
+    '192.0.0.10',
+    '198.20.0.1',
+  ])('keeps public address control %s', async (address) => {
+    lookupMock.mockResolvedValue([{ address, family: address.includes(':') ? 6 : 4 }]);
+    const { validateUrlForSSRF } = await import('@/lib/server/ssrf-guard');
+    await expect(validateUrlForSSRF('https://provider.example')).resolves.toBeNull();
   });
 });

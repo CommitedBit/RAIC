@@ -22,7 +22,7 @@ export async function generateWithMiniMaxImage(
 
   const aspectRatio = options.aspectRatio || '1:1';
 
-  const response = await fetch(`${baseUrl}/v1/image_generation`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/v1/image_generation`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -88,7 +88,7 @@ export async function testMiniMaxImageConnectivity(
 ): Promise<{ success: boolean; message: string }> {
   try {
     const baseUrl = (config.baseUrl || BASE_URL).replace(/\/$/, '');
-    const response = await fetch(`${baseUrl}/v1/image_generation`, {
+    const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/v1/image_generation`, {
       method: 'POST',
       redirect: 'manual',
       headers: {

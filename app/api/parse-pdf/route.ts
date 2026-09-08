@@ -1,3 +1,4 @@
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 import { NextRequest } from 'next/server';
 import { parsePDF } from '@/lib/pdf/pdf-providers';
 import { getRequestAuth } from '@/lib/auth/current-user';
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
     resolvedProviderId = effectiveProviderId;
 
     const clientBaseUrl = baseUrl || undefined;
-    if (clientBaseUrl && process.env.NODE_ENV === 'production') {
+    if (clientBaseUrl) {
       const ssrfError = await validateUrlForSSRF(clientBaseUrl);
       if (ssrfError) {
         return apiErrorWithRequestSession(req, 'INVALID_URL', 403, ssrfError);
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
       providerId: effectiveProviderId,
       apiKey: resolved.apiKey || undefined,
       baseUrl: resolved.baseUrl,
+      fetchImpl: createValidatedFetch({ trustedBaseUrl: resolved.trustedBaseUrl }),
     };
 
     // Convert PDF to buffer

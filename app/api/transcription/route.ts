@@ -1,3 +1,4 @@
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 import { NextRequest } from 'next/server';
 import { transcribeAudio } from '@/lib/audio/asr-providers';
 import { getRequestAuth } from '@/lib/auth/current-user';
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     resolvedModelId = modelId ?? undefined;
 
     const clientBaseUrl = baseUrl || undefined;
-    if (clientBaseUrl && process.env.NODE_ENV === 'production') {
+    if (clientBaseUrl) {
       const ssrfError = await validateUrlForSSRF(clientBaseUrl);
       if (ssrfError) {
         return apiErrorWithRequestSession(req, 'INVALID_URL', 403, ssrfError);
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
       language: language || 'auto',
       apiKey: resolved.apiKey,
       baseUrl: resolved.baseUrl,
+      fetchImpl: createValidatedFetch({ trustedBaseUrl: resolved.trustedBaseUrl }),
     };
 
     // Convert audio file to buffer

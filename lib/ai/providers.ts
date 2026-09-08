@@ -1873,6 +1873,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       const openaiOptions: Parameters<typeof createOpenAI>[0] = {
         apiKey: effectiveApiKey,
         baseURL: effectiveBaseUrl,
+        fetch: config.fetchImpl,
       };
 
       // For OpenAI-compatible providers (not native OpenAI), add a fetch
@@ -1899,7 +1900,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
               }
             }
           }
-          return globalThis.fetch(url, init);
+          return (config.fetchImpl ?? globalThis.fetch)(url, init);
         };
       }
 
@@ -1912,6 +1913,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       const anthropic = createAnthropic({
         apiKey: effectiveApiKey,
         baseURL: effectiveBaseUrl,
+        fetch: config.fetchImpl,
       });
       model = anthropic.chat(normalizedModelId);
       break;
@@ -1921,8 +1923,9 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       const googleOptions: Parameters<typeof createGoogleGenerativeAI>[0] = {
         apiKey: effectiveApiKey,
         baseURL: effectiveBaseUrl,
+        fetch: config.fetchImpl,
       };
-      if (config.proxy) {
+      if (config.proxy && !config.fetchImpl) {
         // Dynamic require to avoid bundling undici on the client side
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { ProxyAgent, fetch: undiciFetch } = require('undici');

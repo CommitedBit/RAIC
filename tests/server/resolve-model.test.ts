@@ -72,26 +72,29 @@ describe('resolveModel', () => {
     expect(result.modelString).toBe('openai:gpt-4.1-mini');
   });
 
-  it('rejects unsafe request-supplied provider base URLs in production', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-    validateUrlForSSRFMock.mockResolvedValue(
-      'Local/private network URLs are not allowed. Set ALLOW_LOCAL_NETWORKS=true only for trusted self-hosted deployments.',
-    );
+  it.each(['production', 'development', 'test'])(
+    'rejects unsafe request-supplied provider base URLs in %s',
+    async (environment) => {
+      vi.stubEnv('NODE_ENV', environment);
+      validateUrlForSSRFMock.mockResolvedValue(
+        'Local/private network URLs are not allowed. Set ALLOW_LOCAL_NETWORKS=true only for trusted self-hosted deployments.',
+      );
 
-    const { resolveModel } = await import('@/lib/server/resolve-model');
+      const { resolveModel } = await import('@/lib/server/resolve-model');
 
-    await expect(
-      resolveModel({
-        modelString: 'openai:gpt-4.1-mini',
-        baseUrl: 'http://127.0.0.1:11434/v1?token=secret#fragment',
-      }),
-    ).rejects.toThrow('Local/private network URLs are not allowed');
+      await expect(
+        resolveModel({
+          modelString: 'openai:gpt-4.1-mini',
+          baseUrl: 'http://127.0.0.1:11434/v1?token=secret#fragment',
+        }),
+      ).rejects.toThrow('Local/private network URLs are not allowed');
 
-    expect(validateUrlForSSRFMock).toHaveBeenCalledWith(
-      'http://127.0.0.1:11434/v1?token=secret#fragment',
-    );
-    expect(resolveLLMGovernedConfigMock).not.toHaveBeenCalled();
-  });
+      expect(validateUrlForSSRFMock).toHaveBeenCalledWith(
+        'http://127.0.0.1:11434/v1?token=secret#fragment',
+      );
+      expect(resolveLLMGovernedConfigMock).not.toHaveBeenCalled();
+    },
+  );
 
   it('forwards validated request-supplied provider base URLs in production', async () => {
     vi.stubEnv('NODE_ENV', 'production');

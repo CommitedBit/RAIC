@@ -58,7 +58,7 @@ export async function testNanoBananaConnectivity(
   // Try ?key= query param first (direct Google API), fall back to x-goog-api-key header (proxy)
   let response: Response | null = null;
   try {
-    response = await fetch(`${url}?key=${config.apiKey}`, {
+    response = await (config.fetchImpl ?? fetch)(`${url}?key=${config.apiKey}`, {
       method: 'GET',
       redirect: 'manual',
     });
@@ -67,7 +67,7 @@ export async function testNanoBananaConnectivity(
   }
   if (!response || !response.ok) {
     try {
-      response = await fetch(url, {
+      response = await (config.fetchImpl ?? fetch)(url, {
         method: 'GET',
         redirect: 'manual',
         headers: { 'x-goog-api-key': config.apiKey },
@@ -105,23 +105,26 @@ export async function generateWithNanoBanana(
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
   const model = config.model || DEFAULT_MODEL;
 
-  const response = await fetch(`${baseUrl}/v1beta/models/${model}:generateContent`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': config.apiKey,
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [{ text: options.prompt }],
-        },
-      ],
-      generationConfig: {
-        responseModalities: ['IMAGE'],
+  const response = await (config.fetchImpl ?? fetch)(
+    `${baseUrl}/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': config.apiKey,
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: options.prompt }],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ['IMAGE'],
+        },
+      }),
+    },
+  );
 
   if (!response.ok) {
     const text = await response.text();

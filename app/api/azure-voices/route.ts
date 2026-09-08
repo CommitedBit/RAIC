@@ -1,3 +1,4 @@
+import { validatedFetch } from '@/lib/server/outbound-fetch';
 import { NextRequest } from 'next/server';
 import { createLogger } from '@/lib/logger';
 import { validateUrlForSSRF } from '@/lib/server/ssrf-guard';
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Call Azure voices list endpoint; disable redirect following to prevent SSRF via redirect
-    const response = await fetch(`${baseUrl}/cognitiveservices/voices/list`, {
+    const response = await validatedFetch(`${baseUrl}/cognitiveservices/voices/list`, {
       method: 'GET',
       headers: {
         'Ocp-Apim-Subscription-Key': apiKey,

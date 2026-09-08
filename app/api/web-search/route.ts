@@ -1,3 +1,4 @@
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 /**
  * Web Search API
  *
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     auth = await getRequestAuth(req);
     const providerId: WebSearchProviderId =
       requestProviderId && WEB_SEARCH_PROVIDERS[requestProviderId] ? requestProviderId : 'tavily';
-    if (clientBaseUrl && process.env.NODE_ENV === 'production') {
+    if (clientBaseUrl) {
       const ssrfError = await validateUrlForSSRF(clientBaseUrl);
       if (ssrfError) {
         return apiErrorWithRequestSession(req, 'INVALID_URL', 403, ssrfError);
@@ -128,6 +129,10 @@ export async function POST(req: NextRequest) {
       query: searchQuery.query,
       apiKey: resolvedWebSearch.apiKey,
       baseUrl: resolvedWebSearch.baseUrl,
+      fetchImpl: createValidatedFetch({
+        trustedBaseUrl: resolvedWebSearch.trustedBaseUrl,
+        useEnvProxy: true,
+      }),
     });
     const context = formatSearchResultsAsContext(result);
 

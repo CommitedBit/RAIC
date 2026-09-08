@@ -78,6 +78,7 @@ interface ResolvedProviderCredentials {
   source: AIProviderSource;
   apiKey: string;
   baseUrl?: string;
+  trustedBaseUrl?: string;
   allowedModels?: string[];
   defaultModel?: string | null;
   providerType?: ProviderType;
@@ -736,6 +737,8 @@ async function resolveProviderCredentials(input: {
     bootstrap?.baseUrl ||
     (entry.alwaysEnabled ? entry.defaultBaseUrl : undefined);
   let preferredModel = organizationConfig?.defaultModel ?? null;
+  // Credential source can become personal while the base URL remains admin-owned.
+  let trustedBaseUrl = organizationConfig?.baseUrl || bootstrap?.baseUrl || undefined;
 
   if (organizationConfig) {
     source = 'organization';
@@ -757,6 +760,7 @@ async function resolveProviderCredentials(input: {
     }
     if (canUsePersonalBaseUrl && userOverride.baseUrl) {
       baseUrl = userOverride.baseUrl;
+      trustedBaseUrl = undefined;
       source = 'personal';
     }
     if (userOverride.preferredModel) {
@@ -774,6 +778,7 @@ async function resolveProviderCredentials(input: {
     source = 'legacy';
     apiKey = input.requestedSecret || '';
     baseUrl = input.requestedBaseUrl || baseUrl;
+    if (input.requestedBaseUrl) trustedBaseUrl = undefined;
   }
 
   if (source === 'none') {
@@ -816,6 +821,7 @@ async function resolveProviderCredentials(input: {
     source,
     apiKey,
     ...(baseUrl ? { baseUrl } : {}),
+    ...(trustedBaseUrl ? { trustedBaseUrl } : {}),
     ...(allowedModels.length ? { allowedModels } : {}),
     ...(defaultModel ? { defaultModel } : {}),
     ...(organizationConfig?.providerDefinition?.providerType

@@ -217,7 +217,7 @@ async function transcribeLemonadeASR(
     formData.set('language', config.language);
   }
 
-  const response = await fetch(`${baseUrl}/audio/transcriptions`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/audio/transcriptions`, {
     method: 'POST',
     headers: getOptionalBearerAuthHeaders(config.apiKey),
     body: formData,
@@ -293,6 +293,7 @@ async function transcribeOpenAIWhisper(
   const openai = createOpenAI({
     apiKey: config.apiKey!,
     baseURL: config.baseUrl || ASR_PROVIDERS['openai-whisper'].defaultBaseUrl,
+    fetch: config.fetchImpl,
   });
 
   // Convert to Buffer or Uint8Array (which is required by the AI SDK)
@@ -375,15 +376,18 @@ async function transcribeQwenASR(
     };
   }
 
-  const response = await fetch(`${baseUrl}/services/aigc/multimodal-generation/generation`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json; charset=utf-8',
-      'X-DashScope-Audio-Format': 'wav',
+  const response = await (config.fetchImpl ?? fetch)(
+    `${baseUrl}/services/aigc/multimodal-generation/generation`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json; charset=utf-8',
+        'X-DashScope-Audio-Format': 'wav',
+      },
+      body: JSON.stringify(requestBody),
     },
-    body: JSON.stringify(requestBody),
-  });
+  );
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => response.statusText);

@@ -27,7 +27,7 @@ export async function testOpenAIImageConnectivity(
   const baseUrl = normalizeBaseUrl(config.baseUrl);
 
   try {
-    const response = await fetch(
+    const response = await (config.fetchImpl ?? fetch)(
       `${baseUrl}/models/${encodeURIComponent(config.model || DEFAULT_MODEL)}`,
       {
         redirect: 'manual',
@@ -65,7 +65,7 @@ export async function generateWithOpenAIImage(
   const width = options.width || 1024;
   const height = options.height || 1024;
 
-  const response = await fetch(`${baseUrl}/images/generations`, {
+  const response = await (config.fetchImpl ?? fetch)(`${baseUrl}/images/generations`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

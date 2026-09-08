@@ -90,7 +90,7 @@ export async function testGrokVideoConnectivity(
   return probeAuth({
     providerName: 'Grok Video',
     request: () =>
-      fetch(`${baseUrl}/videos/generations`, {
+      (config.fetchImpl ?? fetch)(`${baseUrl}/videos/generations`, {
         method: 'POST',
         redirect: 'manual',
         headers: apiHeaders(config.apiKey),
@@ -111,6 +111,7 @@ async function submitVideoGeneration(
   apiKey: string,
   model: string,
   options: VideoGenerationOptions,
+  fetchImpl?: typeof fetch,
 ): Promise<string> {
   const body: Record<string, unknown> = {
     model,
@@ -119,7 +120,7 @@ async function submitVideoGeneration(
 
   if (options.duration) body.duration = options.duration;
 
-  const response = await fetch(`${baseUrl}/videos/generations`, {
+  const response = await (fetchImpl ?? fetch)(`${baseUrl}/videos/generations`, {
     method: 'POST',
     headers: apiHeaders(apiKey),
     body: JSON.stringify(body),
@@ -146,8 +147,9 @@ async function pollVideoStatus(
   baseUrl: string,
   apiKey: string,
   requestId: string,
+  fetchImpl?: typeof fetch,
 ): Promise<GrokVideoPollResponse> {
-  const response = await fetch(`${baseUrl}/videos/${requestId}`, {
+  const response = await (fetchImpl ?? fetch)(`${baseUrl}/videos/${requestId}`, {
     method: 'GET',
     headers: apiHeaders(apiKey),
   });
@@ -172,12 +174,18 @@ export async function generateWithGrokVideo(
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
 
   // 1. Submit
-  const requestId = await submitVideoGeneration(baseUrl, config.apiKey, model, options);
+  const requestId = await submitVideoGeneration(
+    baseUrl,
+    config.apiKey,
+    model,
+    options,
+    config.fetchImpl,
+  );
 
   // 2. Poll until done
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
     await delay(POLL_INTERVAL_MS);
-    const result = await pollVideoStatus(baseUrl, config.apiKey, requestId);
+    const result = await pollVideoStatus(baseUrl, config.apiKey, requestId, config.fetchImpl);
 
     if (result.status === 'done') {
       if (!result.video?.url) {

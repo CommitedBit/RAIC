@@ -113,11 +113,14 @@ export async function testSeedanceConnectivity(
   return probeAuth({
     providerName: 'Seedance',
     request: () =>
-      fetch(`${baseUrl}/api/v3/contents/generations/tasks/connectivity-test-nonexistent`, {
-        method: 'GET',
-        redirect: 'manual',
-        headers: { Authorization: `Bearer ${config.apiKey}` },
-      }),
+      (config.fetchImpl ?? fetch)(
+        `${baseUrl}/api/v3/contents/generations/tasks/connectivity-test-nonexistent`,
+        {
+          method: 'GET',
+          redirect: 'manual',
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+        },
+      ),
   });
 }
 
@@ -146,14 +149,17 @@ export async function submitSeedanceTask(
   const resolution = toSeedanceResolution(options.resolution);
   if (resolution) body.resolution = resolution;
 
-  const response = await fetch(`${baseUrl}/api/v3/contents/generations/tasks`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
+  const response = await (config.fetchImpl ?? fetch)(
+    `${baseUrl}/api/v3/contents/generations/tasks`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  });
+  );
 
   if (!response.ok) {
     const text = await response.text();
@@ -179,12 +185,15 @@ export async function pollSeedanceTask(
 ): Promise<VideoGenerationResult | null> {
   const baseUrl = config.baseUrl || DEFAULT_BASE_URL;
 
-  const response = await fetch(`${baseUrl}/api/v3/contents/generations/tasks/${taskId}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
+  const response = await (config.fetchImpl ?? fetch)(
+    `${baseUrl}/api/v3/contents/generations/tasks/${taskId}`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+      },
     },
-  });
+  );
 
   if (!response.ok) {
     const text = await response.text();

@@ -1,3 +1,4 @@
+import { createValidatedFetch } from '@/lib/server/outbound-fetch';
 /**
  * Image Generation API
  *
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     resolvedProviderId = providerId;
     resolvedModelId = clientModel ?? undefined;
 
-    if (clientBaseUrl && process.env.NODE_ENV === 'production') {
+    if (clientBaseUrl) {
       const ssrfError = await validateUrlForSSRF(clientBaseUrl);
       if (ssrfError) {
         return apiErrorWithRequestSession(request, 'INVALID_URL', 403, ssrfError);
@@ -147,6 +148,7 @@ export async function POST(request: NextRequest) {
         providerId: resolved.providerId as ImageProviderId,
         apiKey: resolved.apiKey,
         baseUrl: resolved.baseUrl,
+        fetchImpl: createValidatedFetch({ trustedBaseUrl: resolved.trustedBaseUrl }),
         model: resolved.modelId || clientModel,
       },
       body,
