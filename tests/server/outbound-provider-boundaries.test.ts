@@ -26,6 +26,125 @@ afterEach(() => {
 });
 
 describe('server transport reaches provider adapters and SDKs', () => {
+  it.each([200, 400, 500])(
+    'rejects an oversized SDK response before reading its body (%s)',
+    async (status) => {
+      let reads = 0;
+      let cancelled = false;
+      const body = new ReadableStream<Uint8Array>(
+        {
+          pull() {
+            reads++;
+            throw new Error('Oversized body must not be read');
+          },
+          cancel() {
+            cancelled = true;
+          },
+        },
+        { highWaterMark: 0 },
+      );
+      const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(body, {
+          status,
+          headers: { 'content-type': 'application/json', 'content-length': '2147483649' },
+        }),
+      );
+      const { model } = getModel({
+        providerId: 'openai',
+        modelId: 'fixture-model',
+        apiKey: 'synthetic',
+        baseUrl: 'https://provider.example/v1',
+        fetchImpl,
+      });
+      await expect(
+        generateText({ model, prompt: 'Synthetic fixture', maxRetries: 0 }),
+      ).rejects.toThrow();
+      expect(reads).toBe(0);
+      expect(cancelled).toBe(true);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [
+      'openai',
+      {
+        id: 'fixture',
+        object: 'chat.completion',
+        created: 1,
+        model: 'fixture-model',
+        choices: [
+          {
+            index: 0,
+            message: { role: 'assistant', content: 'Synthetic lesson' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
+      },
+    ],
+    [
+      'qwen',
+      {
+        id: 'fixture',
+        object: 'chat.completion',
+        created: 1,
+        model: 'fixture-model',
+        choices: [
+          {
+            index: 0,
+            message: { role: 'assistant', content: 'Synthetic lesson' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
+      },
+    ],
+    [
+      'anthropic',
+      {
+        id: 'fixture',
+        type: 'message',
+        role: 'assistant',
+        model: 'fixture-model',
+        content: [{ type: 'text', text: 'Synthetic lesson' }],
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+        usage: { input_tokens: 1, output_tokens: 2 },
+      },
+    ],
+    [
+      'google',
+      {
+        candidates: [
+          {
+            content: { role: 'model', parts: [{ text: 'Synthetic lesson' }] },
+            finishReason: 'STOP',
+            index: 0,
+          },
+        ],
+        usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 2, totalTokenCount: 3 },
+      },
+    ],
+  ] as const)(
+    'parses a successful synthetic %s response through the real SDK',
+    async (providerId, body) => {
+      const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(Response.json(body));
+      const { model } = getModel({
+        providerId,
+        modelId: 'fixture-model',
+        apiKey: 'synthetic',
+        baseUrl: 'https://provider.example/v1',
+        fetchImpl,
+      });
+      const result = await generateText({ model, prompt: 'Synthetic fixture', maxRetries: 0 });
+      expect(result.text).toBe('Synthetic lesson');
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(['openai', 'anthropic', 'google', 'qwen'] as const)(
     'uses the injected transport in the %s language SDK',
     async (providerId) => {

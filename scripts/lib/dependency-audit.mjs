@@ -1,9 +1,64 @@
 const SEVERITY_RANK = {
+  info: -1,
   low: 0,
   moderate: 1,
   high: 2,
   critical: 3,
 };
+
+const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+function normalizeAdvisory(packageName, advisory, packageVersions) {
+  if (
+    !isRecord(advisory) ||
+    !Object.hasOwn(SEVERITY_RANK, advisory.severity) ||
+    typeof advisory.vulnerable_versions !== 'string' ||
+    !advisory.vulnerable_versions ||
+    !Array.isArray(packageVersions[packageName]) ||
+    packageVersions[packageName].length === 0
+  ) {
+    throw new Error('Invalid dependency advisory for ' + packageName);
+  }
+  const advisoryId =
+    String(advisory.url ?? '')
+      .match(/GHSA-[a-z0-9-]+/i)?.[0]
+      ?.toUpperCase() ?? (advisory.id !== undefined ? 'npm:' + String(advisory.id) : null);
+  if (!advisoryId) throw new Error('Missing dependency advisory identity');
+  return {
+    packageName,
+    versions: packageVersions[packageName],
+    severity: advisory.severity,
+    advisoryId,
+    vulnerableVersions: advisory.vulnerable_versions,
+  };
+}
+
+export function normalizeNativeAudit(response, packageVersions) {
+  if (
+    !isRecord(response) ||
+    response.error ||
+    !isRecord(response.advisories) ||
+    !Array.isArray(response.muted) ||
+    response.muted.length > 0 ||
+    !isRecord(response.metadata?.vulnerabilities)
+  ) {
+    throw new Error('Invalid or muted native dependency audit response');
+  }
+  const findings = Object.values(response.advisories).map((advisory) =>
+    normalizeAdvisory(advisory?.module_name, advisory, packageVersions),
+  );
+  for (const severity of Object.keys(SEVERITY_RANK)) {
+    const count = response.metadata.vulnerabilities[severity];
+    if (
+      !Number.isSafeInteger(count) ||
+      count < 0 ||
+      count !== findings.filter((finding) => finding.severity === severity).length
+    ) {
+      throw new Error('Native dependency audit count mismatch: ' + severity);
+    }
+  }
+  return findings.filter((finding) => SEVERITY_RANK[finding.severity] >= SEVERITY_RANK.low);
+}
 
 export function collectLockfilePackageVersions(lockfile) {
   const packageVersions = {};
@@ -48,20 +103,15 @@ export function normalizeBulkAdvisories(
   if (minimumRank === undefined) {
     throw new Error(`Unsupported audit severity: ${minimumSeverity}`);
   }
+  if (!isRecord(advisoryResponse)) throw new Error('Invalid bulk dependency audit response');
 
-  return Object.entries(advisoryResponse ?? {})
-    .flatMap(([packageName, advisories]) =>
-      (Array.isArray(advisories) ? advisories : []).map((advisory) => ({
-        packageName,
-        versions: packageVersions[packageName] ?? [],
-        severity: String(advisory.severity ?? 'unknown').toLowerCase(),
-        advisoryId:
-          String(advisory.url ?? '')
-            .match(/GHSA-[a-z0-9-]+/i)?.[0]
-            ?.toUpperCase() ?? `npm:${String(advisory.id ?? 'unknown')}`,
-        vulnerableVersions: String(advisory.vulnerable_versions ?? 'unknown'),
-      })),
-    )
+  return Object.entries(advisoryResponse)
+    .flatMap(([packageName, advisories]) => {
+      if (!Array.isArray(advisories)) throw new Error('Invalid bulk advisories for ' + packageName);
+      return advisories.map((advisory) =>
+        normalizeAdvisory(packageName, advisory, packageVersions),
+      );
+    })
     .filter((finding) => (SEVERITY_RANK[finding.severity] ?? -1) >= minimumRank)
     .sort(
       (left, right) =>
