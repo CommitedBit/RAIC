@@ -67,15 +67,20 @@ Current post-v0.7.0 hardening and adaptive-student follow-up notes are documente
   - Release: the clean Node 24 gate, protected preview, production viewport checks, production smokes, immutable tag, and GitHub release are complete.
   - Evidence: [v0.9.1 Homepage Simplification](./release-evidence-v0.9.1.md).
 
-- Active patch milestone: `v0.9.2` Cohesive Stabilization
+- Merged but untagged patch milestone: `v0.9.2` Cohesive Stabilization
   - Goal: migrate durable storage to paid Vercel Marketplace Neon, harden Google identity and logout, report core health truthfully, and selectively adopt compatible OpenMAIC security and correctness fixes.
-  - Acceptance: verified database export/import and rollback evidence, protected preview, canonical-domain Google sign-in/logout proof, complete Node 24 gates, and at least 24 hours of stable production observation.
+  - Status: PR #92 merged to `main` and version `0.9.2` reached production, but the tag and GitHub release were not published. The remaining owner-authenticated and production observation proof carries into v0.9.3.
   - Evidence: [v0.9.2 Cohesive Stabilization](./release-evidence-v0.9.2.md).
 
-- Active feature milestone: `v0.10.0` Source-Grounded Authoring
+- Active patch milestone: `v0.9.3` Classroom and Security Stabilization
+  - Goal: close the validated formula, outbound-request, quiz, audio, and classroom defects; refresh vulnerable dependencies and preserve clean release provenance.
+  - Acceptance: pinned Node 24/pnpm gates, protected Preview and current-source browser proof, exact-SHA production deployment and smokes, owner-authenticated journey where available, immutable tag and GitHub release, and 24 hours of stable production operation.
+  - Evidence: [v0.9.3 Stabilization](./release-evidence-v0.9.3.md).
+
+- Planned feature milestone: `v0.10.0` Source-Grounded Authoring
   - Goal: let teachers inspect source pages before generation and carry validated citation evidence into classrooms and scenes.
   - Acceptance: source-required presets fail closed on unusable input, persisted excerpts are bounded and teacher-only, and public/student responses strip private source details.
-  - Start gate: begin from fresh post-`v0.9.2` `main` only after the stabilization release has remained healthy for at least 24 hours.
+  - Start gate: begin from fresh post-`v0.9.3` `main` only after the stabilization release has remained healthy for at least 24 hours.
 
 - Planned feature milestone: `v0.11.0` Governed Edit with AI
   - Goal: provide teacher-only, preview-before-apply slide edits through a validated patch language and the existing undo history.
@@ -113,7 +118,8 @@ Slice-level minimum acceptance:
 
 - `v0.8.1`: patched dependency graph, reproducible dependency audit, and no runtime or API behavior changes.
 - `v0.9.0`: authenticated private upload, ownership/limit/redaction coverage, legacy compatibility, and raw-file cleanup.
-- `v0.9.2`: verified Neon migration, immutable Google account linking, dual-session logout, redacted degraded health, and corrected selective backports.
+- `v0.9.2`: verified Neon upgrade, immutable Google account linking, dual-session logout, redacted degraded health, and corrected selective backports; merged and deployed without a release tag.
+- `v0.9.3`: formula and outbound-request boundaries, deterministic quiz grading, valid bounded TTS, usable classroom completion, and dependency remediation.
 - `v0.10.0`: deterministic page selection, validated citations, teacher-only source evidence, and public/student sanitization.
 - `v0.11.0`: authorized structured patches, stale-state rejection, atomic apply, one-step undo, and feature-flag rollback.
 - Adaptive-student follow-up: privacy/retention tests plus confirmed student path disabled by default and fully rollback-safe via feature-flag disable.

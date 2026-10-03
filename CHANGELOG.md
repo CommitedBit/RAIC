@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+See the [future roadmap](docs/future-roadmap.md) for planned work.
+
+## [0.9.3] - 2026-10-03
+
+This is the first tagged release after v0.9.1. It includes the merged, deployed but untagged v0.9.2 stabilization work and the subsequent classroom, provider, and dependency fixes. See [release evidence](docs/release-evidence-v0.9.3.md) for the verification and publication status.
+
+### Fixed
+
+- Sanitize stored and rendered formulas, including legacy classroom content.
+- Validate governed provider destinations and redirect hops; preserve credential and local-provider boundaries.
+- Normalize unambiguous quiz answer labels and retain neutral feedback when an answer key cannot be graded safely.
+- Make the default classroom and local demo readable on smaller screens, complete the final scene cleanly, and preserve widget playback when mobile overlays close.
+- Reject invalid TTS response formats and bound provider response and decoded audio sizes.
+
+### Security and dependencies
+
+- Update Next.js to 16.3.8 and refresh compatible vulnerable dependency resolutions.
+- Apply a bounded local patch to `braces@3.0.3` while its upstream advisory has no fixed release. The audit reports that advisory as locally mitigated only after checking the patch, lockfile, installed bytes, and regression probe; it still fails on any unmitigated finding.
+
+### Verification
+
+- Make `ops:verify` use the repository-pinned pnpm and include the dependency audit, localization, lint, TypeScript, and full unit suite in addition to its existing build and browser gates.
+
+## [0.9.1] - 2026-07-16
+
+See [Homepage Simplification release evidence](docs/release-evidence-v0.9.1.md).
+
+## [0.9.0] - 2026-07-16
+
+See [Governed PDF Source Foundation release evidence](docs/release-evidence-v0.9.0.md).
+
+## [0.8.1] - 2026-07-15
+
+See [Dependency Security release evidence](docs/release-evidence-v0.8.1.md).
+
+## [0.8.0] - 2026-07-14
+
+See [Governed Co-Thinking release evidence](docs/release-evidence-v0.8.0.md).
+
+## [0.7.1] - 2026-07-14
+
+See [Reliability Hardening release evidence](docs/release-evidence-v0.7.1.md).
+
+## [0.7.0] - 2026-07-14
+
 ### Added
 
 - Discord scheduled-class beta release gate via `pnpm run smoke:discord-beta`, including automated API guard checks, optional teacher-cookie sync/cron checks, and a manual Discord smoke checklist.

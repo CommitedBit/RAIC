@@ -5,6 +5,8 @@ Target release: `v0.9.2`
 
 Evidence status: candidate validated locally and in protected Preview; production remains blocked on serial merges, canonical-origin Google authentication, governed generation, production smoke checks, tagging, and release publication.
 
+Historical note (2026-10-03): [PR #92](https://github.com/CommitedBit/RAIC/pull/92) subsequently merged this release branch to `main` at `2aa083c`, and production served version `0.9.2`. No `v0.9.2` tag or GitHub release was published. This August candidate's dependency pins, test counts, Preview deployment, and unchecked production gates are not current v0.9.3 evidence; see [v0.9.3 release evidence](./release-evidence-v0.9.3.md).
+
 ## Candidate Scope
 
 - Preserve immutable Google account ownership, fail closed on subject conflicts, sanitize authentication failures, and revoke presented web and classroom sessions on same-origin logout.
@@ -22,7 +24,7 @@ Evidence status: candidate validated locally and in protected Preview; productio
 - [x] PR [#91](https://github.com/CommitedBit/RAIC/pull/91): aligned the legitimate Playwright logout request with the new exact same-origin requirement; the focused browser proof passed locally.
 - [x] Final stacked candidate `a578850` merges the refreshed dependency baseline into PR #91. Its Vercel build completed successfully.
 - [x] Fresh frozen install completed with Node 24.19.0 and pnpm 10.28.0 in a temporary non-iCloud branch literally named `main`.
-- [ ] Serial slice PRs merged into `release/v0.9.2` after required checks.
+- [x] The release branch merged to `main` through PR #92 on 2026-08-23 at `2aa083c`.
 
 ### Dependency Override Rationale
 

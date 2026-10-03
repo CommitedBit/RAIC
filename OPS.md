@@ -52,8 +52,12 @@ running it when the slice touches classroom/runtime/provider paths.
 Run these gates after each slice merge and before pushing `main`:
 
 - `corepack pnpm run secrets:scan`
+- `corepack pnpm run security:dependencies`
 - `corepack pnpm run ops:drift`
+- `corepack pnpm run check:i18n-keys`
 - `corepack pnpm run lint`
+- `corepack pnpm exec tsc --noEmit`
+- `corepack pnpm test`
 - `corepack pnpm run build`
 - `corepack pnpm run check`
 - `corepack pnpm run test:mirofish:gate`
@@ -90,9 +94,9 @@ Run these gates after each slice merge and before pushing `main`:
 
 ## Hard cutover guardrails
 
-The rename cutover is not a compatibility rollout. Operators should treat it as a clean switch to the `spheng51/RAIC` repo and RAIC deployment targets.
+The rename cutover is not a compatibility rollout. The current Vercel project and Git remote use `CommitedBit/RAIC`; operators should use that canonical repository and the RAIC deployment targets.
 
-- Use `spheng51/RAIC` in deployment tickets, Vercel project mappings, mirrors, and operator handoff notes. Retire legacy repo names instead of aliasing them in release docs.
+- Use `CommitedBit/RAIC` in deployment tickets, Vercel project mappings, mirrors, and operator handoff notes. The old `spheng51/RAIC` URL redirects to this repository; prefer the canonical name in new instructions.
 - Use RAIC hostnames only in smoke plans and auth/OAuth examples. Legacy pre-cutover hostnames should not remain in deployment-facing instructions.
 - The access-code cookie is now `openraic_access`. Start `ACCESS_CODE` smoke tests from a fresh prompt and treat any pre-cutover access-code token as unusable.
 - The browser database and discarded-db marker are now `RAIC-Database` and `RAIC_DISCARDED_DB`.
@@ -144,16 +148,20 @@ Feature stack details are documented in:
 
 The canonical local release flow is:
 
-- `pnpm run secrets:scan`
-- `pnpm run ops:drift`
-- `pnpm run lint`
-- `pnpm run build`
-- `pnpm run check`
-- `pnpm run test:mirofish:gate`
-- `pnpm run test:mirofish:e2e`
-- `CI=1 pnpm run test:e2e`
-- `pnpm run benchmark:milestone`
-- `pnpm run ops:verify`
+- `corepack pnpm run secrets:scan`
+- `corepack pnpm run security:dependencies`
+- `corepack pnpm run ops:drift`
+- `corepack pnpm run check:i18n-keys`
+- `corepack pnpm run lint`
+- `corepack pnpm exec tsc --noEmit`
+- `corepack pnpm test`
+- `corepack pnpm run build`
+- `corepack pnpm run check`
+- `corepack pnpm run test:mirofish:gate`
+- `corepack pnpm run test:mirofish:e2e`
+- `CI=1 corepack pnpm run test:e2e`
+- `corepack pnpm run benchmark:milestone`
+- `corepack pnpm run ops:verify`
 
 Failure output is intentionally short and gate-oriented; the ops script prints gate labels so CI logs indicate where failure occurred.
 

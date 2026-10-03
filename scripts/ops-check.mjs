@@ -99,18 +99,9 @@ function shouldEnforceStrictLocalHandoff(args) {
 }
 
 const options = normalizeArgv(process.argv.slice(2));
-const PNPM_COMMAND = (() => {
-  try {
-    execSync(process.platform === 'win32' ? 'where.exe pnpm' : 'command -v pnpm', {
-      encoding: 'utf8',
-      stdio: 'pipe',
-      shell: true,
-    });
-    return 'pnpm';
-  } catch {
-    return 'corepack pnpm';
-  }
-})();
+// Resolve the repository-pinned package manager rather than an unrelated
+// globally installed pnpm, which may ignore our overrides and patches.
+const PNPM_COMMAND = 'corepack pnpm';
 
 function fail(message, { details = [] } = {}) {
   console.error(`\n[ops-check] ERROR: ${message}`);
@@ -738,7 +729,18 @@ function checkVerify() {
 
   const gates = [
     { name: `${PNPM_COMMAND} run secrets:scan`, command: `${PNPM_COMMAND} run secrets:scan` },
+    {
+      name: `${PNPM_COMMAND} run security:dependencies`,
+      command: `${PNPM_COMMAND} run security:dependencies`,
+    },
+    {
+      name: `${PNPM_COMMAND} run check:i18n-keys`,
+      command: `${PNPM_COMMAND} run check:i18n-keys`,
+    },
     { name: `${PNPM_COMMAND} run check`, command: `${PNPM_COMMAND} run check` },
+    { name: `${PNPM_COMMAND} run lint`, command: `${PNPM_COMMAND} run lint` },
+    { name: `${PNPM_COMMAND} exec tsc --noEmit`, command: `${PNPM_COMMAND} exec tsc --noEmit` },
+    { name: `${PNPM_COMMAND} test`, command: `${PNPM_COMMAND} test` },
     { name: `${PNPM_COMMAND} run build`, command: `${PNPM_COMMAND} run build` },
     {
       name: `${PNPM_COMMAND} run test:mirofish:gate`,
